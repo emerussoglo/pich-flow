@@ -1,0 +1,95 @@
+/* PichFlow Documentation Styles */
+
+.pf-docs-container {
+  display: flex;
+  min-height: calc(100vh - 4.5rem);
+}
+
+.pf-docs-sidebar {
+  width: 260px;
+  border-right: 1px solid var(--pf-border);
+  padding: 2rem 1.25rem;
+  background: var(--pf-surface);
+  position: sticky;
+  top: 4.5rem;
+  height: calc(100vh - 4.5rem);
+  overflow-y: auto;
+}
+
+.pf-docs-menu-group {
+  margin-bottom: 1.75rem;
+}
+
+.pf-docs-menu-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pf-muted);
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+}
+
+.pf-docs-menu-item {
+  display: block;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--pf-muted);
+  border-radius: var(--pf-radius-sm);
+  transition: all var(--pf-transition-fast);
+  cursor: pointer;
+}
+
+.pf-docs-menu-item:hover {
+  color: var(--pf-text);
+  background: var(--pf-surface-subtle);
+}
+
+.pf-docs-menu-item.active {
+  color: var(--pf-primary);
+  background: var(--pf-primary-soft);
+  font-weight: 700;
+}
+
+.pf-docs-content {
+  flex: 1;
+  padding: 3rem 4rem;
+  max-width: 900px;
+}
+
+.pf-docs-badge-method {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--pf-radius-sm);
+  margin-right: 0.5rem;
+}
+
+.pf-badge-post {
+  background: #DCFCE7;
+  color: #15803D;
+}
+
+.pf-badge-get {
+  background: #DBEAFE;
+  color: #1D4ED8;
+}
+
+.pf-docs-code-box {
+  background: #0F172A;
+  border-radius: var(--pf-radius-lg);
+  padding: 1.25rem;
+  margin: 1.25rem 0;
+  position: relative;
+}
+
+.pf-docs-code-box pre {
+  margin: 0;
+  color: #E2E8F0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  overflow-x: auto;
+}

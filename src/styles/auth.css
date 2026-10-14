@@ -1,0 +1,327 @@
+/* ==========================================================================
+   AUTHENTIFICATION (Split Card Modern Design avec Fond Multicolore)
+   ========================================================================== */
+
+.pf-auth-page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F8FAFC;
+  padding: 2.5rem 1.5rem;
+  box-sizing: border-box;
+}
+
+/* Carte globale Split-Screen */
+.pf-auth-split-card {
+  display: flex;
+  width: 100%;
+  max-width: 980px;
+  background: #FFFFFF;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px -12px rgba(15, 23, 42, 0.08);
+  border: 1px solid #E2E8F0;
+  min-height: 580px;
+}
+
+/* --- Côté Gauche : Arrière-plan Multicolore --- */
+.pf-auth-visual-side {
+  flex: 1.05;
+  background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 35%, #2563EB 70%, #4F46E5 100%);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 3.5rem 3rem;
+  color: #FFFFFF;
+  overflow: hidden;
+}
+
+/* Texture lumineuse multicolore en overlay */
+.pf-auth-visual-side::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 140%;
+  height: 140%;
+  background: radial-gradient(circle, rgba(147, 197, 253, 0.25) 0%, rgba(99, 102, 241, 0.15) 40%, transparent 70%);
+  pointer-events: none;
+}
+
+.pf-auth-visual-content {
+  position: relative;
+  z-index: 2;
+}
+
+.pf-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #93C5FD;
+  margin-bottom: 1.5rem;
+}
+
+.pf-visual-title {
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  margin-bottom: 1rem;
+  color: #FFFFFF;
+}
+
+.pf-visual-desc {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.6;
+  max-width: 380px;
+}
+
+/* --- Côté Droit : Formulaire --- */
+.pf-auth-form-side {
+  flex: 1;
+  padding: 3.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #FFFFFF;
+}
+
+.pf-auth-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.pf-auth-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.35rem;
+}
+
+.pf-auth-subtitle {
+  font-size: 0.875rem;
+  color: #64748B;
+}
+
+.pf-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.pf-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.pf-form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.pf-label {
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.pf-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pf-label-sub-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #2563EB;
+  cursor: pointer;
+}
+
+.pf-label-sub-link:hover {
+  text-decoration: underline;
+}
+
+/* Inputs & Wrappers */
+.pf-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pf-input-icon {
+  position: absolute;
+  left: 1rem;
+  color: #94A3B8;
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.pf-input,
+.pf-select {
+  width: 100%;
+  height: 46px;
+  padding: 0 1rem 0 2.75rem;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  color: #0F172A;
+  outline: none;
+  transition: all 180ms ease;
+  box-sizing: border-box;
+}
+
+.pf-input:focus,
+.pf-select:focus {
+  background: #FFFFFF;
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.pf-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  color: #64748B;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.pf-checkbox-label input {
+  margin-top: 0.15rem;
+  accent-color: #2563EB;
+}
+
+/* Bouton principal de soumission (#2563EB) */
+.pf-auth-submit-btn {
+  width: 100%;
+  height: 48px;
+  background: #2563EB;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.925rem;
+  border-radius: 12px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: all 180ms ease;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+}
+
+.pf-auth-submit-btn:hover {
+  background: #1D4ED8;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+}
+
+.pf-auth-submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Switch & Footer links */
+.pf-auth-footer {
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: #64748B;
+}
+
+.pf-auth-switch-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #2563EB;
+  cursor: pointer;
+}
+
+.pf-auth-switch-btn:hover {
+  text-decoration: underline;
+}
+
+.pf-auth-back-btn {
+  background: none;
+  border: none;
+  font-size: 0.825rem;
+  color: #64748B;
+  cursor: pointer;
+}
+
+.pf-auth-back-btn:hover {
+  color: #0F172A;
+}
+
+.pf-verify-text {
+  font-size: 0.85rem;
+  color: #64748B;
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+/* Alerts */
+.pf-auth-alert-success {
+  background: #ECFDF5;
+  color: #047857;
+  border: 1px solid #A7F3D0;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  font-size: 0.825rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN (Smartphone / Mobile)
+   ========================================================================== */
+@media (max-width: 868px) {
+  .pf-auth-page-wrapper {
+    padding: 1.25rem 0.75rem;
+  }
+
+  /* Sur mobile, on MASQUE le côté visuel pour ne garder QUE le formulaire */
+  .pf-auth-visual-side {
+    display: none;
+  }
+
+  .pf-auth-split-card {
+    max-width: 480px;
+    min-height: auto;
+    border-radius: 20px;
+  }
+
+  .pf-auth-form-side {
+    padding: 2.25rem 1.5rem;
+  }
+
+  .pf-form-row-2col {
+    grid-template-columns: 1fr;
+  }
+}

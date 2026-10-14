@@ -1,0 +1,364 @@
+/* PichFlow Comprehensive Responsive Design System */
+
+/* ==========================================================================
+   DESKTOP ADAPTATIONS (1024px - 1279px)
+   ========================================================================== */
+@media (max-width: 1279px) {
+  .pf-hero-container {
+    gap: 2.5rem;
+  }
+
+  .pf-card-balance {
+    width: 260px;
+  }
+
+  .pf-card-success {
+    width: 230px;
+  }
+
+  .pf-card-link {
+    width: 250px;
+  }
+
+  .pf-footer-top-grid {
+    grid-template-columns: 1fr 2fr;
+    gap: 2.5rem;
+  }
+}
+
+/* ==========================================================================
+   TABLET ADAPTATIONS (768px - 1023px)
+   ========================================================================== */
+@media (max-width: 1023px) {
+  /* Navigation */
+  .pf-nav-links {
+    gap: 1rem;
+  }
+
+  .pf-nav-link {
+    font-size: 0.875rem;
+    padding: 0.4rem 0.5rem;
+  }
+
+  /* Hero: Transition to Staged Grid Collage (Zero Absolute Overflow) */
+  .pf-hero-container {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .pf-hero-editorial {
+    max-width: 680px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .pf-hero-description {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .pf-hero-actions {
+    justify-content: center;
+  }
+
+  .pf-hero-trust-row {
+    justify-content: center;
+  }
+
+  .pf-hero-visual-stage {
+    min-height: auto;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 1rem 0;
+  }
+
+  .pf-stage-ambient-glow {
+    display: none;
+  }
+
+  /* Reset all absolute coordinates on tablets & mobiles */
+  .pf-floating-micro-card {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    box-shadow: var(--pf-shadow-sm) !important;
+  }
+
+  .pf-card-balance {
+    grid-column: span 2;
+  }
+
+  /* Section Two-Column layouts */
+  .pf-two-col-grid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .pf-col-editorial {
+    max-width: 100%;
+  }
+
+  .pf-dev-grid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .pf-estimator-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  /* Footer */
+  .pf-footer-top-grid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
+
+  .pf-footer-brand-column {
+    max-width: 100%;
+  }
+
+  .pf-footer-nav-columns {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Dashboard responsive shell */
+  .pf-dashboard-main {
+    margin-left: 0;
+  }
+
+  .pf-sidebar {
+    transform: translateX(-100%);
+  }
+
+  .pf-sidebar.open {
+    transform: translateX(0);
+    box-shadow: var(--pf-shadow-xl);
+  }
+
+  .pf-dashboard-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pf-dashboard-grid-2col {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-checkout-container {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-checkout-summary {
+    border-right: none;
+    border-bottom: 1px solid var(--pf-border);
+  }
+
+  .pf-docs-sidebar {
+    display: none;
+  }
+
+  .pf-docs-content {
+    padding: 2rem 1.5rem;
+  }
+}
+
+/* ==========================================================================
+   MOBILE LANDSCAPE & PORTRAIT (480px - 767px)
+   ========================================================================== */
+@media (max-width: 767px) {
+  /* Navigation */
+  .pf-nav-links,
+  .pf-nav-login-btn {
+    display: none !important;
+  }
+
+  .pf-nav-toggle {
+    display: flex !important;
+  }
+
+  .pf-navbar-container {
+    height: 4.25rem;
+  }
+
+  /* Hero */
+  .pf-hero {
+    padding-top: 2rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .pf-hero-editorial {
+    text-align: left;
+  }
+
+  .pf-hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .pf-hero-actions .pf-btn {
+    width: 100%;
+  }
+
+  .pf-hero-trust-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .pf-hero-trust-divider {
+    display: none;
+  }
+
+  /* Hero Visual Collage on Mobile */
+  .pf-hero-visual-stage {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .pf-card-balance {
+    grid-column: span 1;
+  }
+
+  .pf-title-break {
+    display: none;
+  }
+
+  /* Developers Code Section */
+  .pf-dev-section {
+    padding: 2rem 1.25rem;
+  }
+
+  .pf-dev-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .pf-dev-actions .pf-btn {
+    width: 100%;
+  }
+
+  .pf-code-pre {
+    font-size: 0.75rem;
+    padding: 1rem;
+  }
+
+  /* Checkout Preview */
+  .pf-preview-actions-row {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .pf-preview-actions-row .pf-btn {
+    width: 100%;
+  }
+
+  .pf-preview-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .pf-preview-amount-box {
+    text-align: left;
+  }
+
+  /* Footer Links */
+  .pf-footer-nav-columns {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem;
+  }
+
+  .pf-footer-bottom-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  /* Back To Top Button */
+  .pf-back-to-top {
+    bottom: 1.25rem;
+    right: 1.25rem;
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+
+  /* Final CTA */
+  .pf-final-cta-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .pf-final-cta-actions .pf-btn {
+    width: 100%;
+  }
+}
+
+/* ==========================================================================
+   SMALL MOBILE PHONES (< 480px: 320px, 360px, 375px, 390px, 414px)
+   ========================================================================== */
+@media (max-width: 480px) {
+  .pf-container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .pf-hero-badge {
+    font-size: 0.6875rem;
+    padding: 0.35rem 0.75rem;
+  }
+
+  .pf-features-bento-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-countries-auto-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-steps-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-security-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-pricing-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-footer-nav-columns {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+
+  .pf-dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-link-copy-box {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pf-link-copy-box .pf-btn {
+    width: 100%;
+  }
+
+  .pf-auth-card {
+    padding: 1.5rem 1.15rem;
+  }
+
+  .pf-modal-content {
+    padding: 1.5rem 1.15rem;
+  }
+}

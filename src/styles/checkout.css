@@ -1,0 +1,855 @@
+/* ==========================================================================
+   SASPAY / PICHFLOW HOSTED CHECKOUT & PAYMENT LINKS DESIGN SYSTEM
+   Inspiré directement des captures d'écran (Capture d'écran 2026-10-12 213855, 214008, 214119, 214024, 214135, 213954)
+   ========================================================================== */
+
+.pf-saspay-checkout-page {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 0%, #F5F3FF 0%, #FAF5FF 35%, #F8FAFC 80%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1.25rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #111827;
+  box-sizing: border-box;
+}
+
+.pf-saspay-checkout-card {
+  width: 100%;
+  max-width: 440px;
+  background: #FFFFFF;
+  border-radius: 28px;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 20px 45px -12px rgba(99, 49, 222, 0.12), 0 8px 16px -6px rgba(0, 0, 0, 0.03);
+  padding: 2.25rem 2rem;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Back button in top-left */
+.pf-saspay-back-link {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  background: none;
+  border: none;
+  color: #94A3B8;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border-radius: 8px;
+  transition: all 120ms ease;
+}
+
+.pf-saspay-back-link:hover {
+  color: #5E30E8;
+  background: #F5F3FF;
+}
+
+/* ==========================================================================
+   1. FIXED AMOUNT HEADER (Screenshots 214008 & 214119)
+   ========================================================================== */
+.pf-saspay-header-fixed {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.pf-saspay-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.pf-saspay-avatar-badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: #5E30E8;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 1.125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  letter-spacing: -0.01em;
+  box-shadow: 0 4px 10px rgba(94, 48, 232, 0.25);
+}
+
+.pf-saspay-header-titles {
+  min-width: 0;
+}
+
+.pf-saspay-header-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-saspay-header-sub {
+  font-size: 0.8125rem;
+  color: #6B7280;
+  margin-top: 2px;
+}
+
+.pf-saspay-header-price {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  margin-left: 0.5rem;
+}
+
+/* ==========================================================================
+   2. CUSTOM AMOUNT HEADER (Screenshot 213855)
+   ========================================================================== */
+.pf-saspay-header-libre {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.pf-saspay-avatar-badge.center {
+  margin: 0 auto 0.85rem;
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  font-size: 1.25rem;
+}
+
+.pf-saspay-sub-libre {
+  font-size: 0.9375rem;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.pf-saspay-title-libre {
+  font-size: 1rem;
+  color: #374151;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   FORM CONTROLS & INPUTS
+   ========================================================================== */
+.pf-saspay-form-group {
+  margin-bottom: 1.15rem;
+}
+
+.pf-saspay-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1F2937;
+  margin-bottom: 0.45rem;
+}
+
+.pf-saspay-input {
+  width: 100%;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 0.8rem 1rem;
+  font-size: 0.9375rem;
+  color: #111827;
+  background: #FFFFFF;
+  box-sizing: border-box;
+  transition: all 140ms ease;
+}
+
+.pf-saspay-input:focus {
+  border-color: #5E30E8;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(94, 48, 232, 0.12);
+}
+
+.pf-saspay-input::placeholder {
+  color: #9CA3AF;
+  font-weight: 400;
+}
+
+/* Custom Row with 2 Columns (Prénom / Nom) */
+.pf-saspay-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.15rem;
+}
+
+/* Custom Select with country flag */
+.pf-saspay-select-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.pf-saspay-select {
+  appearance: none;
+  width: 100%;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 0.8rem 2.5rem 0.8rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #111827;
+  background: #FFFFFF;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: all 140ms ease;
+}
+
+.pf-saspay-select:focus {
+  border-color: #5E30E8;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(94, 48, 232, 0.12);
+}
+
+.pf-saspay-select-chevron {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #9CA3AF;
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   PAYMENT METHODS 2-COLUMN GRID (Screenshots 214008, 214119, 214024)
+   ========================================================================== */
+.pf-saspay-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+.pf-saspay-method-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 14px;
+  border: 1px solid #E5E7EB;
+  background: #FFFFFF;
+  cursor: pointer;
+  text-align: left;
+  transition: all 140ms ease;
+  min-width: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.pf-saspay-method-card.active {
+  border: 2px solid #5E30E8;
+  background: #FAF9FF;
+  box-shadow: 0 0 0 1px #5E30E8;
+}
+
+.pf-saspay-method-card:hover:not(.active) {
+  border-color: #CBD5E1;
+  background: #F9FAFB;
+}
+
+.pf-saspay-method-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 800;
+  overflow: hidden;
+}
+
+/* Brand specific operator chip colors */
+.pf-saspay-method-logo.celtiis {
+  background: #00458C;
+  color: #FFFFFF;
+}
+
+.pf-saspay-method-logo.mtn {
+  background: #002B49;
+  color: #FFCC00;
+}
+
+.pf-saspay-method-logo.moov {
+  background: #F47920;
+  color: #FFFFFF;
+}
+
+.pf-saspay-method-logo.wave {
+  background: #1DC3EC;
+  color: #FFFFFF;
+}
+
+.pf-saspay-method-logo.orange {
+  background: #000000;
+  color: #FF6600;
+}
+
+.pf-saspay-method-logo.expresso {
+  background: #5E30E8;
+  color: #FFFFFF;
+  font-size: 0.75rem;
+}
+
+.pf-saspay-method-logo.free {
+  background: #4338CA;
+  color: #FFFFFF;
+  font-size: 0.75rem;
+}
+
+.pf-saspay-method-logo.crypto {
+  background: #EDE9FE;
+  color: #5E30E8;
+}
+
+.pf-saspay-method-logo.card {
+  background: #2563EB;
+  color: #FFFFFF;
+}
+
+.pf-saspay-method-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.pf-saspay-method-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #1F2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.pf-saspay-method-fee {
+  font-size: 0.6875rem;
+  color: #9CA3AF;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Notice chip (e.g. Confirmation envoyée à ...) */
+.pf-saspay-notice-chip {
+  background: #F8FAFC;
+  border: 1px solid #F1F5F9;
+  border-radius: 10px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.8125rem;
+  color: #64748B;
+  margin-bottom: 1.25rem;
+}
+
+/* ==========================================================================
+   PHONE INPUT WITH CALLING CODE (Screenshots 214008 & 214119)
+   ========================================================================== */
+.pf-saspay-phone-row {
+  display: flex;
+  align-items: center;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 0 0.85rem;
+  height: 48px;
+  background: #FFFFFF;
+  transition: all 140ms ease;
+  box-sizing: border-box;
+}
+
+.pf-saspay-phone-row:focus-within {
+  border-color: #5E30E8;
+  box-shadow: 0 0 0 3px rgba(94, 48, 232, 0.12);
+}
+
+.pf-saspay-phone-icon {
+  color: #9CA3AF;
+  font-size: 0.875rem;
+  margin-right: 0.5rem;
+}
+
+.pf-saspay-phone-code {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.pf-saspay-phone-divider {
+  width: 1px;
+  height: 22px;
+  background: #E5E7EB;
+  margin: 0 0.65rem;
+}
+
+.pf-saspay-phone-input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 0.9375rem;
+  color: #111827;
+  background: transparent;
+  padding: 0;
+  min-width: 0;
+}
+
+/* ==========================================================================
+   SUMMARY BREAKDOWN BOX (Montant, Frais, Total à payer)
+   ========================================================================== */
+.pf-saspay-summary-box {
+  background: #F9FAFB;
+  border-radius: 16px;
+  padding: 0.95rem 1.15rem;
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+  box-sizing: border-box;
+}
+
+.pf-saspay-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #6B7280;
+  margin-bottom: 0.45rem;
+}
+
+.pf-saspay-summary-divider {
+  height: 1px;
+  background: #E5E7EB;
+  margin: 0.55rem 0;
+}
+
+.pf-saspay-summary-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.975rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+/* ==========================================================================
+   CTA BUTTON
+   ========================================================================== */
+.pf-saspay-submit-btn {
+  width: 100%;
+  background: #5E30E8;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-radius: 14px;
+  padding: 0.9rem 1.25rem;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 140ms ease;
+  box-shadow: 0 4px 14px rgba(94, 48, 232, 0.25);
+}
+
+.pf-saspay-submit-btn:hover:not(:disabled) {
+  background: #5025D1;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(94, 48, 232, 0.32);
+}
+
+.pf-saspay-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   WATERMARK & FOOTER (Paiement sécurisé propulsé par SasPay)
+   ========================================================================== */
+.pf-saspay-watermark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: #9CA3AF;
+  margin-top: 1.5rem;
+  font-weight: 500;
+  user-select: none;
+}
+
+.pf-saspay-watermark-lock {
+  color: #9CA3AF;
+  font-size: 0.725rem;
+}
+
+.pf-saspay-watermark-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #111827;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.pf-saspay-watermark-icon {
+  width: 18px;
+  height: 14px;
+  border-radius: 4px;
+  background: #5E30E8;
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  position: relative;
+}
+
+/* ==========================================================================
+   3. PENDING STATE (Screenshot 214135: Confirme le paiement sur ton téléphone)
+   ========================================================================== */
+.pf-saspay-pending-view {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.pf-saspay-pending-icon-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #F5F3FF;
+  color: #5E30E8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  font-size: 1.85rem;
+}
+
+.pf-saspay-spinner-arc {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  border-top-color: #8B5CF6;
+  border-right-color: #C4B5FD;
+  animation: pf-spin 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes pf-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pf-saspay-pending-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.pf-saspay-pending-sub {
+  font-size: 0.9rem;
+  color: #6B7280;
+  max-width: 320px;
+  margin: 0 auto 1.5rem;
+  line-height: 1.45;
+}
+
+.pf-saspay-step-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  text-align: left;
+  background: #FFFFFF;
+  border: 1px solid #F1F5F9;
+  border-radius: 14px;
+  padding: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.pf-saspay-step-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #EDE9FE;
+  color: #5E30E8;
+  font-weight: 800;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pf-saspay-step-text {
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.45;
+}
+
+/* PayDunya Sandbox Direct Action Box */
+.pf-saspay-sandbox-action-box {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  text-align: center;
+}
+
+.pf-saspay-sandbox-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  background: #5E30E8;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 140ms ease;
+  box-sizing: border-box;
+}
+
+.pf-saspay-sandbox-action-btn:hover {
+  background: #5025D1;
+}
+
+/* ==========================================================================
+   4. FAILED STATE (Screenshot 213954: Paiement échoué)
+   ========================================================================== */
+.pf-saspay-failed-view {
+  text-align: center;
+  padding: 2rem 0 1rem;
+}
+
+.pf-saspay-failed-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.pf-saspay-failed-sub {
+  font-size: 0.9375rem;
+  color: #6B7280;
+  max-width: 320px;
+  margin: 0 auto 2rem;
+  line-height: 1.45;
+}
+
+.pf-saspay-retry-btn {
+  background: #5E30E8;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-radius: 12px;
+  padding: 0.8rem 2.75rem;
+  border: none;
+  cursor: pointer;
+  margin: 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 140ms ease;
+  box-shadow: 0 4px 14px rgba(94, 48, 232, 0.25);
+}
+
+.pf-saspay-retry-btn:hover {
+  background: #5025D1;
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   5. SUCCESS STATE
+   ========================================================================== */
+.pf-saspay-success-view {
+  text-align: center;
+  padding: 1.5rem 0 0.5rem;
+}
+
+.pf-saspay-success-icon-wrap {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #ECFDF5;
+  color: #10B981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.25rem;
+  font-size: 2rem;
+}
+
+.pf-saspay-success-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.pf-saspay-success-sub {
+  font-size: 0.9rem;
+  color: #4B5563;
+  margin-bottom: 1.5rem;
+}
+
+.pf-saspay-receipt-box {
+  background: #F9FAFB;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 1rem 1.15rem;
+  text-align: left;
+  font-size: 0.8125rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.pf-saspay-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pf-saspay-receipt-lbl {
+  color: #6B7280;
+}
+
+.pf-saspay-receipt-val {
+  font-weight: 700;
+  color: #111827;
+  font-family: monospace;
+}
+
+/* ==========================================================================
+   6. SPLIT STUDIO PAYMENT LINK CREATOR (LIVE PREVIEW)
+   ========================================================================== */
+.pf-payment-link-studio {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.15fr) minmax(360px, 1fr);
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+@media (max-width: 1080px) {
+  .pf-payment-link-studio {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pf-preview-sticky-wrap {
+  position: sticky;
+  top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.pf-preview-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 440px;
+  margin-bottom: 0.85rem;
+}
+
+.pf-preview-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #059669;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pf-device-toggle-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #F1F5F9;
+  padding: 0.25rem;
+  border-radius: 10px;
+}
+
+.pf-device-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.pf-device-toggle-btn.active {
+  background: #FFFFFF;
+  color: #5E30E8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.pf-mobile-frame {
+  width: 100%;
+  max-width: 380px;
+  border: 10px solid #1E293B;
+  border-radius: 38px;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  background: #FFFFFF;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.pf-mobile-speaker {
+  width: 60px;
+  height: 5px;
+  background: #334155;
+  border-radius: 3px;
+  margin: 10px auto 6px;
+}
+
+.pf-desktop-preview-frame {
+  width: 100%;
+  max-width: 440px;
+}
+

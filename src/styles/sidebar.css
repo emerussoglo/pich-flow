@@ -1,0 +1,547 @@
+/* ==========================================================================
+   SASPAY / PICHFLOW SIDEBAR (Identique aux captures d'écran)
+   ========================================================================== */
+
+.pf-saspay-sidebar {
+  width: 250px;
+  background: #FFFFFF;
+  border-right: 1px solid #E5E7EB;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+  transition: width 240ms cubic-bezier(0.16, 1, 0.3, 1), transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+/* Desktop Header with Collapse Toggle Button */
+.pf-sidebar-desktop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem 0.25rem;
+}
+
+.pf-sidebar-collapse-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 140ms ease;
+}
+
+.pf-sidebar-collapse-btn:hover {
+  background: #EFF6FF;
+  border-color: #BFDBFE;
+  color: #2563EB;
+}
+
+/* Mobile Drawer Header (Screenshot 1 & 8) */
+.pf-sidebar-mobile-head {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem 0.5rem;
+}
+
+.pf-sidebar-menu-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #94A3B8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pf-sidebar-mobile-close-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.pf-sidebar-mobile-close-btn:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+
+/* Top App Selector Box */
+.pf-sidebar-app-box {
+  padding: 0.875rem 0.875rem 0.5rem;
+}
+
+.pf-app-card-btn {
+  width: 100%;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 0.625rem 0.75rem;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-align: left;
+  transition: all 140ms ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.pf-app-card-btn:hover {
+  border-color: #CBD5E1;
+  background: #F8FAFC;
+}
+
+.pf-app-card-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.pf-app-card-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  background: #2563EB;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pf-app-card-avatar.sm {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+}
+
+.pf-app-card-info {
+  min-width: 0;
+}
+
+.pf-app-card-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0F172A;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-app-card-category {
+  font-size: 0.75rem;
+  color: #94A3B8;
+  margin-top: 0.1rem;
+}
+
+.pf-app-card-chevron {
+  font-size: 0.75rem;
+  color: #94A3B8;
+  transition: transform 200ms ease;
+  flex-shrink: 0;
+}
+
+.pf-app-card-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+/* Application Dropdown Menu */
+.pf-app-popup-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 0.5rem;
+  z-index: 70;
+  animation: scaleIn 140ms ease;
+}
+
+.pf-app-popup-header {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #94A3B8;
+  text-transform: uppercase;
+  padding: 0.35rem 0.6rem;
+}
+
+.pf-app-popup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.pf-app-popup-row:hover {
+  background: #F1F5F9;
+}
+
+.pf-app-popup-row.active {
+  background: #EFF6FF;
+}
+
+.pf-app-popup-row.action {
+  color: #2563EB;
+}
+
+.pf-app-popup-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2563EB;
+}
+
+.pf-app-popup-add-icon {
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 1px dashed #BFDBFE;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563EB;
+  font-size: 0.75rem;
+}
+
+.pf-app-popup-divider {
+  height: 1px;
+  background: #F1F5F9;
+  margin: 0.35rem 0;
+}
+
+/* Nav links list (Scrollable) */
+.pf-sidebar-nav-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.25rem 0.65rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.pf-sidebar-nav-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pf-sidebar-nav-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.pf-sidebar-nav-scroll:hover::-webkit-scrollbar-thumb {
+  background: #E2E8F0;
+}
+
+.pf-saspay-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.85rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #475569;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 130ms ease;
+  box-sizing: border-box;
+}
+
+.pf-saspay-nav-link:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+
+.pf-saspay-nav-link.active {
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
+}
+
+.pf-saspay-nav-link.active .pf-nav-icon {
+  color: #FFFFFF !important;
+}
+
+.pf-nav-icon {
+  width: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748B;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.pf-nav-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Bottom User Profile Box */
+.pf-sidebar-user-box {
+  padding: 0.75rem 0.875rem;
+  border-top: 1px solid #F1F5F9;
+  background: #FFFFFF;
+}
+
+.pf-user-card-btn {
+  width: 100%;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 0.5rem 0.65rem;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 120ms ease;
+}
+
+.pf-user-card-btn:hover {
+  border-color: #CBD5E1;
+  background: #F8FAFC;
+}
+
+.pf-user-avatar-circle {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #2563EB;
+  color: #FFFFFF;
+  font-weight: 700;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pf-user-avatar-circle.sm {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.7rem;
+}
+
+.pf-user-avatar-circle.md {
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 0.875rem;
+  border-radius: 10px;
+}
+
+.pf-user-card-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.pf-user-card-name {
+  font-size: 0.775rem;
+  font-weight: 700;
+  color: #0F172A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-user-card-app {
+  font-size: 0.6875rem;
+  color: #94A3B8;
+  margin-top: 0.05rem;
+}
+
+/* User Popover Menu */
+.pf-user-popup-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 0.5rem;
+  z-index: 70;
+  animation: scaleIn 140ms ease;
+}
+
+.pf-user-popup-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.pf-user-popup-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0F172A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-user-popup-email {
+  font-size: 0.7rem;
+  color: #94A3B8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-user-popup-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.pf-user-popup-row:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+
+.pf-user-popup-row.danger {
+  color: #EF4444;
+}
+
+.pf-user-popup-row.danger:hover {
+  background: #FEF2F2;
+}
+
+/* Backdrop */
+.pf-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 45;
+}
+
+/* Responsive Drawer on Tablets & Mobile */
+@media (max-width: 1024px) {
+  .pf-saspay-sidebar {
+    transform: translateX(-100%);
+    box-shadow: none;
+    z-index: 1000;
+  }
+
+  .pf-saspay-sidebar.open {
+    transform: translateX(0);
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+  }
+
+  .pf-sidebar-mobile-head {
+    display: flex;
+  }
+  .pf-sidebar-collapse-btn {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   COLLAPSED SIDEBAR RULES (Desktop)
+   ========================================================================== */
+@media (min-width: 1025px) {
+  .pf-saspay-sidebar.collapsed {
+    width: 76px;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-sidebar-desktop-head {
+    justify-content: center;
+    padding: 0.875rem 0.5rem 0.25rem;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-sidebar-menu-title {
+    display: none;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-sidebar-app-box {
+    padding: 0.75rem 0.5rem 0.5rem;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-app-card-btn {
+    padding: 0.5rem;
+    justify-content: center;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-app-card-left {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-app-card-info,
+  .pf-saspay-sidebar.collapsed .pf-app-card-chevron {
+    display: none !important;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-sidebar-nav-scroll {
+    padding: 0.25rem 0.45rem 1rem;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-saspay-nav-link {
+    justify-content: center;
+    padding: 0.75rem 0;
+    gap: 0;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-nav-label {
+    display: none !important;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-nav-icon {
+    font-size: 1.15rem;
+    margin: 0;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-sidebar-user-box {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-user-card-btn {
+    padding: 0.5rem;
+    justify-content: center;
+  }
+
+  .pf-saspay-sidebar.collapsed .pf-user-card-info {
+    display: none !important;
+  }
+}

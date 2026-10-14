@@ -1,0 +1,65 @@
+---
+title: "Liens de paiement"
+description: "Créez, partagez et gérez des liens de paiement à montant fixe ou libre sans rédiger de code supplémentaire."
+---
+
+# Liens de Paiement
+
+Les **Liens de Paiement** PichFlow permettent de générer une URL publique partageable (par WhatsApp, email, SMS ou sur les réseaux sociaux) permettant à vos clients de régler une prestation ou un produit en toute simplicité.
+
+---
+
+## Types de Liens de Paiement
+
+PichFlow gère deux types de liens :
+1. **Montant Fixe (`isFixedAmount: true`)** : Idéal pour un produit, un forfait d'abonnement ou un événement précis (ex: 15 000 XOF).
+2. **Montant Libre (`isFixedAmount: false`)** : Idéal pour les dons, cagnottes ou facturations personnalisées où le client saisit le montant qu'il souhaite vous verser.
+
+---
+
+## Création via l'API
+
+```bash
+curl -X POST https://api.pichflow.com/v1/payment-links \
+  -H "Authorization: Bearer sk_test_votre_cle" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Abonnement Annuel PichFlow Pro",
+    "description": "Accès complet aux modules et à l API",
+    "amount": 25000,
+    "currency": "XOF",
+    "isFixedAmount": true,
+    "country": "BJ",
+    "redirectUrl": "https://maboutique.com/succes"
+  }'
+```
+
+### Réponse (201 Created)
+
+```json
+{
+  "success": true,
+  "paymentLink": {
+    "id": "pl_1728954000123",
+    "slug": "pl-abo-pro-2026",
+    "title": "Abonnement Annuel PichFlow Pro",
+    "amount": 25000,
+    "currency": "XOF",
+    "isFixedAmount": true,
+    "url": "https://checkout.pichflow.com/pay/pl-abo-pro-2026",
+    "paymentCount": 0,
+    "totalCollected": 0,
+    "isActive": true,
+    "createdAt": "2026-10-15T00:00:00Z"
+  }
+}
+```
+
+---
+
+## Cycle de Vie & Suivi des Liens
+
+- **Consultation des transactions par lien** : Chaque règlement effectué sur un lien incrémente automatiquement son compteur `paymentCount` et son volume total encaissé `totalCollected`.
+- **Désactivation instantanée** : Vous pouvez suspendre un lien à tout moment depuis le Dashboard ou via un appel `PUT /v1/payment-links/:id`.
+- **Plafond d'utilisation** : Vous pouvez restreindre le nombre maximum de règlements autorisés (ex: stock limité à 50 exemplaires).
+

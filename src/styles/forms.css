@@ -1,0 +1,113 @@
+/* PichFlow Form Styles */
+
+.pf-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-bottom: 1.125rem;
+}
+
+.pf-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--pf-text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pf-label-sub {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--pf-muted);
+}
+
+.pf-input,
+.pf-select,
+.pf-textarea {
+  width: 100%;
+  padding: 0.6875rem 0.9375rem;
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius-md);
+  background: var(--pf-surface);
+  color: var(--pf-text);
+  outline: none;
+  font-size: 0.9375rem;
+  transition: border-color var(--pf-transition-fast), box-shadow var(--pf-transition-fast);
+}
+
+.pf-input::placeholder,
+.pf-textarea::placeholder {
+  color: var(--pf-subtle);
+}
+
+.pf-input:focus,
+.pf-select:focus,
+.pf-textarea:focus {
+  border-color: var(--pf-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.pf-input:disabled,
+.pf-select:disabled,
+.pf-textarea:disabled {
+  background: var(--pf-surface-subtle);
+  color: var(--pf-muted);
+  cursor: not-allowed;
+}
+
+.pf-input-error {
+  border-color: var(--pf-danger) !important;
+}
+
+.pf-input-error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important;
+}
+
+.pf-error-text {
+  font-size: 0.8125rem;
+  color: var(--pf-danger);
+  margin-top: 0.25rem;
+}
+
+.pf-helper-text {
+  font-size: 0.8125rem;
+  color: var(--pf-muted);
+  margin-top: 0.25rem;
+}
+
+.pf-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pf-input-icon {
+  position: absolute;
+  left: 0.875rem;
+  color: var(--pf-muted);
+  pointer-events: none;
+}
+
+.pf-input-with-icon {
+  padding-left: 2.6rem;
+}
+
+.pf-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  font-size: 0.875rem;
+  color: var(--pf-muted);
+  cursor: pointer;
+  user-select: none;
+  line-height: 1.4;
+}
+
+.pf-checkbox-label input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.125rem;
+  accent-color: var(--pf-primary);
+  cursor: pointer;
+}

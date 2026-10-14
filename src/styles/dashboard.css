@@ -1,0 +1,1075 @@
+/* ==========================================================================
+   SASPAY / PICHFLOW DASHBOARD DESIGN SYSTEM (Identique aux captures d'écran)
+   Couleur de marque : #2563EB (Bleu moderne)
+   ========================================================================== */
+
+.pf-dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #F8FAFC;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1E293B;
+}
+
+.pf-dashboard-main {
+  margin-left: 250px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #F8FAFC;
+  transition: margin-left 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pf-dashboard-main.sidebar-collapsed {
+  margin-left: 76px;
+}
+
+/* ==========================================================================
+   TOPBAR
+   ========================================================================== */
+.pf-saspay-topbar {
+  height: 4rem;
+  background: #FFFFFF;
+  border-bottom: 1px solid #E5E7EB;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.pf-topbar-left-zone {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pf-topbar-hamburger-btn {
+  display: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  color: #475569;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.pf-topbar-hamburger-btn:hover {
+  background: #F8FAFC;
+  color: #0F172A;
+}
+
+.pf-topbar-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 0.45rem 0.85rem;
+  width: 260px;
+}
+
+.pf-topbar-search-ico {
+  color: #94A3B8;
+  font-size: 0.8125rem;
+}
+
+.pf-topbar-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 0.8125rem;
+  color: #1E293B;
+}
+
+.pf-topbar-search-input::placeholder {
+  color: #94A3B8;
+}
+
+.pf-topbar-right-zone {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.pf-topbar-bell-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #64748B;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  transition: all 120ms ease;
+}
+
+.pf-topbar-bell-btn:hover {
+  background: #F1F5F9;
+  color: #1E293B;
+}
+
+.pf-topbar-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 9999px;
+  padding: 0.3rem 0.75rem 0.3rem 0.35rem;
+  background: #FFFFFF;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.pf-topbar-user-btn:hover {
+  border-color: #CBD5E1;
+  background: #F8FAFC;
+}
+
+.pf-topbar-user-text {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1E293B;
+}
+
+.pf-topbar-chevron {
+  font-size: 0.7rem;
+  color: #94A3B8;
+  transition: transform 180ms ease;
+}
+
+.pf-topbar-chevron.rotated {
+  transform: rotate(180deg);
+}
+
+.pf-topbar-user-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 0.5rem;
+  z-index: 70;
+  min-width: 220px;
+  animation: scaleIn 140ms ease;
+}
+
+.pf-user-popover-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.6rem;
+}
+
+.pf-user-popover-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0F172A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-user-popover-email {
+  font-size: 0.7rem;
+  color: #94A3B8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-user-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.pf-user-popover-row:hover {
+  background: #F1F5F9;
+  color: #0F172A;
+}
+
+.pf-user-popover-row.danger {
+  color: #EF4444;
+}
+
+.pf-user-popover-row.danger:hover {
+  background: #FEF2F2;
+}
+
+.pf-topbar-notif-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  width: 290px;
+  z-index: 70;
+}
+
+/* ==========================================================================
+   DASHBOARD CONTENT WRAPPER
+   ========================================================================== */
+.pf-dashboard-content-wrapper {
+  flex: 1;
+  padding: 1.75rem 2rem 3rem;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Page Headers */
+.pf-page-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pf-page-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.025em;
+  margin: 0 0 0.25rem 0;
+}
+
+.pf-page-subtitle {
+  font-size: 0.875rem;
+  color: #64748B;
+  margin: 0;
+}
+
+/* Action Buttons (Primary & Secondary) */
+.pf-btn-action-primary {
+  background: #2563EB;
+  color: #FFFFFF;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transition: all 150ms ease;
+}
+
+.pf-btn-action-primary:hover {
+  background: #1D4ED8;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.32);
+}
+
+.pf-btn-action-secondary {
+  background: #FFFFFF;
+  color: #1E293B;
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 10px;
+  border: 1px solid #E2E8F0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 150ms ease;
+}
+
+.pf-btn-action-secondary:hover {
+  background: #F8FAFC;
+  border-color: #CBD5E1;
+}
+
+/* Common Card */
+.pf-saspay-card {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   1. TABLEAU DE BORD (OVERVIEW - Screenshot 5 & 10)
+   ========================================================================== */
+.pf-overview-2col-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1.2fr;
+  gap: 1.5rem;
+}
+
+.pf-card-head-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.pf-card-head-title {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0F172A;
+}
+
+.pf-card-head-link {
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: #2563EB;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.pf-card-head-link:hover {
+  text-decoration: underline;
+}
+
+/* Multi-currency grid (ZMW, USD, UGX, TZS, XOF, RWF, etc.) */
+.pf-currency-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+
+.pf-currency-cell {
+  background: #F8FAFC;
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+}
+
+.pf-currency-code {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748B;
+  text-transform: uppercase;
+}
+
+.pf-currency-amount {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin-top: 0.2rem;
+  letter-spacing: -0.02em;
+}
+
+/* Recent transactions list */
+.pf-recent-tx-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.pf-recent-tx-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.5rem;
+  border-radius: 10px;
+  transition: background 120ms ease;
+}
+
+.pf-recent-tx-row:hover {
+  background: #F8FAFC;
+}
+
+.pf-recent-tx-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.pf-recent-tx-icon-circle {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: #F1F5F9;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.pf-recent-tx-icon-circle.success {
+  background: #DCFCE7;
+  color: #16A34A;
+}
+
+.pf-recent-tx-info {
+  min-width: 0;
+}
+
+.pf-recent-tx-ref {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0F172A;
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.pf-recent-tx-date {
+  font-size: 0.75rem;
+  color: #94A3B8;
+  margin-top: 0.1rem;
+}
+
+.pf-recent-tx-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.pf-recent-tx-amount {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.pf-recent-tx-amount.success {
+  color: #16A34A;
+}
+
+.pf-recent-tx-amount.failed {
+  color: #EF4444;
+}
+
+/* ==========================================================================
+   2. WALLET (Screenshot 2, 9, 12)
+   ========================================================================== */
+.pf-wallets-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.pf-wallet-country-card {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  padding: 1.35rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.pf-wallet-country-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+}
+
+.pf-wallet-country-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 0.75rem;
+}
+
+.pf-wallet-country-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+}
+
+.pf-wallet-dispo-label {
+  font-size: 0.75rem;
+  color: #94A3B8;
+  margin-bottom: 0.25rem;
+}
+
+.pf-wallet-dispo-val {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0F172A;
+  letter-spacing: -0.025em;
+}
+
+/* ==========================================================================
+   3. TABLES & FILTERS (Transactions, Liens, Clients, Retraits, etc.)
+   ========================================================================== */
+.pf-saspay-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.pf-search-filter-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  background: #FFFFFF;
+  font-size: 0.8125rem;
+  color: #1E293B;
+  outline: none;
+}
+
+.pf-search-filter-input::placeholder {
+  color: #94A3B8;
+}
+
+.pf-status-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pf-status-filter-btn {
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.pf-status-filter-btn:hover {
+  background: #F8FAFC;
+}
+
+.pf-status-filter-btn.active {
+  background: #2563EB;
+  color: #FFFFFF;
+  border-color: #2563EB;
+}
+
+.pf-dropdown-filter-select {
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  outline: none;
+}
+
+.pf-saspay-table-wrapper {
+  background: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.pf-table-scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.pf-saspay-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+  text-align: left;
+}
+
+.pf-saspay-table th {
+  padding: 0.85rem 1rem;
+  background: #FAFAFA;
+  border-bottom: 1px solid #F1F5F9;
+  font-size: 0.725rem;
+  font-weight: 700;
+  color: #64748B;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.pf-saspay-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #F1F5F9;
+  color: #1E293B;
+  vertical-align: middle;
+}
+
+.pf-saspay-table tr:last-child td {
+  border-bottom: none;
+}
+
+.pf-saspay-table tr:hover td {
+  background: #F8FAFC;
+}
+
+/* Status Badges */
+.pf-pill-status {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.pf-pill-status.reussi {
+  background: #DCFCE7;
+  color: #166534;
+}
+
+.pf-pill-status.echoue {
+  background: #FEE2E2;
+  color: #991B1B;
+}
+
+.pf-pill-status.attente {
+  background: #FEF3C7;
+  color: #92400E;
+}
+
+.pf-pill-status.actif {
+  background: #DCFCE7;
+  color: #166534;
+}
+
+.pf-pill-status.expiree {
+  background: #F1F5F9;
+  color: #64748B;
+}
+
+/* Network badges with icon */
+.pf-network-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+.pf-net-dot-moov {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #EA580C;
+}
+
+.pf-net-dot-mtn {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #FACC15;
+}
+
+.pf-net-dot-celtiis {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0284C7;
+}
+
+/* Table Footer Pagination */
+.pf-table-footer-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.25rem;
+  border-top: 1px solid #F1F5F9;
+  background: #FFFFFF;
+  font-size: 0.75rem;
+  color: #64748B;
+}
+
+.pf-pagination-btn {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  background: #FFFFFF;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.pf-pagination-btn:hover {
+  background: #F8FAFC;
+}
+
+/* ==========================================================================
+   4. STATISTIQUES (Screenshot 23 & 24)
+   ========================================================================== */
+.pf-stats-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.pf-stat-kpi-card {
+  padding: 1.25rem;
+  border-radius: 14px;
+  border: 1px solid #E5E7EB;
+  background: #FFFFFF;
+}
+
+.pf-stat-kpi-card.green {
+  background: #ECFDF5;
+  border-color: #A7F3D0;
+}
+
+.pf-stat-kpi-card.pink {
+  background: #FFF1F2;
+  border-color: #FECDD3;
+}
+
+.pf-stat-kpi-card.yellow {
+  background: #FEFCE8;
+  border-color: #FEF08A;
+}
+
+.pf-kpi-label {
+  font-size: 0.75rem;
+  color: #64748B;
+  font-weight: 600;
+}
+
+.pf-kpi-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin-top: 0.35rem;
+}
+
+/* ==========================================================================
+   5. APPS SELECTION WELCOME SCREEN (Screenshot 4 & 11)
+   ========================================================================== */
+.pf-apps-screen-backdrop {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #EFF6FF 0%, #F8FAFC 100%);
+  padding: 2rem;
+}
+
+.pf-apps-card-container {
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.06);
+  padding: 2.25rem;
+  max-width: 820px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pf-apps-welcome-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin-bottom: 0.35rem;
+}
+
+.pf-apps-welcome-sub {
+  font-size: 0.875rem;
+  color: #64748B;
+  margin-bottom: 1.75rem;
+}
+
+.pf-apps-cards-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.pf-app-choice-item {
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 1rem;
+  background: #FFFFFF;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 140ms ease;
+}
+
+.pf-app-choice-item:hover {
+  border-color: #2563EB;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+}
+
+.pf-app-choice-item.create {
+  border: 1px dashed #CBD5E1;
+  background: transparent;
+  justify-content: center;
+  text-align: center;
+  flex-direction: column;
+  gap: 0.35rem;
+  color: #475569;
+}
+
+.pf-app-choice-item.create:hover {
+  border-color: #2563EB;
+  color: #2563EB;
+}
+
+/* ==========================================================================
+   RESPONSIVE MOBILE RULES
+   ========================================================================== */
+.pf-form-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pf-form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pf-dev-form-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1.2fr 1fr auto;
+  gap: 1rem;
+  align-items: flex-end;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .pf-form-grid-2,
+  .pf-form-grid-3,
+  .pf-dev-form-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 0.85rem !important;
+  }
+
+  .pf-dev-form-grid button {
+    width: 100% !important;
+    margin-top: 0.35rem !important;
+  }
+
+  .pf-saspay-card {
+    padding: 1.15rem 1rem !important;
+    border-radius: 14px !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .pf-dashboard-main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .pf-topbar-hamburger-btn {
+    display: inline-flex;
+  }
+
+  .pf-dashboard-content-wrapper {
+    padding: 1.25rem 1rem 2.5rem;
+  }
+
+  .pf-overview-2col-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .pf-wallets-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pf-stats-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pf-apps-cards-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .pf-topbar-search-box {
+    display: none;
+  }
+
+  .pf-saspay-topbar {
+    padding: 0 1rem;
+  }
+
+  .pf-wallets-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-currency-balance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-stats-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-apps-cards-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Responsive grid helpers to prevent mobile horizontal overflow */
+.pf-responsive-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pf-responsive-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.pf-desktop-table-only {
+  display: block;
+  width: 100%;
+}
+
+.pf-mobile-cards-only {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .pf-responsive-grid-2,
+  .pf-responsive-grid-3 {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem !important;
+  }
+
+  .pf-dev-form-grid {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 0.85rem !important;
+  }
+
+  .pf-dev-form-grid > div {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .pf-dev-form-grid button {
+    width: 100% !important;
+    margin-top: 0.25rem !important;
+  }
+
+  .pf-desktop-table-only {
+    display: none !important;
+  }
+
+  .pf-mobile-cards-only {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.85rem;
+    padding: 1rem;
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .pf-page-head-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.85rem !important;
+  }
+
+  .pf-page-head-row button {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .pf-settings-nav-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+  }
+
+  .pf-settings-nav-scroll::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.pf-kyc-doc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+  background: #F8FAFC;
+  border-radius: 10px;
+  border: 1px solid #E2E8F0;
+  gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .pf-kyc-doc-item {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 0.75rem !important;
+  }
+
+  .pf-kyc-doc-item > div:first-child {
+    width: 100% !important;
+  }
+
+  .pf-kyc-doc-item > div:last-child {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    border-top: 1px dashed #E2E8F0;
+    padding-top: 0.5rem;
+  }
+}

@@ -1,0 +1,17 @@
+/* PichFlow Global Stylesheet Architecture */
+@import "./styles/globals.css";
+@import "./styles/animations.css";
+@import "./styles/buttons.css";
+@import "./styles/cards.css";
+@import "./styles/forms.css";
+@import "./styles/tables.css";
+@import "./styles/layout.css";
+@import "./styles/navbar.css";
+@import "./styles/footer.css";
+@import "./styles/landing.css";
+@import "./styles/auth.css";
+@import "./styles/sidebar.css";
+@import "./styles/dashboard.css";
+@import "./styles/checkout.css";
+@import "./styles/documentation.css";
+@import "./styles/responsive.css";

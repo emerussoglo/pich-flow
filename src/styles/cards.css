@@ -1,0 +1,142 @@
+/* PichFlow Card Styles */
+
+.pf-card {
+  background: var(--pf-surface);
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--pf-shadow-xs);
+  transition: all var(--pf-transition);
+  position: relative;
+}
+
+.pf-card-interactive {
+  cursor: pointer;
+}
+
+.pf-card-interactive:hover {
+  transform: translateY(-3px);
+  border-color: var(--pf-border-focus);
+  box-shadow: var(--pf-shadow-md), 0 0 0 1px rgba(37, 99, 235, 0.08);
+}
+
+.pf-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.pf-card-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--pf-text);
+  margin: 0;
+}
+
+.pf-card-subtitle {
+  font-size: 0.875rem;
+  color: var(--pf-muted);
+  margin-top: 0.25rem;
+}
+
+/* Stat Card */
+.pf-stat-card {
+  background: var(--pf-surface);
+  border: 1px solid var(--pf-border);
+  border-radius: var(--pf-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--pf-shadow-xs);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  transition: transform var(--pf-transition), box-shadow var(--pf-transition);
+}
+
+.pf-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--pf-shadow-md);
+  border-color: #CBD5E1;
+}
+
+.pf-stat-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pf-stat-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--pf-muted);
+}
+
+.pf-stat-icon-wrapper {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--pf-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+}
+
+.pf-stat-icon-blue {
+  background: var(--pf-primary-soft);
+  color: var(--pf-primary);
+}
+
+.pf-stat-icon-green {
+  background: var(--pf-success-soft);
+  color: var(--pf-success);
+}
+
+.pf-stat-icon-amber {
+  background: var(--pf-warning-soft);
+  color: var(--pf-warning);
+}
+
+.pf-stat-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--pf-text);
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.pf-stat-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.pf-stat-trend-up {
+  color: var(--pf-success);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.pf-stat-trend-down {
+  color: var(--pf-danger);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Floating Mockup Cards (Hero) */
+.pf-floating-card {
+  position: absolute;
+  padding: 0.875rem 1.125rem;
+  border-radius: var(--pf-radius-md);
+  box-shadow: var(--pf-shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  z-index: 2;
+  white-space: nowrap;
+}

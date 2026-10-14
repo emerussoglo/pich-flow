@@ -1,0 +1,94 @@
+---
+title: "Démarrage rapide (Quickstart)"
+description: "Réalisez votre première intégration de paiement avec PichFlow en quelques étapes simples."
+---
+
+# Guide de Démarrage Rapide
+
+Ce tutoriel vous guide dans l'initialisation de votre premier paiement en mode **Sandbox** avec PichFlow.
+
+---
+
+## 1. Obtenez vos clés API
+
+1. Connectez-vous à votre espace [Dashboard PichFlow](https://dashboard.pichflow.com).
+2. Rendez-vous dans **Centre Développeur > Clés API**.
+3. Cliquez sur **Générer une clé API** et donnez un nom à votre application (ex: `Boutique E-commerce`).
+4. Deux clés secrètes s'affichent immédiatement :
+   - **Clé Sandbox** : `sk_test_...`
+   - **Clé Live** : `sk_live_...`
+5. Copiez et conservez précieusement ces clés. La clé secrète n'est affichée qu'une seule fois.
+
+---
+
+## 2. Effectuez un paiement Softpay (cURL)
+
+Le flux **Softpay** permet de déclencher une invite USSD ou de générer une redirection instantanée pour un client final.
+
+```bash
+curl -X POST https://api.pichflow.com/v1/payments/softpay \
+  -H "Authorization: Bearer sk_test_votre_cle_secrete_ici" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{
+    "amount": "5000.00",
+    "currency": "XOF",
+    "country": "BJ",
+    "network": "mtn_bj",
+    "customer": {
+      "first_name": "Paul",
+      "last_name": "Dossou",
+      "email": "paul.dossou@example.com",
+      "phone": "+22997001234"
+    },
+    "description": "Commande #PF-8842"
+  }'
+```
+
+### Réponse réussie (200 OK)
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "pay_982f1b0c9a",
+    "reference": "TX-PF-8842",
+    "status": "pending",
+    "amount": "5000.00",
+    "currency": "XOF",
+    "network": "mtn_bj",
+    "checkout_url": ""
+  }
+}
+```
+
+> **Note importante** : Si `checkout_url` est une chaîne vide, l'opérateur envoie directement une notification USSD sur le téléphone portable du client. Si `checkout_url` contient une URL (cas de Wave ou Cartes), vous devez rediriger le client vers cette URL.
+
+---
+
+## 3. Vérifiez le statut du paiement
+
+Vous pouvez sonder l'état de la transaction à l'aide de sa référence ou de son identifiant SasPay :
+
+```bash
+curl -X GET https://api.pichflow.com/v1/payments/pay_982f1b0c9a/verify \
+  -H "Authorization: Bearer sk_test_votre_cle_secrete_ici"
+```
+
+### Réponse :
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "pay_982f1b0c9a",
+    "reference": "TX-PF-8842",
+    "status": "completed",
+    "amount": "5000.00",
+    "net_amount": "4900.00",
+    "fee": "100.00",
+    "paid_at": "2026-10-15T00:30:00Z"
+  }
+}
+```
+

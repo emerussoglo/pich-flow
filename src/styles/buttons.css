@@ -1,0 +1,254 @@
+/* PichFlow Button System */
+
+.pf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  border-radius: var(--pf-radius-md);
+  transition: all var(--pf-transition);
+  user-select: none;
+  white-space: nowrap;
+  outline: none;
+  position: relative;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.pf-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
+.pf-btn:active {
+  transform: scale(0.98);
+}
+
+.pf-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* SIZES - Enhanced with comfortable, generous vertical padding */
+.pf-btn-sm {
+  padding: 0.55rem 1rem;
+  font-size: 0.8125rem;
+  min-height: 2.25rem;
+  border-radius: var(--pf-radius-sm);
+}
+
+.pf-btn-md {
+  padding: 0.75rem 1.35rem;
+  font-size: 0.9375rem;
+  min-height: 2.75rem;
+  border-radius: var(--pf-radius-md);
+}
+
+.pf-btn-lg {
+  padding: 0.9rem 1.85rem;
+  font-size: 1.0625rem;
+  min-height: 3.25rem;
+  border-radius: var(--pf-radius-md);
+}
+
+.pf-btn-icon-only {
+  padding: 0.625rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: var(--pf-radius-md);
+}
+
+/* NAVBAR SPECIFIC BUTTONS - Perfectly balanced & proportioned */
+.pf-nav-login-btn {
+  padding: 0.6rem 1.15rem;
+  min-height: 2.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--pf-text-secondary);
+}
+
+.pf-nav-login-btn:hover {
+  color: var(--pf-primary);
+  background: var(--pf-surface-subtle);
+}
+
+.pf-nav-cta-btn {
+  padding: 0.625rem 1.4rem;
+  min-height: 2.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: 12px;
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3) !important;
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.pf-nav-cta-btn:hover {
+  background: #1D4ED8 !important;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4) !important;
+}
+
+/* Global Glass Sweep / Shimmer Effect for Blue Buttons */
+.pf-btn-primary,
+.pf-nav-cta-btn,
+.pf-saspay-btn-primary,
+.pf-pricing-submit-btn,
+.pf-faq-bottom-btn,
+.pf-btn-cta-large,
+.pf-btn-shimmer-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.pf-btn-primary::after,
+.pf-nav-cta-btn::after,
+.pf-saspay-btn-primary::after,
+.pf-pricing-submit-btn::after,
+.pf-faq-bottom-btn::after,
+.pf-btn-cta-large::after,
+.pf-btn-shimmer-sweep::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -120%;
+  width: 70%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 20%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(255, 255, 255, 0.08) 80%,
+    transparent 100%
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+  animation: pf-glass-sweep-pass 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes pf-glass-sweep-pass {
+  0% {
+    left: -120%;
+  }
+  35% {
+    left: 170%;
+  }
+  100% {
+    left: 170%;
+  }
+}
+
+.pf-nav-cta-icon {
+  font-size: 0.75rem;
+  transition: transform var(--pf-transition-fast);
+}
+
+.pf-nav-cta-btn:hover .pf-nav-cta-icon {
+  transform: translateX(3px);
+}
+
+/* HERO SPECIFIC BUTTONS */
+.pf-hero-cta {
+  padding: 0.95rem 2rem;
+  min-height: 3.25rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+
+.pf-hero-secondary-btn {
+  padding: 0.95rem 1.75rem;
+  min-height: 3.25rem;
+  font-size: 1.0625rem;
+  font-weight: 600;
+}
+
+/* VARIANTS */
+.pf-btn-primary {
+  background: linear-gradient(135deg, var(--pf-primary) 0%, var(--pf-primary-dark) 100%);
+  color: #FFFFFF;
+  box-shadow: var(--pf-shadow-blue);
+}
+
+.pf-btn-primary:hover {
+  background: linear-gradient(135deg, #2B6DF5 0%, var(--pf-primary-deep) 100%);
+  box-shadow: var(--pf-shadow-blue-lg);
+  transform: translateY(-2px);
+  color: #FFFFFF;
+}
+
+.pf-btn-secondary {
+  background: var(--pf-surface);
+  color: var(--pf-text);
+  border-color: var(--pf-border);
+  box-shadow: var(--pf-shadow-xs);
+}
+
+.pf-btn-secondary:hover {
+  background: var(--pf-surface-subtle);
+  border-color: var(--pf-border-hover);
+  transform: translateY(-1px);
+  color: var(--pf-primary);
+}
+
+.pf-btn-outline {
+  background: transparent;
+  color: var(--pf-primary);
+  border-color: var(--pf-border-focus);
+}
+
+.pf-btn-outline:hover {
+  background: var(--pf-primary-soft);
+  border-color: var(--pf-primary);
+  transform: translateY(-1px);
+}
+
+.pf-btn-ghost {
+  background: transparent;
+  color: var(--pf-muted);
+}
+
+.pf-btn-ghost:hover {
+  background: var(--pf-surface-subtle);
+  color: var(--pf-text);
+}
+
+.pf-btn-danger {
+  background: var(--pf-danger);
+  color: #FFFFFF;
+}
+
+.pf-btn-danger:hover {
+  background: #B91C1C;
+}
+
+/* Signature Light Sweep / Mirror Band reflection animation */
+.pf-btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.pf-btn-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -130%;
+  width: 50%;
+  height: 100%;
+  transform: skewX(-25deg);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.32) 50%,
+    transparent 100%
+  );
+  animation: buttonSweep 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}

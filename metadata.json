@@ -1,0 +1,6 @@
+{
+  "name": "PichFlow",
+  "description": "Infrastructure de paiement moderne pour l'Afrique et les entreprises technologiques. Encaisser, automatiser et piloter tous les flux de paiement.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

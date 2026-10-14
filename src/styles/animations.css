@@ -1,0 +1,217 @@
+/* PichFlow Animations & Visual Effects */
+
+@keyframes buttonSweep {
+  0% {
+    left: -130%;
+  }
+  40%, 100% {
+    left: 150%;
+  }
+}
+
+@keyframes badgeShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes floatSlowReverse {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(8px);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Signature PichFlow Button Shine / Light Sweep Effect */
+.pf-btn-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.pf-btn-sweep::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -130%;
+  width: 50%;
+  height: 100%;
+  transform: skewX(-25deg);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: buttonSweep 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+/* Subtle Shimmer for interactive badges */
+.pf-badge-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--pf-primary-soft) 0%,
+    #E0EDFE 50%,
+    var(--pf-primary-soft) 100%
+  );
+  background-size: 200% 100%;
+  animation: badgeShimmer 5s ease infinite;
+}
+
+/* Floating animation utilities */
+.pf-float {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.pf-float-delayed {
+  animation: floatSlow 7s ease-in-out 1.5s infinite;
+}
+
+.pf-float-reverse {
+  animation: floatSlowReverse 6.5s ease-in-out 0.8s infinite;
+}
+
+/* Blue Glow Backgrounds */
+.pf-radial-glow {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 0;
+}
+
+.pf-radial-glow-primary {
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, rgba(37, 99, 235, 0) 70%);
+}
+
+.pf-radial-glow-accent {
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.18) 0%, rgba(96, 165, 250, 0) 70%);
+}
+
+/* Glassmorphism surface */
+.pf-glass {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.pf-glass-dark {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #F8FAFC;
+}
+
+/* Grid background */
+.pf-grid-bg {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(226, 232, 240, 0.5) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(226, 232, 240, 0.5) 1px, transparent 1px);
+}
+
+/* ==========================================================================
+   SCROLL REVEAL ANIMATIONS
+   ========================================================================== */
+.pf-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 650ms cubic-bezier(0.16, 1, 0.3, 1), transform 650ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.pf-reveal.pf-reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pf-reveal-delay-1 {
+  transition-delay: 120ms;
+}
+
+.pf-reveal-delay-2 {
+  transition-delay: 240ms;
+}
+
+.pf-reveal-delay-3 {
+  transition-delay: 360ms;
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

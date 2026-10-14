@@ -1,0 +1,48 @@
+---
+title: "FAQ & Dépannage"
+description: "Questions fréquentes, diagnostic des incidents de paiement et checklist de mise en production."
+---
+
+# FAQ & Dépannage
+
+Retrouvez ici les réponses aux questions techniques récurrentes et les étapes recommandées avant de lancer votre solution en production.
+
+---
+
+## Problèmes Courants & Solutions
+
+### 1. "Pourquoi mon paiement reste-t-il au statut 'pending' ?"
+- Le paiement Mobile Money attend que l'utilisateur valide l'invite USSD sur son téléphone en saisissant son code PIN secret.
+- Si le client ne reçoit pas l'invite : vérifiez qu'il dispose de réseau télécom suffisant et que son solde Mobile Money couvre le montant ainsi que les éventuels frais de retrait opérateur.
+- Certains opérateurs (notamment Orange) exigent la génération manuelle d'un code d'autorisation par le client avant l'opération.
+
+### 2. "Erreur 403 ip_not_whitelisted lors d'un appel Payout"
+- SasPay impose par mesure de sécurité que toute clé effectuant un virement sortant provienne d'une adresse IP whitelistée.
+- Connectez-vous à votre [Tableau de bord SasPay](https://saspay.me) > Paramètres de sécurité > Liste blanche IP, et renseignez l'adresse IP publique de votre serveur de production.
+
+### 3. "Pourquoi ma signature webhook échoue-t-elle systématiquement ?"
+- Assurez-vous d'utiliser le **raw body** (corps brut avant tout parsing `JSON.parse` ou `express.json()`). Tout reformatage d'espace ou d'ordre de clés invalide le HMAC.
+- Vérifiez que l'horloge de votre serveur est synchronisée via NTP (`X-Webhook-Timestamp` tolère un écart maximal de 300 secondes).
+- Assurez-vous d'utiliser le secret configuré dans votre Dashboard SasPay (`SASPAY_WEBHOOK_SECRET`).
+
+---
+
+## Checklist de Mise en Production (Live)
+
+Avant d'activer votre clé `sk_live_...` auprès de vos vrais clients :
+
+- [ ] **Clés d'API** : Remplacez votre clé `sk_test_` par votre clé `sk_live_` dans vos variables d'environnement de production.
+- [ ] **Sécurité des clés** : Assurez-vous qu'aucune clé secrète n'apparaît dans votre code frontend, commit git ou repo public.
+- [ ] **Endpoint Webhook HTTPS** : Vérifiez que l'URL de votre webhook utilise un certificat SSL/TLS valide (`https://...`).
+- [ ] **Idempotence** : Vérifiez que vos appels `softpay` et `payout` intègrent bien un en-tête `Idempotency-Key` unique par tentative.
+- [ ] **Gestion des timeouts** : Ne considérez jamais un timeout réseau comme un échec. Effectuez une vérification active (`/verify`) ou attendez le webhook.
+- [ ] **Whitelist IP SasPay** : Déclarez votre adresse IP de production pour les fonctionnalités de décaissement (Payouts).
+
+---
+
+## Contacts & Support
+
+- **Support Technique PichFlow** : [contactpichflow@gmail.com](mailto:contactpichflow@gmail.com)
+- **Documentation SasPay Officielle** : [https://docs.saspay.me](https://docs.saspay.me)
+- **Spécification OpenAPI SasPay** : [https://docs.saspay.me/api-reference/openapi.json](https://docs.saspay.me/api-reference/openapi.json)
+

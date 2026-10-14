@@ -1,0 +1,60 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "PichFlow",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.png",
+  "colors": {
+    "primary": "#5E30E8",
+    "light": "#7C4DFF",
+    "dark": "#4520B0"
+  },
+  "navigation": [
+    {
+      "group": "Guide de démarrage",
+      "pages": [
+        "docs/index",
+        "docs/quickstart",
+        "docs/authentication",
+        "docs/concepts"
+      ]
+    },
+    {
+      "group": "Intégration Paiements",
+      "pages": [
+        "docs/payments-overview",
+        "docs/hosted-checkout",
+        "docs/payment-links",
+        "docs/softpay-otp",
+        "docs/payment-verification"
+      ]
+    },
+    {
+      "group": "Gestion & Opérations",
+      "pages": [
+        "docs/customers-transactions",
+        "docs/payouts",
+        "docs/wallets",
+        "docs/countries-networks"
+      ]
+    },
+    {
+      "group": "Sécurité & Webhooks",
+      "pages": [
+        "docs/webhooks",
+        "docs/errors"
+      ]
+    },
+    {
+      "group": "Développeurs & Références",
+      "pages": [
+        "docs/code-samples",
+        "docs/real-payloads",
+        "docs/faq"
+      ]
+    }
+  ]
+}
+
