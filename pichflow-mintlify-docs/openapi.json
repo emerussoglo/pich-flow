@@ -1,0 +1,364 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PichFlow Public & Merchant API",
+    "version": "1.0.0",
+    "description": "API REST unifiée de paiement, checkout et décaissement Mobile Money & Cartes bancaires pour l'Afrique de l'Ouest et Centrale, propulsée par l'infrastructure SasPay.",
+    "contact": {
+      "name": "Support Technique PichFlow",
+      "email": "contactpichflow@gmail.com",
+      "url": "https://pichflow.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.pichflow.com",
+      "description": "Serveur de Production PichFlow (Clés sk_live_)"
+    },
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Serveur local Express (préfixe de route /api)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API_KEY",
+        "description": "Clé secrète d'API PichFlow Sandbox (sk_test_...) ou Live (sk_live_...)"
+      }
+    },
+    "parameters": {
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "description": "UUID v4 unique pour garantir l'exécution idempotente d'une opération financière.",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "schemas": {
+      "CustomerInfo": {
+        "type": "object",
+        "required": ["email", "first_name", "last_name", "phone"],
+        "properties": {
+          "first_name": { "type": "string", "example": "Paul" },
+          "last_name": { "type": "string", "example": "Dossou" },
+          "email": { "type": "string", "format": "email", "example": "paul.dossou@example.com" },
+          "phone": { "type": "string", "example": "+22997001234" }
+        }
+      },
+      "SoftpayRequest": {
+        "type": "object",
+        "required": ["amount", "currency", "country", "network", "customer"],
+        "properties": {
+          "amount": { "type": "string", "pattern": "^\\d+\\.\\d{2}$", "example": "5000.00" },
+          "currency": { "type": "string", "example": "XOF" },
+          "country": { "type": "string", "example": "BJ" },
+          "network": { "type": "string", "example": "mtn_bj" },
+          "customer": { "$ref": "#/components/schemas/CustomerInfo" },
+          "description": { "type": "string", "example": "Commande #PF-8842" },
+          "fee_charge_mode": { "type": "string", "enum": ["ADD_ON", "DEDUCTED"], "default": "ADD_ON" },
+          "otp": { "type": "string", "example": "123456" }
+        }
+      },
+      "CheckoutSessionRequest": {
+        "type": "object",
+        "required": ["amount", "currency", "customer_name", "customer_email"],
+        "properties": {
+          "amount": { "type": "string", "pattern": "^\\d+\\.\\d{2}$", "example": "15000.00" },
+          "currency": { "type": "string", "example": "XOF" },
+          "country": { "type": "string", "example": "BJ" },
+          "customer_name": { "type": "string", "example": "Amina Touré" },
+          "customer_email": { "type": "string", "format": "email", "example": "amina@example.com" },
+          "customer_phone": { "type": "string", "example": "+22996112233" },
+          "description": { "type": "string", "example": "Abonnement Pro" },
+          "return_url": { "type": "string", "format": "uri", "example": "https://maboutique.com/merci" },
+          "fee_charge_mode": { "type": "string", "enum": ["ADD_ON", "DEDUCTED"], "default": "ADD_ON" }
+        }
+      },
+      "PayoutRequest": {
+        "type": "object",
+        "required": ["amount", "currency", "country", "network", "recipient_phone"],
+        "properties": {
+          "amount": { "type": "string", "pattern": "^\\d+\\.\\d{2}$", "example": "50000.00" },
+          "currency": { "type": "string", "example": "XOF" },
+          "country": { "type": "string", "example": "BJ" },
+          "network": { "type": "string", "example": "mtn_bj" },
+          "recipient_name": { "type": "string", "example": "Cabinet Conseils SAS" },
+          "recipient_phone": { "type": "string", "example": "+22997123456" },
+          "description": { "type": "string", "example": "Règlement Facture F-2026-09" }
+        }
+      },
+      "WalletTransferRequest": {
+        "type": "object",
+        "required": ["from_country", "to_country", "from_amount"],
+        "properties": {
+          "from_country": { "type": "string", "example": "BJ" },
+          "to_country": { "type": "string", "example": "CI" },
+          "from_amount": { "type": "string", "pattern": "^\\d+\\.\\d{2}$", "example": "25000.00" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": { "type": "string", "example": "Description de l'erreur survenue" },
+          "code": { "type": "string", "example": "invalid_parameters" }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/v1/payments/softpay": {
+      "post": {
+        "summary": "Paiement direct Mobile Money (Softpay)",
+        "description": "Déclenche un push USSD direct sur le numéro de l'utilisateur ou retourne l'URL de paiement.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SoftpayRequest" }
+            }
+          }
+        },
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Transaction initiée avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "example": "pay_soft_8829104bc" },
+                        "reference": { "type": "string", "example": "TX-PF-8842" },
+                        "status": { "type": "string", "example": "pending" },
+                        "amount": { "type": "string", "example": "5000.00" },
+                        "checkout_url": { "type": "string", "example": "" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Paramètres invalides", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
+          "401": { "description": "Non autorisé", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/v1/checkout-sessions": {
+      "post": {
+        "summary": "Création de Session de Checkout Hébergé",
+        "description": "Génère une page de paiement hébergée sécurisée prête pour la redirection du client.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CheckoutSessionRequest" }
+            }
+          }
+        },
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Session créée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "example": "cs_01h8a9bcdef234" },
+                        "checkout_url": { "type": "string", "example": "https://checkout.saspay.me/pay/cs_01h8a9bcdef234" },
+                        "status": { "type": "string", "example": "pending" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payments/{id}/verify": {
+      "get": {
+        "summary": "Vérification de l'état d'un paiement",
+        "description": "Interroge la passerelle SasPay pour obtenir le statut certifié de la transaction.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Identifiant SasPay du paiement"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": { "description": "Statut récupéré avec succès" }
+        }
+      }
+    },
+    "/v1/payments/{id}/confirm-otp": {
+      "post": {
+        "summary": "Confirmation OTP d'un paiement",
+        "description": "Valide la transaction avec le code OTP fourni par le client.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["otp"],
+                "properties": {
+                  "otp": { "type": "string", "example": "489201" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OTP validé" }
+        }
+      }
+    },
+    "/v1/payouts/initialize": {
+      "post": {
+        "summary": "Initialisation d'un Payout / Retrait",
+        "description": "Ordonne un virement vers un numéro Mobile Money (Exige une IP whitelistée sur le dashboard SasPay).",
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/PayoutRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Retrait initialisé" },
+          "403": { "description": "IP non whitelistée ou solde insuffisant" }
+        }
+      }
+    },
+    "/v1/wallets/balances": {
+      "get": {
+        "summary": "Consultation des soldes marchands",
+        "description": "Récupère les soldes réels déclarés auprès de la passerelle SasPay par pays et devise.",
+        "responses": {
+          "200": { "description": "Soldes récupérés" }
+        }
+      }
+    },
+    "/v1/wallets/rates": {
+      "get": {
+        "summary": "Taux de change officiels",
+        "description": "Consulte la grille actuelle des taux de conversion de devises.",
+        "responses": {
+          "200": { "description": "Taux de change renvoyés" }
+        }
+      }
+    },
+    "/v1/wallets/transfer": {
+      "post": {
+        "summary": "Transfert inter-wallets",
+        "description": "Transfère des fonds d'un wallet marchand à un autre.",
+        "parameters": [
+          { "$ref": "#/components/parameters/IdempotencyKey" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/WalletTransferRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Virement interne exécuté" }
+        }
+      }
+    },
+    "/api/reference/countries": {
+      "get": {
+        "summary": "Liste dynamique des pays",
+        "description": "Retourne la liste des pays pris en charge et leurs devises associées.",
+        "security": [],
+        "responses": {
+          "200": { "description": "Liste des pays" }
+        }
+      }
+    },
+    "/api/reference/networks": {
+      "get": {
+        "summary": "Liste dynamique des réseaux télécoms",
+        "description": "Retourne les réseaux disponibles pour chaque pays.",
+        "security": [],
+        "responses": {
+          "200": { "description": "Liste des réseaux" }
+        }
+      }
+    },
+    "/api/reference/rates": {
+      "get": {
+        "summary": "Grille tarifaire de référence",
+        "description": "Retourne les taux du marchand depuis la route de référence du serveur.",
+        "security": [],
+        "responses": {
+          "200": { "description": "Grille tarifaire récupérée" }
+        }
+      }
+    },
+    "/webhooks/saspay": {
+      "post": {
+        "summary": "Récepteur Webhook SasPay",
+        "description": "Endpoint serveur recevant les notifications d'événements signées en HMAC SHA-256.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Webhook-Signature",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Signature HMAC SHA-256 calculée sur 'timestamp.rawBody'"
+          },
+          {
+            "name": "X-Webhook-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Horodatage Unix en secondes"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Événement reçu et traité avec succès" },
+          "400": { "description": "Signature invalide ou horodatage expiré" }
+        }
+      }
+    }
+  }
+}

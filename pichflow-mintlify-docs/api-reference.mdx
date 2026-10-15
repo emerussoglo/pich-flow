@@ -1,0 +1,22 @@
+---
+title: "Référence API"
+description: "Spécification OpenAPI disponible et limites connues de la référence PichFlow."
+---
+
+# Référence API
+
+La spécification [OpenAPI 3.1](./openapi.json) fournie avec ce dépôt décrit une partie de l'API PichFlow. Mintlify s'en sert pour générer les pages de référence des opérations décrites.
+
+<Warning>
+  Cette spécification n'est pas exhaustive : elle ne décrit pas toutes les routes présentes dans le serveur et certaines informations de déploiement restent à confirmer. Le bac à sable interactif est désactivé pour éviter d'envoyer des requêtes à une URL non vérifiée.
+</Warning>
+
+## Limites vérifiées
+
+- Le fichier décrit 12 opérations. Le serveur contient d'autres routes, notamment pour les transactions, les tentatives de paiement et les retraits.
+- Les liens de paiement et la gestion des clients existent dans l'API du tableau de bord, protégée par la session du compte. Aucune route `/v1/payment-links` ou `/v1/customers` avec clé API n'a été trouvée.
+- Le code Express monte le routeur sous `/api`; la spécification et les pages existantes utilisent aussi le préfixe public `/v1`. Le routage de production qui relie ces chemins au domaine `api.pichflow.com` doit être confirmé avant d'utiliser l'API Playground ou de mettre en production.
+- Les routes de pays et de réseaux sont montées sous `/api/reference/...` dans le serveur et le fichier OpenAPI de ce dossier reprend ces chemins.
+- Les champs de transfert inter-pays confirmés par le code sont `from_country`, `to_country` et `from_amount`.
+
+Consultez [Authentification](./authentication), [Gestion des transactions](./customers-transactions) et [Portefeuilles](./wallets) pour les exemples et restrictions documentés.

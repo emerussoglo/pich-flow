@@ -1,0 +1,66 @@
+---
+title: "Vérification des Paiements"
+description: "Méthodes de réconciliation, polling d'état et arbitrage entre Webhooks et vérification active."
+---
+
+# Vérification des Paiements
+
+La confirmation d'un paiement en Afrique nécessite une synchronisation robuste entre les télécoms, la passerelle SasPay et votre serveur. 
+
+Pour garantir une expérience sans faille, PichFlow préconise une **approche hybride** combinant les webhooks asynchrones et la vérification active (polling sécurisé).
+
+---
+
+## 1. Webhook (Mécanisme Principal Recommandé)
+
+Le webhook est le mécanisme le plus rapide et le plus économe en ressources. Dès que SasPay notifie PichFlow du succès d'une transaction, celle-ci est marquée comme réussie et le wallet du marchand est instantanément crédité.
+
+---
+
+## 2. Endpoint de Vérification Active (`verify`)
+
+Pour les applications mobiles ou les pages d'attente client, vous pouvez interroger le statut en temps réel :
+
+```bash
+curl -X GET https://api.pichflow.com/v1/payments/pay_soft_abc12345/verify \
+  -H "Authorization: Bearer sk_test_votre_cle"
+```
+
+### Réponse officielle :
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "pay_soft_abc12345",
+    "reference": "TX-PF-883491",
+    "status": "completed",
+    "amount": "10000.00",
+    "net_amount": "9800.00",
+    "fee": "200.00",
+    "currency": "XOF",
+    "network": "mtn_bj",
+    "paid_at": "2026-10-15T00:35:12Z"
+  }
+}
+```
+
+---
+
+## Statuts Possibles
+
+| Statut SasPay | Signification | Action Requise |
+| :--- | :--- | :--- |
+| `pending` | Demande transmise à l'opérateur, en attente de validation USSD par le client | Continuer le polling (intervalle de 3 à 5 secondes) |
+| `completed` / `success` | Fonds prélevés et confirmés par l'opérateur | Livrer le produit ou valider la commande immédiatement |
+| `failed` | Échec (solde client insuffisant, code PIN erroné, timeout) | Inviter le client à réessayer ou choisir un autre opérateur |
+| `cancelled` | Paiement explicitement refusé par le client | Clôturer la tentative |
+
+---
+
+## Bonnes Pratiques de Polling
+
+- **Intervalle minimal** : 3 000 ms (3 secondes). Évitez les requêtes à haute fréquence qui risquent d'entraîner une erreur HTTP `429 Too Many Requests`.
+- **Délai maximum** : 180 secondes (3 minutes). Au-delà, affichez un message rassurant indiquant que le paiement est en cours de réconciliation sur le réseau opérateur.
+- **Dédoublonnage & Idempotence** : Si un webhook arrive pendant que votre frontend effectue un polling, le mécanisme de règlement atomique PichFlow garantit qu'aucun compte n'est crédité deux fois.
+

@@ -1,0 +1,50 @@
+---
+title: "Pays & Réseaux Supportés"
+description: "Chargement dynamique des pays, réseaux télécoms et formats téléphoniques acceptés."
+---
+
+# Pays & Réseaux Télécoms Supportés
+
+Le serveur PichFlow expose des routes de référence pour obtenir les pays, réseaux et tarifs. Dans le code audité, elles sont montées sous `/api/reference/...` et ne demandent pas de clé API.
+
+---
+
+## 1. Endpoints de Référence Dynamiques
+
+### Liste des Pays Disponibles
+```bash
+curl -X GET http://localhost:3000/api/reference/countries
+```
+
+### Liste des Réseaux Télécoms
+```bash
+curl -X GET http://localhost:3000/api/reference/networks
+```
+
+### Grille Tarifaire du Marchand
+```bash
+curl -X GET http://localhost:3000/api/reference/rates
+```
+
+---
+
+## 2. Tableau de Couverture & Formats Téléphoniques
+
+| Pays | Code | Réseaux indiqués dans la documentation existante |
+| :--- | :--- | :--- |
+| Bénin | `BJ` | MTN (`mtn_bj`), Moov (`moov_bj`), Celtiis (`celtiis_bj`) |
+| Côte d'Ivoire | `CI` | Orange (`orange_ci`), MTN (`mtn_ci`), Moov (`moov_ci`), Wave (`wave_ci`) |
+| Sénégal | `SN` | Wave (`wave_sn`), Orange (`orange_sn`), Free (`free_sn`), Expresso |
+| Togo | `TG` | TMoney (`tmoney_tg`), Moov (`moov_tg`) |
+
+Cette table est recopiée des pages de documentation existantes ; le serveur interroge SasPay dynamiquement et ne garantit pas ici la disponibilité actuelle de chaque réseau. Consultez la réponse de `/api/reference/networks` pour les valeurs à jour.
+
+> Le code confirme les chemins locaux ci-dessus. Le routage entre le domaine public de l'API et le préfixe Express `/api` n'est pas documenté dans le dépôt ; confirmez l'URL de production avant de remplacer `localhost`.
+
+---
+
+## Bonnes Pratiques de Validation Téléphonique
+
+1. **Format E.164** : Transmettez toujours les numéros préfixés par leur indicatif international avec le signe `+` (ex: `+22997001234`).
+2. **Nettoyage des espaces** : PichFlow nettoie automatiquement les espaces et tirets, mais fournir un numéro normalisé accélère le routage vers l'opérateur.
+3. **Disponibilité des réseaux** : Si un opérateur est temporairement en maintenance côté SasPay, l'API renvoie son état réel et empêche la soumission du paiement.

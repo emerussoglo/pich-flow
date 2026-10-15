@@ -1,0 +1,126 @@
+---
+title: "Exemples de payloads SasPay"
+description: "Exemples JSON présents dans les pages de documentation PichFlow, à valider avec l'environnement cible."
+---
+
+# Exemples de payloads SasPay
+
+Les exemples ci-dessous sont repris des pages de documentation existantes. Ils ne sont pas attestés comme captures de réponses de production ; vérifiez le schéma et les valeurs dans votre environnement avant de les utiliser comme contrat.
+
+---
+
+## 1. Création de Session de Checkout (`POST /checkout-sessions/`)
+
+```json
+{
+  "id": "67a9c1f4e123456789abcdef",
+  "reference": "CHK-1739182580-4821",
+  "amount": "15000.00",
+  "currency": "XOF",
+  "country": "BJ",
+  "customer_name": "Paul Dossou",
+  "customer_email": "paul.dossou@example.com",
+  "customer_phone": "+22997001234",
+  "description": "Licence Annuelle PichFlow",
+  "status": "pending",
+  "checkout_url": "https://checkout.saspay.me/pay/67a9c1f4e123456789abcdef",
+  "return_url": "https://maboutique.com/success",
+  "fee_charge_mode": "ADD_ON",
+  "expires_at": "2026-10-15T01:30:00.000Z",
+  "created_at": "2026-10-15T00:30:00.000Z"
+}
+```
+
+---
+
+## 2. Paiement Direct Softpay (`POST /payments/softpay/`)
+
+```json
+{
+  "id": "pay_soft_8829104bc",
+  "reference": "TX-PF-8842",
+  "amount": "5000.00",
+  "currency": "XOF",
+  "country": "BJ",
+  "network": "mtn_bj",
+  "status": "pending",
+  "customer": {
+    "first_name": "Amina",
+    "last_name": "Touré",
+    "email": "amina@example.com",
+    "phone": "+22996112233"
+  },
+  "checkout_url": "",
+  "created_at": "2026-10-15T00:32:10.000Z"
+}
+```
+
+---
+
+## 3. Vérification de Paiement (`GET /payments/{id}/verify/`)
+
+```json
+{
+  "id": "pay_soft_8829104bc",
+  "reference": "TX-PF-8842",
+  "amount": "5000.00",
+  "net_amount": "4900.00",
+  "fee": "100.00",
+  "currency": "XOF",
+  "country": "BJ",
+  "network": "mtn_bj",
+  "status": "completed",
+  "paid_at": "2026-10-15T00:32:45.000Z",
+  "operator_reference": "MP-BJ-20261015-998811"
+}
+```
+
+---
+
+## 4. Retrait / Payout Initialisé (`POST /payouts/initialize/`)
+
+```json
+{
+  "id": "payout_01h8bc7721",
+  "reference": "WDR-PF-120934",
+  "amount": "50000.00",
+  "fee": "500.00",
+  "net_amount": "49500.00",
+  "currency": "XOF",
+  "country": "BJ",
+  "network": "mtn_bj",
+  "recipient_name": "Cabinet Conseils SAS",
+  "recipient_phone": "+22997123456",
+  "status": "pending",
+  "created_at": "2026-10-15T00:34:00.000Z"
+}
+```
+
+---
+
+## 5. Webhook Reçu (`X-Webhook-Signature` & `X-Webhook-Timestamp`)
+
+```json
+{
+  "event": "transaction.success",
+  "timestamp": 1792025000,
+  "data": {
+    "id": "pay_soft_8829104bc",
+    "reference": "TX-PF-8842",
+    "amount": "5000.00",
+    "net_amount": "4900.00",
+    "fee": "100.00",
+    "currency": "XOF",
+    "country": "BJ",
+    "network": "mtn_bj",
+    "customer": {
+      "first_name": "Amina",
+      "last_name": "Touré",
+      "email": "amina@example.com",
+      "phone": "+22996112233"
+    },
+    "status": "completed",
+    "completed_at": "2026-10-15T00:32:45.000Z"
+  }
+}
+```

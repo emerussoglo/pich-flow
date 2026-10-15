@@ -1,0 +1,82 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "PichFlow",
+  "logo": "/img/log.png",
+  "favicon": "/img/log.png",
+  "colors": {
+    "primary": "#5E30E8",
+    "light": "#7C4DFF",
+    "dark": "#4520B0"
+  },
+  "topbarLinks": [
+    {
+      "name": "Dashboard",
+      "url": "https://dashboard.pichflow.com"
+    },
+    {
+      "name": "Support",
+      "url": "mailto:contactpichflow@gmail.com"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Obtenir mes clés API",
+    "url": "https://dashboard.pichflow.com/developer"
+  },
+  "openapi": "openapi.json",
+  "api": {
+    "baseUrl": "https://api.pichflow.com/v1",
+    "auth": {
+      "method": "bearer"
+    },
+    "playground": {
+      "mode": "hide"
+    }
+  },
+  "navigation": [
+    {
+      "group": "Démarrer",
+      "pages": [
+        "index",
+        "create-account",
+        "quickstart",
+        "authentication",
+        "concepts"
+      ]
+    },
+    {
+      "group": "Paiements",
+      "pages": [
+        "payments-overview",
+        "hosted-checkout",
+        "payment-links",
+        "softpay-otp",
+        "payment-verification"
+      ]
+    },
+    {
+      "group": "Opérations",
+      "pages": [
+        "customers-transactions",
+        "payouts",
+        "wallets",
+        "countries-networks"
+      ]
+    },
+    {
+      "group": "Sécurité et intégration",
+      "pages": [
+        "webhooks",
+        "errors",
+        "code-samples"
+      ]
+    },
+    {
+      "group": "Référence",
+      "pages": [
+        "api-reference",
+        "real-payloads",
+        "faq"
+      ]
+    }
+  ]
+}

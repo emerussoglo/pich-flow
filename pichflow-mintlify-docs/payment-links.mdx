@@ -1,0 +1,44 @@
+---
+title: "Liens de paiement"
+description: "Créez, partagez et gérez des liens de paiement à montant fixe ou libre sans rédiger de code supplémentaire."
+---
+
+# Liens de Paiement
+
+Les **Liens de Paiement** PichFlow permettent de générer une URL publique partageable (par WhatsApp, email, SMS ou sur les réseaux sociaux) permettant à vos clients de régler une prestation ou un produit en toute simplicité.
+
+---
+
+## Types de Liens de Paiement
+
+PichFlow gère deux types de liens :
+1. **Montant Fixe (`isFixedAmount: true`)** : Idéal pour un produit, un forfait d'abonnement ou un événement précis (ex: 15 000 XOF).
+2. **Montant Libre (`isFixedAmount: false`)** : Idéal pour les dons, cagnottes ou facturations personnalisées où le client saisit le montant qu'il souhaite vous verser.
+
+---
+
+## Gestion depuis le tableau de bord
+
+Les pages existantes décrivent la création et la gestion des liens depuis le tableau de bord. Le serveur confirme des routes de gestion des liens protégées par la session du compte, mais aucune route `/v1/payment-links` authentifiée par clé API n'a été trouvée. Aucun exemple de requête publique par clé API n'est donc fourni ici.
+
+### Exemple de champs décrits
+
+```json
+{
+  "title": "Abonnement annuel",
+  "amount": 25000,
+  "currency": "XOF",
+  "isFixedAmount": true,
+  "country": "BJ"
+}
+```
+
+Ces champs sont issus de la documentation existante ; le format de réponse et l'URL publique d'un lien doivent être confirmés dans le tableau de bord avant de les traiter comme un contrat d'API.
+
+---
+
+## Cycle de Vie & Suivi des Liens
+
+- **Consultation des transactions par lien** : Chaque règlement effectué sur un lien incrémente automatiquement son compteur `paymentCount` et son volume total encaissé `totalCollected`.
+- **Désactivation** : Le code confirme une action de mise à jour des liens via l'API du tableau de bord. Aucun chemin public `/v1/payment-links/:id` n'a été confirmé.
+- **Plafond d'utilisation** : Vous pouvez restreindre le nombre maximum de règlements autorisés (ex: stock limité à 50 exemplaires).
