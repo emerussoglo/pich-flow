@@ -45,7 +45,7 @@ export const SocialProof: React.FC = () => {
       logoUrl: 'https://images.seeklogo.com/logo-png/50/1/smartcash-psb-logo-png_seeklogo-509081.png',
     },
     {
-      name: 'Airtel Money',
+      name: 'Airtel Money', 
       category: 'Mobile Money',
       logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/86/Airtel_logo-02.png',
     },
