@@ -83,8 +83,8 @@ export const SUPPORTED_COUNTRIES: CountryCoverage[] = [
   },
   {
     code: 'CG',
-    name: 'Congo-Brazzaville',
-    flag: '🇨🇬',
+    name: 'Congo-Brazzaville', 
+    flag: '🇨🇬', 
     dialCode: '+242',
     currency: 'XAF',
     currencySymbol: 'FCFA',

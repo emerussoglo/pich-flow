@@ -30,6 +30,21 @@ export const SocialProof: React.FC = () => {
       logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/1/19/Logo_Orange_Money.svg',
     },
     {
+      name: 'E-Money Expresso',
+      category: 'Mobile Money',
+      logoUrl: 'https://www.orabank.net/sites/default/files/styles/large/public/2020-12/e-money.png',
+    },
+    {
+      name: 'Djamo',
+      category: 'Mobile Money',
+      logoUrl: 'https://play-lh.googleusercontent.com/COFlFnBiED3WHi-J8CRd6ehKOzBjvgKGySJasSaOm1OrMZbsn0NVzk3uL4PpzGo7mF91EBaOvbsqRL9ImD_-7A=w240-h480-rw',
+    },
+    {
+      name: 'Orange Money',
+      category: 'Mobile Money',
+      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/1/19/Logo_Orange_Money.svg',
+    },
+    {
       name: 'Airtel Money',
       category: 'Mobile Money',
       logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/86/Airtel_logo-02.png',
@@ -40,9 +55,29 @@ export const SocialProof: React.FC = () => {
       logoUrl: 'https://www.wave.com/img/nav-logo.png',
     },
     {
+      name: 'T-Money',
+      category: 'Mobile Money',
+      logoUrl: 'https://www.ibbank.tg/entreprises/sites/default/files/gbb-uploads/tmoney.jpg',
+    },
+    {
+      name: 'YAS Tigo',
+      category: 'Mobile Money',
+      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/cc/Togocom_-_Yas_-_logo.jpg',
+    },
+    {
+      name: 'HaloPesa',
+      category: 'Mobile Money',
+      logoUrl: 'https://images.seeklogo.com/logo-png/62/1/halopesa-logo-png_seeklogo-625628.png',
+    },
+    {
+      name: 'M-Pesa Vodacom',
+      category: 'Mobile Money',
+      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/0/03/M-pesa-logo.png',
+    },
+    {
       name: 'Visa / Mastercard',
       category: 'Carte Bancaire',
-      logoUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9cyy8WkH59BhD-1-q7YFfIn6-IF5S840xJL_CDH5kD2nW6QboIw4OadQ&s=10',
+      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/5c/Visa_Inc._logo_%282021%E2%80%93present%29.svg',
     },
   ];
 

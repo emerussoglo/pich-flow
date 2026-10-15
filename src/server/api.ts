@@ -31,9 +31,9 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Register with Email Verification Code (via Nodemailer)
 apiRouter.post('/auth/register', async (req: Request, res: Response) => {
   try {
-    const { email, password, country, phone } = req.body;
-    const fullName = (req.body.fullName || req.body.name || '').trim();
-    if (!email || !password || !fullName) {
+    const { email, password, country, phone } = req.body || {};
+    const fullNameValue = req.body?.fullName || req.body?.name;
+    if (typeof email !== 'string' || typeof password !== 'string' || typeof fullNameValue !== 'string' || !fullNameValue.trim()) {
       res.status(400).json({ success: false, error: 'Email, mot de passe et nom complet requis.' });
       return;
     }
@@ -58,7 +58,7 @@ apiRouter.post('/auth/register', async (req: Request, res: Response) => {
     if (existing.rows.length > 0) {
       const existingUser = existing.rows[0];
       if (Number(existingUser.is_verified) === 1) {
-        res.status(400).json({ success: false, error: 'Un compte vérifié existe déjà avec cette adresse email. Veuillez vous connecter.' });
+        res.status(400).json({ success: false, error: 'Impossible de créer le compte avec ces informations. Si vous avez déjà un compte, connectez-vous.' });
         return;
       }
       // If unverified, cleanup unverified record so user can register fresh
@@ -78,7 +78,7 @@ apiRouter.post('/auth/register', async (req: Request, res: Response) => {
         userId,
         cleanEmail,
         passwordHash,
-        fullName.trim(),
+        fullNameValue.trim(),
         phone || '',
         country || 'BJ',
         'merchant',
@@ -110,7 +110,7 @@ apiRouter.post('/auth/register', async (req: Request, res: Response) => {
 
     let emailSent = false;
     try {
-      emailSent = await sendVerificationCodeEmail(cleanEmail, verificationCode, fullName);
+      emailSent = await sendVerificationCodeEmail(cleanEmail, verificationCode, fullNameValue.trim());
     } catch (mailErr: any) {
       console.warn('[PichFlow Auth] Email delivery warning:', mailErr.message);
     }
@@ -135,7 +135,7 @@ apiRouter.post('/auth/register', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error('[API] Register error:', err);
-    res.status(500).json({ success: false, error: err.message || 'Erreur interne du serveur' });
+    res.status(500).json({ success: false, error: 'Une erreur interne est survenue lors de la création du compte.' });
   }
 });
 
@@ -341,8 +341,8 @@ apiRouter.post('/auth/resend-code', async (req: Request, res: Response) => {
 // Login (enforces verified email check & 15-hour session & email login alert)
 apiRouter.post('/auth/login', async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const { email, password } = req.body || {};
+    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
       res.status(400).json({ success: false, error: 'Email et mot de passe requis.' });
       return;
     }
@@ -408,7 +408,7 @@ apiRouter.post('/auth/login', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error('[API] Login error:', err);
-    res.status(500).json({ success: false, error: err.message || 'Erreur interne' });
+    res.status(500).json({ success: false, error: 'Une erreur interne est survenue lors de la connexion.' });
   }
 });
 

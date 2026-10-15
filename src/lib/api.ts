@@ -2,6 +2,89 @@ import { Application, Transaction, Wallet, PaymentLink, Customer, Withdrawal, Pa
 
 const TOKEN_KEY = 'pf_auth_token';
 
+function getHttpErrorMessage(status: number, isHtml: boolean): string {
+  if (status === 404 && isHtml) {
+    return 'Le service de connexion est introuvable. L’API n’est peut-être pas déployée correctement.';
+  }
+  if (status === 404) {
+    return 'Le service demandé est introuvable (HTTP 404).';
+  }
+  if (status >= 500) {
+    return `Le serveur rencontre un problème (HTTP ${status}). Réessayez plus tard.`;
+  }
+  return `La requête a échoué (HTTP ${status}). Vérifiez les informations saisies et réessayez.`;
+}
+
+export async function parseApiResponse(response: Response, endpoint: string): Promise<unknown> {
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = /\b(?:application|text)\/(?:[\w.+-]+\+)?json\b/i.test(contentType);
+  const body = await response.text();
+  const isHtml = /text\/html/i.test(contentType) || /^\s*<!doctype html|^\s*<html\b/i.test(body);
+
+  if (!response.ok) {
+    if (isJson && body.trim()) {
+      try {
+        const data = JSON.parse(body);
+        if (data && typeof data.error === 'string' && data.error.trim()) {
+          throw new Error(data.error);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message !== 'Unexpected end of JSON input') {
+          if (error.message !== 'Unexpected token' && !error.message.startsWith('Unexpected token')) {
+            throw error;
+          }
+        }
+        console.warn('[API] Invalid JSON error response:', {
+          endpoint,
+          status: response.status,
+          contentType,
+          error,
+        });
+      }
+    }
+    throw new Error(getHttpErrorMessage(response.status, isHtml));
+  }
+
+  if (!isJson) {
+    console.error('[API] Expected a JSON response:', {
+      endpoint,
+      status: response.status,
+      contentType,
+      empty: !body.trim(),
+    });
+    throw new Error('Le serveur a renvoyé une réponse inattendue. Réessayez plus tard.');
+  }
+
+  if (!body.trim()) {
+    console.error('[API] Empty JSON response:', { endpoint, status: response.status });
+    throw new Error('Le serveur a renvoyé une réponse vide. Réessayez plus tard.');
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(body);
+  } catch (error) {
+    console.error('[API] Malformed JSON response:', {
+      endpoint,
+      status: response.status,
+      contentType,
+      error,
+    });
+    throw new Error('La réponse du serveur est invalide. Réessayez plus tard.');
+  }
+
+  if (!data || typeof data !== 'object') {
+    throw new Error('La réponse du serveur est invalide. Réessayez plus tard.');
+  }
+
+  if ('success' in data && data.success === false) {
+    const message = 'error' in data && typeof data.error === 'string' ? data.error : '';
+    throw new Error(message || 'La requête a échoué. Réessayez plus tard.');
+  }
+
+  return data;
+}
+
 export const apiClient = {
   getToken(): string | null {
     try {
@@ -34,17 +117,18 @@ export const apiClient = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`/api${endpoint}`, {
-      ...options,
-      headers,
-    });
-
-    const data = await response.json();
-    if (!response.ok || data.success === false) {
-      throw new Error(data.error || 'Une erreur est survenue');
+    let response: Response;
+    try {
+      response = await fetch(`/api${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } catch (error) {
+      console.error('[API] Request failed:', { endpoint, error });
+      throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.');
     }
 
-    return data as T;
+    return (await parseApiResponse(response, endpoint)) as T;
   },
 
   // Auth

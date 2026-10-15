@@ -1,0 +1,924 @@
+Je pense que notre doc de l'api n'est pas bien faite. Pour cela analyse bien la documentation de saaspay et la mienne Voici celle de saaspay  surtout au niveau de l'api de reference . Aussi il y aune chose au fait pour moi mon api, comme je veux pas acheter de sous domaine pour cela, il faut utiliser le domaine principale et ajouter api apres . Maintenant pour les chekout aussi. Le seul sous domaine que je vais prendre  c'est seulement pour la documentation: docs.pichflow\.com. Maintenant voici la docu de saspay : > ## Documentation Index\
+\> Fetch the complete documentation index at: https\://docs.saspay.me/llms.txt\
+\> Use this file to discover all available pages before exploring further.\
+\
+\# Référence API\
+je peux pas tout te copier donc vas chercher toute la docu : https://docs.saspay.me/api-reference/introduction
+ .  Mainteant voici moi ma doc : **Paiements**
+
+# Guide d'intégration des paiements
+
+Choisir le flux d’intégration adapté à votre cas d’usage : Checkout Hébergé ou Softpay Direct.
+
+# Guide d’Intégration des Paiements
+
+PichFlow offre deux modes d’encaissement principaux pour s’adapter à l’architecture de votre application :
+
+Non, je veux une page prête à l'emploiOui, je collecte le numéro sur mon siteQuel est votre besoin d'encaissement ?Avez-vous une interface de formulaire personnalisée ?Checkout Hébergé (/checkout-sessions)Softpay Direct (/payments/softpay)Redirection client vers checkout_urlPush USSD / OTP immédiat sur mobile
+
+---
+
+## Comparatif des Solutions
+
+| **Critère**                 | **Checkout Hébergé**                                             | **Softpay Direct**                                                            |
+| :-------------------------- | :--------------------------------------------------------------- | :---------------------------------------------------------------------------- |
+| **Endpoint API**            | **`POST /v1/checkout-sessions`**                                 | **`POST /v1/payments/softpay`**                                               |
+| **Effort de développement** | Minimal (quelques lignes de code)                                | Moyen (formulaire personnalisé requis)                                        |
+| **Expérience utilisateur**  | Redirection vers la page de paiement sécurisée PichFlow / SasPay | L’utilisateur reste dans votre application                                    |
+| **Moyens supportés**        | Tous les moyens disponibles du pays sélectionné                  | Mobile Money direct, Wave, Cartes bancaires                                   |
+| **Idempotency-Key**         | Non requis selon spécification                                   | **Obligatoire** (**`Idempotency-Key: <UUID>`**)                               |
+| **Cas d’usage recommandés** | E-commerce standard, abonnements SaaS, factures ponctuelles      | Applications mobiles natives, bornes de commande, tunnels de vente sur-mesure |
+
+---
+
+## Règles Fondamentales de Gestion des Montants
+
+1. **Formatage décimal chaîne** : Selon la spécification officielle SasPay, tous les montants transmis dans les payloads doivent être des chaînes avec exactement deux décimales (ex: **`"15000.00"`**, **`"250.50"`**). Les flottants JavaScript bruts sont strictement déconseillés afin d’éviter les erreurs d’arrondi.
+2. **Gestion des frais (`fee_charge_mode`)** :
+   - **`ADD_ON`** : Les frais de passerelle sont ajoutés en supplément au total à payer par le client final.
+   - **`DEDUCTED`** : Les frais de passerelle sont absorbés par le marchand et déduits du montant net perçu.
+
+[**Modèle de données & Concepts clés**](https://pichflow.mintlify.site/concepts)
+
+[**Checkout Hébergé**](https://pichflow.mintlify.site/hosted-checkout)**&#xA0;: Paiements&#x20;**\
+**Checkout Hébergé**\
+**Créez une session de checkout sécurisée et redirigez vos clients vers une interface de paiement optimisée.**\
+\
+**​**\
+**Checkout Hébergé**\
+**Le Checkout Hébergé est le moyen le plus rapide d’encaisser des paiements. Vous transmettez les paramètres de la commande à PichFlow, qui génère une session et vous renvoie une URL sécurisée (checkout_url) vers laquelle rediriger votre client.**\
+**​**\
+**1. Créer une session de checkout**\
+**Effectuez une requête POST vers /v1/checkout-sessions avec votre clé API marchand :**\
+**curl -X POST https\://api.pichflow\.com/v1/checkout-sessions \\**\&#xA;**&#x20; -H "Authorization: Bearer sk_test_votre_cle" \\**\&#xA;**&#x20; -H "Content-Type: application/json" \\**\&#xA;**&#x20; -d '{**\&#xA;**&#x20;   "amount": "12500.00",**\&#xA;**&#x20;   "currency": "XOF",**\&#xA;**&#x20;   "country": "BJ",**\&#xA;**&#x20;   "customer_name": "Amina Touré",**\&#xA;**&#x20;   "customer_email": "amina.toure@example.com",**\&#xA;**&#x20;   "customer_phone": "+22996112233",**\&#xA;**&#x20;   "description": "Panier #ORD-4591",**\&#xA;**&#x20;   "return_url": "https\://maboutique.com/checkout/merci?ref=ORD-4591",**\&#xA;**&#x20;   "fee_charge_mode": "ADD_ON"**\&#xA;**&#x20; }'**\
+**​**\
+**Paramètres de la requête**\
+**Champ	Type	Obligatoire	Description**\
+**amount	string	Oui	Montant au format chaîne décimale (ex: "12500.00").**\
+**currency	string	Oui	Code devise ISO (ex: "XOF").**\
+**customer_name	string	Oui	Nom complet du client.**\
+**customer_email	string	Oui	Email du client (utilisé pour les notifications et reçus).**\
+**customer_phone	string	Non	Téléphone au format international (ex: +229...).**\
+**country	string	Non	Code pays ISO-2 (ex: "BJ", "CI", "SN", "TG").**\
+**return_url	string	Non	URL de redirection du client après validation du paiement.**\
+**fee_charge_mode	string	Non	"ADD_ON" (frais en sus) ou "DEDUCTED" (frais déduits).**\
+**​**\
+**2. Réponse de l’API**\
+**{**\&#xA;**&#x20; "success": true,**\&#xA;**&#x20; "data": {**\&#xA;**&#x20;   "id": "cs_01h8a9bcdef234",**\&#xA;**&#x20;   "amount": "12500.00",**\&#xA;**&#x20;   "currency": "XOF",**\&#xA;**&#x20;   "status": "pending",**\&#xA;**&#x20;   "checkout_url": "https\://checkout.saspay.me/pay/cs_01h8a9bcdef234",**\&#xA;**&#x20;   "expires_at": "2026-10-15T01:30:00Z"**\&#xA;**&#x20; }**\
+**}**\
+**​**\
+**3. Redirection et Traitement**\
+**Dès réception de la réponse :**\
+**Redirigez le navigateur de l’utilisateur vers checkout_url.**\
+**Le client sélectionne son moyen de paiement (MTN, Moov, Celtiis, Wave, Carte) et confirme l’opération.**\
+**Dès confirmation, PichFlow reçoit le webhook SasPay, crédite votre wallet et notifie vos serveurs via webhook.**\
+**L’utilisateur est reconduit sur votre return_url.**\
+**⚠️ Sécurité : Ne considérez jamais la simple arrivée sur votre page return_url comme une preuve que le paiement est réussi. Validez toujours l’événement via le webhook serveur ou via l’endpoint de vérification /v1/payments/:id/verify.**\
+**Guide d'intégration des paiements**\
+**Liens de paiement**\
+**Ask a question...**\&#xA;**&#x20;Paiements**
+
+# Liens de paiement
+
+Créez, partagez et gérez des liens de paiement à montant fixe ou libre sans rédiger de code supplémentaire.
+
+# Liens de Paiement
+
+Les **Liens de Paiement** PichFlow permettent de générer une URL publique partageable (par WhatsApp, email, SMS ou sur les réseaux sociaux) permettant à vos clients de régler une prestation ou un produit en toute simplicité.
+
+---
+
+## Types de Liens de Paiement
+
+PichFlow gère deux types de liens :
+
+1. **Montant Fixe (`isFixedAmount: true`)** : Idéal pour un produit, un forfait d’abonnement ou un événement précis (ex: 15 000 XOF).
+2. **Montant Libre (`isFixedAmount: false`)** : Idéal pour les dons, cagnottes ou facturations personnalisées où le client saisit le montant qu’il souhaite vous verser.
+
+---
+
+## Gestion depuis le tableau de bord
+
+Les pages existantes décrivent la création et la gestion des liens depuis le tableau de bord. Le serveur confirme des routes de gestion des liens protégées par la session du compte, mais aucune route **`/v1/payment-links`** authentifiée par clé API n’a été trouvée. Aucun exemple de requête publique par clé API n’est donc fourni ici.
+
+### Exemple de champs décrits
+```
+{
+  "title": "Abonnement annuel",
+  "amount": 25000,
+  "currency": "XOF",
+  "isFixedAmount": true,
+  "country": "BJ"
+}
+
+```
+
+Ces champs sont issus de la documentation existante ; le format de réponse et l’URL publique d’un lien doivent être confirmés dans le tableau de bord avant de les traiter comme un contrat d’API.
+
+---
+
+## Cycle de Vie & Suivi des Liens
+
+- **Consultation des transactions par lien** : Chaque règlement effectué sur un lien incrémente automatiquement son compteur **`paymentCount`** et son volume total encaissé **`totalCollected`**.
+- **Désactivation** : Le code confirme une action de mise à jour des liens via l’API du tableau de bord. Aucun chemin public **`/v1/payment-links/:id`** n’a été confirmé.
+- **Plafond d’utilisation** : Vous pouvez restreindre le nombre maximum de règlements autorisés (ex: stock limité à 50 exemplaires).
+
+[**Checkout Hébergé**](https://pichflow.mintlify.site/hosted-checkout)
+
+[**Softpay & Confirmation OTP**](https://pichflow.mintlify.site/softpay-otp)
+
+[Powered bysvg](https://www.mintlify.com/?utm_campaign=poweredBy\&utm_medium=referral\&utm_source=pichflow)
+
+\
+**Paiements**\
+**Softpay & Confirmation OTP**\
+**Initialisez un paiement direct Mobile Money, gérez la validation par code OTP et relancez les tentatives échouées.**\
+\
+**​**\
+**Softpay & Confirmation OTP**\
+**L’endpoint Softpay de SasPay permet aux marchands d’initier un paiement direct Mobile Money sans rediriger le client vers une page externe lorsque l’opérateur prend en charge le push USSD.**\
+**​**\
+**1. Initialiser un paiement Softpay**\
+**L’en-tête Idempotency-Key est obligatoire pour cet appel afin de protéger votre utilisateur contre tout débit multiple intempestif en cas de micro-coupure réseau.**\
+**curl -X POST https\://api.pichflow\.com/v1/payments/softpay \\**\&#xA;**&#x20; -H "Authorization: Bearer sk_test_votre_cle" \\**\&#xA;**&#x20; -H "Content-Type: application/json" \\**\&#xA;**&#x20; -H "Idempotency-Key: e3c45678-1234-4a5b-bcde-9876543210ab" \\**\&#xA;**&#x20; -d '{**\&#xA;**&#x20;   "amount": "10000.00",**\&#xA;**&#x20;   "currency": "XOF",**\&#xA;**&#x20;   "country": "BJ",**\&#xA;**&#x20;   "network": "mtn_bj",**\&#xA;**&#x20;   "customer": {**\&#xA;**&#x20;     "first_name": "Koffi",**\&#xA;**&#x20;     "last_name": "Sessou",**\&#xA;**&#x20;     "email": "koffi.sessou@example.com",**\&#xA;**&#x20;     "phone": "+22997123456"**\&#xA;**&#x20;   },**\&#xA;**&#x20;   "description": "Achat de crédits",**\&#xA;**&#x20;   "fee_charge_mode": "ADD_ON"**\&#xA;**&#x20; }'**\
+**​**\
+**Réponse :**\
+**{**\&#xA;**&#x20; "success": true,**\&#xA;**&#x20; "data": {**\&#xA;**&#x20;   "id": "pay_soft_abc12345",**\&#xA;**&#x20;   "reference": "TX-PF-883491",**\&#xA;**&#x20;   "status": "pending",**\&#xA;**&#x20;   "amount": "10000.00",**\&#xA;**&#x20;   "network": "mtn_bj",**\&#xA;**&#x20;   "checkout_url": ""**\&#xA;**&#x20; }**\
+**}**\
+**​**\
+**2. Confirmation par Code OTP (confirm-otp)**\
+**Certains réseaux télécoms (notamment Orange Money dans certains pays ou certaines banques partenaires) requièrent la saisie préalable d’un code OTP généré par le client sur son terminal avant la validation finale.**\
+**Si le statut retourné indique qu’un OTP est requis, utilisez l’endpoint officiel :**\
+**curl -X POST https\://api.pichflow\.com/v1/payments/pay_soft_abc12345/confirm-otp \\**\&#xA;**&#x20; -H "Authorization: Bearer sk_test_votre_cle" \\**\&#xA;**&#x20; -H "Content-Type: application/json" \\**\&#xA;**&#x20; -d '{**\&#xA;**&#x20;   "otp": "489201"**\&#xA;**&#x20; }'**\
+**​**\
+**3. Relance d’un paiement (retry)**\
+**Si une transaction a échoué (ex: timeout de validation USSD par le client ou réseau momentanément indisponible) et que l’endpoint SasPay l’autorise, vous pouvez réinitier la tentative avec une nouvelle clé d’idempotence :**\
+**curl -X POST https\://api.pichflow\.com/v1/payments/pay_soft_abc12345/retry \\**\&#xA;**&#x20; -H "Authorization: Bearer sk_test_votre_cle" \\**\&#xA;**&#x20; -H "Content-Type: application/json" \\**\&#xA;**&#x20; -H "Idempotency-Key: f9d8e7c6-b5a4-4321-9876-0123456789ab"**\
+**Liens de paiement**\
+**Vérification des Paiements**\&#xA;**&#x20;Paiements**
+
+# Vérification des Paiements
+
+Méthodes de réconciliation, polling d’état et arbitrage entre Webhooks et vérification active.
+
+# Vérification des Paiements
+
+La confirmation d’un paiement en Afrique nécessite une synchronisation robuste entre les télécoms, la passerelle SasPay et votre serveur.Pour garantir une expérience sans faille, PichFlow préconise une **approche hybride** combinant les webhooks asynchrones et la vérification active (polling sécurisé).
+
+---
+
+## 1. Webhook (Mécanisme Principal Recommandé)
+
+Le webhook est le mécanisme le plus rapide et le plus économe en ressources. Dès que SasPay notifie PichFlow du succès d’une transaction, celle-ci est marquée comme réussie et le wallet du marchand est instantanément crédité.
+
+---
+
+## 2. Endpoint de Vérification Active (`verify`)
+
+Pour les applications mobiles ou les pages d’attente client, vous pouvez interroger le statut en temps réel :
+```
+curl -X GET https://api.pichflow.com/v1/payments/pay_soft_abc12345/verify \
+  -H "Authorization: Bearer sk_test_votre_cle"
+
+```
+
+### Réponse officielle :
+```
+{
+  "success": true,
+  "data": {
+    "id": "pay_soft_abc12345",
+    "reference": "TX-PF-883491",
+    "status": "completed",
+    "amount": "10000.00",
+    "net_amount": "9800.00",
+    "fee": "200.00",
+    "currency": "XOF",
+    "network": "mtn_bj",
+    "paid_at": "2026-10-15T00:35:12Z"
+  }
+}
+
+```
+
+---
+
+## Statuts Possibles
+
+| **Statut SasPay**               | **Signification**                                                            | **Action Requise**                                          |
+| :------------------------------ | :--------------------------------------------------------------------------- | :---------------------------------------------------------- |
+| **`pending`**                   | Demande transmise à l’opérateur, en attente de validation USSD par le client | Continuer le polling (intervalle de 3 à 5 secondes)         |
+| **`completed`** / **`success`** | Fonds prélevés et confirmés par l’opérateur                                  | Livrer le produit ou valider la commande immédiatement      |
+| **`failed`**                    | Échec (solde client insuffisant, code PIN erroné, timeout)                   | Inviter le client à réessayer ou choisir un autre opérateur |
+| **`cancelled`**                 | Paiement explicitement refusé par le client                                  | Clôturer la tentative                                       |
+
+---
+
+## Bonnes Pratiques de Polling
+
+- **Intervalle minimal** : 3 000 ms (3 secondes). Évitez les requêtes à haute fréquence qui risquent d’entraîner une erreur HTTP **`429 Too Many Requests`**.
+- **Délai maximum** : 180 secondes (3 minutes). Au-delà, affichez un message rassurant indiquant que le paiement est en cours de réconciliation sur le réseau opérateur.
+- **Dédoublonnage & Idempotence** : Si un webhook arrive pendant que votre frontend effectue un polling, le mécanisme de règlement atomique PichFlow garantit qu’aucun compte n’est crédité deux fois.
+
+[**Softpay & Confirmation OTP**](https://pichflow.mintlify.site/softpay-otp)
+
+[**Gestion des Clients & Transactions**](https://pichflow.mintlify.site/customers-transactions)**&#xA0; Opérations**
+
+# Gestion des Clients & Transactions
+
+Recherche, filtrage, export CSV et téléchargement de factures PDF pour la comptabilité.
+
+# Gestion des Clients & Transactions
+
+PichFlow centralise l’ensemble de vos flux financiers et vos carnets clients avec un niveau de détail élevé.
+
+---
+
+## 1. Lister et Filtrer les Transactions
+
+Interrogez l’historique complet de vos encaissements :
+```
+curl -X GET "https://api.pichflow.com/v1/transactions?limit=20&status=success" \
+  -H "Authorization: Bearer sk_test_votre_cle"
+
+```
+
+### Paramètres de recherche supportés
+
+- **`status`** : Filtrer par **`success`**, **`pending`**, **`failed`**, **`cancelled`**.
+- **`limit`** : Nombre de résultats par page (par défaut: 20, max: 100).
+- **`offset`** : Décalage pour la pagination.
+- **`search`** : Recherche textuelle par référence, email ou nom de client.
+- **`applicationId`** : Filtrer sur une application spécifique de votre compte.
+
+---
+
+## 2. Export Comptable CSV
+
+Téléchargez l’ensemble de votre relevé de transactions pour l’intégrer dans vos outils comptables (Excel, QuickBooks, SAP) :
+```
+curl -X GET "https://api.pichflow.com/v1/transactions/export?format=csv" \
+  -H "Authorization: Bearer sk_test_votre_cle" \
+  --output relevé_transactions_pichflow.csv
+
+```
+
+Le fichier CSV exporté contient :
+
+- Référence de la transaction
+- Date et heure UTC
+- Nom, email et téléphone du client
+- Opérateur et pays (ex: **`MTN Bénin (BJ)`**)
+- Montant brut, frais de passerelle et montant net encaissé
+- Statut final
+
+---
+
+## 3. Génération de Reçus et Factures PDF
+
+Chaque transaction réussie dispose d’une route permettant d’éditer une facture normalisée au format PDF :
+```
+curl -X GET "https://api.pichflow.com/v1/transactions/tx_1728945600000/invoice" \
+  -H "Authorization: Bearer sk_test_votre_cle" \
+  --output facture_tx_1728945600000.pdf
+
+```
+
+---
+
+## 4. Auto-Population des Clients
+
+Dès qu’un client effectue un paiement valide :
+
+1. PichFlow vérifie si l’adresse email existe déjà pour votre compte et cette application.
+2. Si le client existe : son **`total_spent`** et son **`payment_count`** sont incrémentés, et sa date **`last_transaction_at`** est actualisée.
+3. Si le client est nouveau : une fiche complète est immédiatement créée dans votre carnet d’adresses. Opérations\
+   Retraits & Payouts\
+   Initialisation et vérification des décaissements vers Mobile Money et comptes bancaires.\
+   \
+   ​\
+   Retraits & Transferts Sortants (Payouts)\
+   Le module de Payout permet d’ordonner des virements automatiques depuis votre solde PichFlow vers les comptes Mobile Money de vos partenaires, fournisseurs ou utilisateurs.\
+   ​\
+   Prérequis de Sécurité SasPay Obligatoires\
+   ⚠️ Sécurité Critique : Liste Blanche IP (IP Whitelisting) Conformément à la politique de sécurité stricte de SasPay, tout appel à l’endpoint de Payout (POST /v1/payouts/initialize) initié par clé d’API exige que l’adresse IP publique de votre serveur soit préalablement déclarée dans votre tableau de bord SasPay.\
+   Si votre IP n’est pas autorisée, SasPay renvoie immédiatement une erreur HTTP 403 Forbidden (ip_not_whitelisted).\
+   ​\
+   1\. Initialiser un Retrait (cURL)\
+   L’en-tête Idempotency-Key est strictement obligatoire pour prévenir tout risque de double virement lors des réessais réseau.\
+   curl -X POST https\://api.pichflow\.com/v1/payouts/initialize \\\
+   &#x20; -H "Authorization: Bearer sk_live_votre_cle" \\\
+   &#x20; -H "Content-Type: application/json" \\\
+   &#x20; -H "Idempotency-Key: d4e5f6a7-8901-4b2c-aef0-123456789abc" \\\
+   &#x20; -d '{\
+   &#x20;   "amount": "50000.00",\
+   &#x20;   "currency": "XOF",\
+   &#x20;   "country": "BJ",\
+   &#x20;   "network": "mtn_bj",\
+   &#x20;   "recipient_name": "Cabinet Conseils SAS",\
+   &#x20;   "recipient_phone": "+22997123456",\
+   &#x20;   "description": "Règlement Facture F-2026-09"\
+   &#x20; }'\
+   ​\
+   Réponse :\
+   {\
+   &#x20; "success": true,\
+   &#x20; "data": {\
+   &#x20;   "id": "payout_98124701bc",\
+   &#x20;   "reference": "WDR-PF-120934",\
+   &#x20;   "status": "pending",\
+   &#x20;   "amount": "50000.00",\
+   &#x20;   "fee": "500.00",\
+   &#x20;   "net_amount": "49500.00",\
+   &#x20;   "currency": "XOF",\
+   &#x20;   "recipient_phone": "+22997123456"\
+   &#x20; }\
+   }\
+   ​\
+   2\. Vérifier le Statut d’un Retrait\
+   curl -X GET https\://api.pichflow\.com/v1/payouts/payout_98124701bc/verify \\\
+   &#x20; -H "Authorization: Bearer sk_live_votre_cle"\
+   ​\
+   Statuts des Retraits :\
+   Statut	Description\
+   pending	Demande en cours de traitement par le réseau télécom ou la compensation bancaire.\
+   completed	Fonds déposés avec succès sur le wallet ou compte bancaire du bénéficiaire.\
+   failed	Numéro bénéficiaire inactif, compte plafonné ou rejet opérateur. Le solde du marchand est automatiquement recrédité.\
+   Gestion des Clients & Transactions\
+   Wallets, Devises & Taux de Change Opérations\
+   Wallets, Devises & Taux de Change\
+   Gestion des soldes marchands multi-devises, consultation des taux de change et virements inter-wallets.\
+   \
+   ​\
+   Wallets & Gestion Multi-Devises\
+   PichFlow permet aux marchands d’opérer des comptes multi-devises à travers plusieurs pays africains tout en conservant une vision consolidée de leurs finances.\
+   ​\
+   1\. Consulter les Soldes Réels des Wallets\
+   Pour interroger vos soldes réels déclarés auprès de la passerelle SasPay :\
+   curl -X GET https\://api.pichflow\.com/v1/wallets/balances \\\
+   &#x20; -H "Authorization: Bearer sk_live_votre_cle"\
+   ​\
+   Réponse officielle :\
+   {\
+   &#x20; "success": true,\
+   &#x20; "data": [\
+   &#x20;   {\
+   &#x20;     "currency": "XOF",\
+   &#x20;     "country": "BJ",\
+   &#x20;     "balance": "428500.00",\
+   &#x20;     "available_balance": "428500.00",\
+   &#x20;     "pending_balance": "0.00"\
+   &#x20;   },\
+   &#x20;   {\
+   &#x20;     "currency": "XOF",\
+   &#x20;     "country": "CI",\
+   &#x20;     "balance": "154200.00",\
+   &#x20;     "available_balance": "154200.00",\
+   &#x20;     "pending_balance": "0.00"\
+   &#x20;   }\
+   &#x20; ]\
+   }\
+   Zéro Simulation : PichFlow ne simule aucun solde financier. Les données affichées reflètent strictement les relevés de trésorerie de votre compte SasPay marchand.\
+   ​\
+   2\. Consulter les Taux de Change Officiels\
+   Pour obtenir la grille des taux de change appliqués lors des règlements ou conversions :\
+   curl -X GET https\://api.pichflow\.com/v1/wallets/rates \\\
+   &#x20; -H "Authorization: Bearer sk_test_votre_cle"\
+   ​\
+   3\. Transfert Inter-Wallets\
+   Pour transférer des fonds d’un wallet à un autre (ex: transférer du solde XOF Bénin vers XOF Côte d’Ivoire) :\
+   curl -X POST https\://api.pichflow\.com/v1/wallets/transfer \\\
+   &#x20; -H "Authorization: Bearer sk_live_votre_cle" \\\
+   &#x20; -H "Content-Type: application/json" \\\
+   &#x20; -H "Idempotency-Key: a1b2c3d4-e5f6-7890-1234-56789abcdef0" \\\
+   &#x20; -d '{\
+   &#x20;   "from_country": "BJ",\
+   &#x20;   "to_country": "CI",\
+   &#x20;   "from_amount": "50000.00"\
+   &#x20; }'\
+   Le serveur attend from_country, to_country et from_amount. Il génère une clé d’idempotence si l’en-tête n’est pas fourni.\
+   Retraits & Payouts\
+   Pays & Réseaux Supportés\
+   Ask a question...\
+   \
+   **Opérations**
+   # Pays & Réseaux Supportés
+   Chargement dynamique des pays, réseaux télécoms et formats téléphoniques acceptés.
+   # Pays & Réseaux Télécoms Supportés
+   Le serveur PichFlow expose des routes de référence pour obtenir les pays, réseaux et tarifs. Dans le code audité, elles sont montées sous **`/api/reference/...`** et ne demandent pas de clé API.
+   ---
+   ## 1. Endpoints de Référence Dynamiques
+   ### Liste des Pays Disponibles
+   ```
+   curl -X GET http://localhost:3000/api/reference/countries
+
+   ```
+   ### Liste des Réseaux Télécoms
+   ```
+   curl -X GET http://localhost:3000/api/reference/networks
+
+   ```
+   ### Grille Tarifaire du Marchand
+   ```
+   curl -X GET http://localhost:3000/api/reference/rates
+
+   ```
+   ---
+   ## 2. Tableau de Couverture & Formats Téléphoniques
+   | **Pays**      | **Code** | **Réseaux indiqués dans la documentation existante**                                     |
+   | :------------ | :------- | :--------------------------------------------------------------------------------------- |
+   | Bénin         | **`BJ`** | MTN (**`mtn_bj`**), Moov (**`moov_bj`**), Celtiis (**`celtiis_bj`**)                     |
+   | Côte d’Ivoire | **`CI`** | Orange (**`orange_ci`**), MTN (**`mtn_ci`**), Moov (**`moov_ci`**), Wave (**`wave_ci`**) |
+   | Sénégal       | **`SN`** | Wave (**`wave_sn`**), Orange (**`orange_sn`**), Free (**`free_sn`**), Expresso           |
+   | Togo          | **`TG`** | TMoney (**`tmoney_tg`**), Moov (**`moov_tg`**)                                           |
+   Cette table est recopiée des pages de documentation existantes ; le serveur interroge SasPay dynamiquement et ne garantit pas ici la disponibilité actuelle de chaque réseau. Consultez la réponse de **`/api/reference/networks`** pour les valeurs à jour.
+   > Le code confirme les chemins locaux ci-dessus. Le routage entre le domaine public de l’API et le préfixe Express **`/api`** n’est pas documenté dans le dépôt ; confirmez l’URL de production avant de remplacer **`localhost`**.
+   ---
+   ## Bonnes Pratiques de Validation Téléphonique
+   1. **Format E.164** : Transmettez toujours les numéros préfixés par leur indicatif international avec le signe **`+`** (ex: **`+22997001234`**).
+   2. **Nettoyage des espaces** : PichFlow nettoie automatiquement les espaces et tirets, mais fournir un numéro normalisé accélère le routage vers l’opérateur.
+   3. **Disponibilité des réseaux** : Si un opérateur est temporairement en maintenance côté SasPay, l’API renvoie son état réel et empêche la soumission du paiement.
+   [**Wallets, Devises & Taux de Change**](https://pichflow.mintlify.site/wallets)
+
+   [**Webhooks & Sécurité**](https://pichflow.mintlify.site/webhooks)**&#xA0;Sécurité et intégration Sécurité et intégration**
+   # Gestion des Erreurs & Codes HTTP
+   Tableau de référence des erreurs HTTP, codes d’erreurs SasPay et gestion de l’idempotence.
+   # Gestion des Erreurs & Codes HTTP
+   PichFlow et SasPay utilisent des codes de statut HTTP conventionnels pour indiquer la réussite ou l’échec des requêtes API.
+   ---
+   ## 1. Codes de Statut HTTP
+   Les codes ci-dessous sont des références générales mentionnées dans les pages existantes ; la spécification OpenAPI ne définit pas les réponses de toutes les routes. Consultez la référence de chaque opération avant de dépendre d’un code précis.
+   | **Code HTTP**                   | **Définition**           | **Contexte fréquent**                                                                      |
+   | :------------------------------ | :----------------------- | :----------------------------------------------------------------------------------------- |
+   | **`200 OK`**                    | Succès                   | Requête exécutée normalement.                                                              |
+   | **`201 Created`**               | Ressource créée          | Le code de réponse exact dépend de l’opération.                                            |
+   | **`400 Bad Request`**           | Requête invalide         | Paramètre manquant, montant négatif, format de numéro invalide.                            |
+   | **`401 Unauthorized`**          | Non authentifié          | Clé API absente ou préfixe non reconnu.                                                    |
+   | **`403 Forbidden`**             | Accès refusé             | Clé révoquée, scope insuffisant ou **IP non déclarée dans la whitelist SasPay** (payouts). |
+   | **`404 Not Found`**             | Ressource introuvable    | Transaction, session ou lien de paiement inexistant.                                       |
+   | **`409 Conflict`**              | Conflit / Doublon        | Réutilisation d’une clé d’idempotence avec un payload différent.                           |
+   | **`410 Gone`**                  | Ressource expirée        | Session de paiement arrivée à échéance.                                                    |
+   | **`422 Unprocessable Entity`**  | Erreur métier opérateur  | Numéro de téléphone non éligible à la réception de Mobile Money.                           |
+   | **`429 Too Many Requests`**     | Limite de débit atteinte | Trop d’appels simultanés sur un court intervalle (ralentissez le polling).                 |
+   | **`500 Internal Server Error`** | Erreur interne           | Erreur inattendue côté serveur ou indisponibilité temporaire.                              |
+   ---
+   ## 2. Codes d’Erreurs Métier SasPay Fréquents
+   | **Code Erreur**            | **Message Typique**                                 | **Résolution Recommandée**                                                          |
+   | :------------------------- | :-------------------------------------------------- | :---------------------------------------------------------------------------------- |
+   | **`ip_not_whitelisted`**   | ”Client IP is not whitelisted for payout”           | Déclarez l’adresse IP publique de votre serveur dans le Dashboard SasPay.           |
+   | **`invalid_amount`**       | ”Amount must be a decimal string formatted as 0.00” | Utilisez une chaîne avec 2 décimales (ex: **`"5000.00"`**).                         |
+   | **`insufficient_balance`** | ”Wallet balance insufficient”                       | Approvisionnez votre compte ou attendez l’encaissement de paiements.                |
+   | **`network_unavailable`**  | ”Provider network temporary maintenance”            | Affichez un message invitant le client à choisir un autre réseau.                   |
+   | **`otp_required`**         | ”Customer OTP confirmation required”                | Demandez au client le code OTP reçu par SMS et soumettez-le via **`/confirm-otp`**. |
+   ---
+   ## 3. Règle d’Or de l’Idempotence (`Idempotency-Key`)
+   L’idempotence garantit qu’une requête exécutée plusieurs fois avec la même clé produit exactement le même effet qu’un appel unique.
+
+   PichFlow / SasPayVotre ApplicationPichFlow / SasPayVotre ApplicationPas de panique ! L'App réessaie avec la MÊME clé.POST /payments/softpay (Idempotency-Key: uuid-1)1Perte de connexion réseau (Timeout)2POST /payments/softpay (Idempotency-Key: uuid-1)3200 OK (Même transaction renvoyée, AUCUN double débit)4
+   - **Même intention** : Réutilisez toujours la même **`Idempotency-Key`** lors d’un réessai suite à une coupure réseau.
+   - **Nouvelle intention** : Générez toujours une nouvelle **`Idempotency-Key`** (UUID v4) pour une nouvelle commande ou un nouveau panier.
+   [**Webhooks & Sécurité**](https://pichflow.mintlify.site/webhooks)
+
+   [**Exemples de Code Complets**](https://pichflow.mintlify.site/code-samples)\
+   **Webhooks & Sécurité**\
+   **Réception sécurisée des événements de paiement, validation de signature HMAC SHA-256 et protection contre les attaques par rejeu.**\
+   \
+   **​**\
+   **Webhooks & Sécurité**\
+   **Les webhooks permettent à PichFlow et à SasPay de notifier votre infrastructure backend en temps réel dès qu’un paiement, retrait ou transfert change d’état.**\
+   **​**\
+   **1. En-têtes HTTP Reçus**\
+   **Chaque requête webhook envoyée vers votre endpoint contient les en-têtes suivants :**\
+   **En-tête	Description**\
+   **X-Webhook-Signature	Signature hexadécimale HMAC SHA-256 calculée sur le corps brut de la requête.**\
+   **X-Webhook-Timestamp	Horodatage Unix en secondes au moment de l’émission.**\
+   **Content-Type	application/json**\
+   **​**\
+   **2. Algorithme de Vérification de Signature (HMAC SHA-256)**\
+   **Pour vous assurer que la notification provient bien de PichFlow / SasPay et n’a pas été interceptée ou modifiée en cours de route :**\
+   **Vérifiez l’âge de l’horodatage : Rejetez immédiatement toute requête dont le X-Webhook-Timestamp diffère de plus de 300 secondes (5 minutes) par rapport à l’heure courante de votre serveur afin de bloquer les attaques par rejeu.**\
+   **Construisez la chaîne de signature : Concaténez l’horodatage et le corps brut (raw body) de la requête séparés par un point :**\
+   **payload = \`${timestamp}.${rawBody}\`**\
+   **Calculez le HMAC SHA-256 avec votre clé secrète webhook (whsec\_...).**\
+   **Comparez en temps constant (crypto.timingSafeEqual) pour prévenir les attaques temporelles (timing attacks).**\
+   **​**\
+   **Exemple d’implémentation en Node.js / TypeScript :**\
+   **import crypto from 'crypto';**\
+   **import { Request, Response } from 'express';**\
+   \
+   **export function handleWebhook(req: Request, res: Response) {**\&#xA;**&#x20; const signature = req.headers['x-webhook-signature'] as string;**\&#xA;**&#x20; const timestamp = req.headers['x-webhook-timestamp'] as string;**\&#xA;**&#x20; const rawBody = (req as any).rawBody || JSON.stringify(req.body);**\&#xA;**&#x20; const secret = process.env.PICHFLOW_WEBHOOK_SECRET!;**\
+   \&#xA;**&#x20; // 1. Contrôle d'expiration (tolérance 300s)**\&#xA;**&#x20; const now = Math.floor(Date.now() / 1000);**\&#xA;**&#x20; const eventTime = parseInt(timestamp, 10);**\&#xA;**&#x20; if (isNaN(eventTime) || Math.abs(now - eventTime) > 300) {**\&#xA;**&#x20;   return res.status(400).send('Horodatage expiré ou invalide.');**\&#xA;**&#x20; }**\
+   \&#xA;**&#x20; // 2. Calcul du HMAC SHA-256**\&#xA;**&#x20; const expectedSignature = crypto**\&#xA;**&#x20;   .createHmac('sha256', secret)**\&#xA;**&#x20;   .update(\`${timestamp}.${rawBody}\`)**\&#xA;**&#x20;   .digest('hex');**\
+   \&#xA;**&#x20; // 3. Comparaison sécurisée en temps constant**\&#xA;**&#x20; const sigBuffer = Buffer.from(signature.toLowerCase(), 'utf8');**\&#xA;**&#x20; const expBuffer = Buffer.from(expectedSignature.toLowerCase(), 'utf8');**\
+   \&#xA;**&#x20; if (sigBuffer.length !== expBuffer.length || !crypto.timingSafeEqual(sigBuffer, expBuffer)) {**\&#xA;**&#x20;   return res.status(400).send('Signature webhook invalide.');**\&#xA;**&#x20; }**\
+   \&#xA;**&#x20; // 4. Traitement idempotent de l'événement**\&#xA;**&#x20; const event = req.body;**\&#xA;**&#x20; if (event.event === 'transaction.success') {**\&#xA;**&#x20;   const tx = event.data;**\&#xA;**&#x20;   console.log(\`Paiement confirmé : ${tx.reference} pour un montant de ${tx.amount}\`);**\&#xA;**&#x20;   // Mettre à jour votre commande en base de données**\&#xA;**&#x20; }**\
+   \&#xA;**&#x20; // Toujours renvoyer un code 200 OK**\&#xA;**&#x20; res.status(200).json({ received: true });**\
+   **}**\
+   **​**\
+   **3. Événements Pris en Charge**\
+   **Événement	Description**\
+   **transaction.success	Le paiement client a été validé avec succès par l’opérateur.**\
+   **transaction.failed	La tentative de paiement a échoué (solde insuffisant, code erroné, timeout).**\
+   **transaction.cancelled	Le client a annulé la saisie ou la redirection.**\
+   **settlement.success	Le virement de retrait (payout) est confirmé sur le compte bénéficiaire.**\
+   **settlement.failed	Le virement de retrait a échoué et le solde a été réintégré.**\
+   **webhook.test	Événement émis lors d’un test ping depuis le Dashboard développeur.**\
+   **Pays & Réseaux Supportés**\
+   **Gestion des Erreurs & Codes HTTP Sécurité et intégration**\
+   **Exemples de Code Complets**\
+   **Exemples fonctionnels prêts à l’emploi en cURL, TypeScript / Node.js, Python et PHP.**\
+   \
+   **​**\
+   **Exemples de Code Complets**\
+   **Retrouvez ci-dessous des implémentations complètes pour initialiser un paiement Softpay et créer une session de Checkout.**\
+   **cURL**\
+   **TypeScript / Node.js**\
+   **Python**\
+   **PHP**\
+   **import crypto from 'crypto';**\
+   \
+   **interface SoftpayPayload {**\&#xA;**&#x20; amount: string;**\&#xA;**&#x20; currency: string;**\&#xA;**&#x20; country: string;**\&#xA;**&#x20; network: string;**\&#xA;**&#x20; customer: {**\&#xA;**&#x20;   first_name: string;**\&#xA;**&#x20;   last_name: string;**\&#xA;**&#x20;   email: string;**\&#xA;**&#x20;   phone: string;**\&#xA;**&#x20; };**\&#xA;**&#x20; description: string;**\
+   **}**\
+   \
+   **async function createPayment() {**\&#xA;**&#x20; const apiKey = process.env.PICHFLOW_API_KEY || 'sk_test\_...';**\&#xA;**&#x20; const idempotencyKey = crypto.randomUUID();**\
+   \&#xA;**&#x20; const payload: SoftpayPayload = {**\&#xA;**&#x20;   amount: "15000.00",**\&#xA;**&#x20;   currency: "XOF",**\&#xA;**&#x20;   country: "BJ",**\&#xA;**&#x20;   network: "mtn_bj",**\&#xA;**&#x20;   customer: {**\&#xA;**&#x20;     first_name: "Paul",**\&#xA;**&#x20;     last_name: "Dossou",**\&#xA;**&#x20;     email: "paul@example.com",**\&#xA;**&#x20;     phone: "+22997001234"**\&#xA;**&#x20;   },**\&#xA;**&#x20;   description: "Licence Annuelle PichFlow"**\&#xA;**&#x20; };**\
+   \&#xA;**&#x20; const response = await fetch('https\://api.pichflow\.com/v1/payments/softpay', {**\&#xA;**&#x20;   method: 'POST',**\&#xA;**&#x20;   headers: {**\&#xA;**&#x20;     'Authorization': \`Bearer ${apiKey}\`,**\&#xA;**&#x20;     'Content-Type': 'application/json',**\&#xA;**&#x20;     'Idempotency-Key': idempotencyKey**\&#xA;**&#x20;   },**\&#xA;**&#x20;   body: JSON.stringify(payload)**\&#xA;**&#x20; });**\
+   \&#xA;**&#x20; const data = await response.json();**\&#xA;**&#x20; console.log('Réponse de paiement :', data);**\
+   **}**\
+   \
+   **createPayment();**\
+   **Gestion des Erreurs & Codes HTTP**\
+   **Référence API**\&#xA;**&#x20;Référence**
+   # Référence API
+   Spécification OpenAPI disponible et limites connues de la référence PichFlow.
+   # Référence API
+   La spécification [**OpenAPI 3.1**](https://pichflow.mintlify.site/openapi.json) fournie avec ce dépôt décrit une partie de l’API PichFlow. Mintlify s’en sert pour générer les pages de référence des opérations décrites.
+
+   Cette spécification n’est pas exhaustive : elle ne décrit pas toutes les routes présentes dans le serveur et certaines informations de déploiement restent à confirmer. Le bac à sable interactif est désactivé pour éviter d’envoyer des requêtes à une URL non vérifiée.
+   ## Limites vérifiées
+   - Le fichier décrit 12 opérations. Le serveur contient d’autres routes, notamment pour les transactions, les tentatives de paiement et les retraits.
+   - Les liens de paiement et la gestion des clients existent dans l’API du tableau de bord, protégée par la session du compte. Aucune route **`/v1/payment-links`** ou **`/v1/customers`** avec clé API n’a été trouvée.
+   - Le code Express monte le routeur sous **`/api`**; la spécification et les pages existantes utilisent aussi le préfixe public **`/v1`**. Le routage de production qui relie ces chemins au domaine **`api.pichflow.com`** doit être confirmé avant d’utiliser l’API Playground ou de mettre en production.
+   - Les routes de pays et de réseaux sont montées sous **`/api/reference/...`** dans le serveur et le fichier OpenAPI de ce dossier reprend ces chemins.
+   - Les champs de transfert inter-pays confirmés par le code sont **`from_country`**, **`to_country`** et **`from_amount`**.
+   Consultez [**Authentification**](https://pichflow.mintlify.site/authentication), [**Gestion des transactions**](https://pichflow.mintlify.site/customers-transactions) et [**Portefeuilles**](https://pichflow.mintlify.site/wallets) pour les exemples et restrictions documentés.
+
+   [**Exemples de Code Complets**](https://pichflow.mintlify.site/code-samples)
+
+   [**Exemples de payloads SasPay**](https://pichflow.mintlify.site/real-payloads)**&#xA0;Référence**\
+   **Exemples de payloads SasPay**\
+   **Exemples JSON présents dans les pages de documentation PichFlow, à valider avec l’environnement cible.**\
+   \
+   **​**\
+   **Exemples de payloads SasPay**\
+   **Les exemples ci-dessous sont repris des pages de documentation existantes. Ils ne sont pas attestés comme captures de réponses de production ; vérifiez le schéma et les valeurs dans votre environnement avant de les utiliser comme contrat.**\
+   **​**\
+   **1. Création de Session de Checkout (POST /checkout-sessions/)**\
+   **{**\&#xA;**&#x20; "id": "67a9c1f4e123456789abcdef",**\&#xA;**&#x20; "reference": "CHK-1739182580-4821",**\&#xA;**&#x20; "amount": "15000.00",**\&#xA;**&#x20; "currency": "XOF",**\&#xA;**&#x20; "country": "BJ",**\&#xA;**&#x20; "customer_name": "Paul Dossou",**\&#xA;**&#x20; "customer_email": "paul.dossou@example.com",**\&#xA;**&#x20; "customer_phone": "+22997001234",**\&#xA;**&#x20; "description": "Licence Annuelle PichFlow",**\&#xA;**&#x20; "status": "pending",**\&#xA;**&#x20; "checkout_url": "https\://checkout.saspay.me/pay/67a9c1f4e123456789abcdef",**\&#xA;**&#x20; "return_url": "https\://maboutique.com/success",**\&#xA;**&#x20; "fee_charge_mode": "ADD_ON",**\&#xA;**&#x20; "expires_at": "2026-10-15T01:30:00.000Z",**\&#xA;**&#x20; "created_at": "2026-10-15T00:30:00.000Z"**\
+   **}**\
+   **​**\
+   **2. Paiement Direct Softpay (POST /payments/softpay/)**\
+   **{**\&#xA;**&#x20; "id": "pay_soft_8829104bc",**\&#xA;**&#x20; "reference": "TX-PF-8842",**\&#xA;**&#x20; "amount": "5000.00",**\&#xA;**&#x20; "currency": "XOF",**\&#xA;**&#x20; "country": "BJ",**\&#xA;**&#x20; "network": "mtn_bj",**\&#xA;**&#x20; "status": "pending",**\&#xA;**&#x20; "customer": {**\&#xA;**&#x20;   "first_name": "Amina",**\&#xA;**&#x20;   "last_name": "Touré",**\&#xA;**&#x20;   "email": "amina@example.com",**\&#xA;**&#x20;   "phone": "+22996112233"**\&#xA;**&#x20; },**\&#xA;**&#x20; "checkout_url": "",**\&#xA;**&#x20; "created_at": "2026-10-15T00:32:10.000Z"**\
+   **}**\
+   **​**\
+   **3. Vérification de Paiement (GET /payments/{id}/verify/)**\
+   **{**\&#xA;**&#x20; "id": "pay_soft_8829104bc",**\&#xA;**&#x20; "reference": "TX-PF-8842",**\&#xA;**&#x20; "amount": "5000.00",**\&#xA;**&#x20; "net_amount": "4900.00",**\&#xA;**&#x20; "fee": "100.00",**\&#xA;**&#x20; "currency": "XOF",**\&#xA;**&#x20; "country": "BJ",**\&#xA;**&#x20; "network": "mtn_bj",**\&#xA;**&#x20; "status": "completed",**\&#xA;**&#x20; "paid_at": "2026-10-15T00:32:45.000Z",**\&#xA;**&#x20; "operator_reference": "MP-BJ-20261015-998811"**\
+   **}**\
+   **​**\
+   **4. Retrait / Payout Initialisé (POST /payouts/initialize/)**\
+   **{**\&#xA;**&#x20; "id": "payout_01h8bc7721",**\&#xA;**&#x20; "reference": "WDR-PF-120934",**\&#xA;**&#x20; "amount": "50000.00",**\&#xA;**&#x20; "fee": "500.00",**\&#xA;**&#x20; "net_amount": "49500.00",**\&#xA;**&#x20; "currency": "XOF",**\&#xA;**&#x20; "country": "BJ",**\&#xA;**&#x20; "network": "mtn_bj",**\&#xA;**&#x20; "recipient_name": "Cabinet Conseils SAS",**\&#xA;**&#x20; "recipient_phone": "+22997123456",**\&#xA;**&#x20; "status": "pending",**\&#xA;**&#x20; "created_at": "2026-10-15T00:34:00.000Z"**\
+   **}**\
+   **​**\
+   **5. Webhook Reçu (X-Webhook-Signature & X-Webhook-Timestamp)**\
+   **{**\&#xA;**&#x20; "event": "transaction.success",**\&#xA;**&#x20; "timestamp": 1792025000,**\&#xA;**&#x20; "data": {**\&#xA;**&#x20;   "id": "pay_soft_8829104bc",**\&#xA;**&#x20;   "reference": "TX-PF-8842",**\&#xA;**&#x20;   "amount": "5000.00",**\&#xA;**&#x20;   "net_amount": "4900.00",**\&#xA;**&#x20;   "fee": "100.00",**\&#xA;**&#x20;   "currency": "XOF",**\&#xA;**&#x20;   "country": "BJ",**\&#xA;**&#x20;   "network": "mtn_bj",**\&#xA;**&#x20;   "customer": {**\&#xA;**&#x20;     "first_name": "Amina",**\&#xA;**&#x20;     "last_name": "Touré",**\&#xA;**&#x20;     "email": "amina@example.com",**\&#xA;**&#x20;     "phone": "+22996112233"**\&#xA;**&#x20;   },**\&#xA;**&#x20;   "status": "completed",**\&#xA;**&#x20;   "completed_at": "2026-10-15T00:32:45.000Z"**\&#xA;**&#x20; }**\
+   **}**\
+   **Référence API**\
+   **FAQ & Dépannage**\
+   **Référence**
+   # FAQ & Dépannage
+   Questions fréquentes, diagnostic des incidents de paiement et checklist de mise en production.
+   # FAQ & Dépannage
+   Retrouvez ici les réponses aux questions techniques récurrentes et les étapes recommandées avant de lancer votre solution en production.
+   ---
+   ## Problèmes Courants & Solutions
+   ### 1. “Pourquoi mon paiement reste-t-il au statut ‘pending’ ?”
+   - Le paiement Mobile Money attend que l’utilisateur valide l’invite USSD sur son téléphone en saisissant son code PIN secret.
+   - Si le client ne reçoit pas l’invite : vérifiez qu’il dispose de réseau télécom suffisant et que son solde Mobile Money couvre le montant ainsi que les éventuels frais de retrait opérateur.
+   - Certains opérateurs (notamment Orange) exigent la génération manuelle d’un code d’autorisation par le client avant l’opération.
+   ### 2. “Erreur 403 ip_not_whitelisted lors d’un appel Payout”
+   - SasPay impose par mesure de sécurité que toute clé effectuant un virement sortant provienne d’une adresse IP whitelistée.
+   - Connectez-vous à votre [**Tableau de bord SasPay**](https://saspay.me/) > Paramètres de sécurité > Liste blanche IP, et renseignez l’adresse IP publique de votre serveur de production.
+   ### 3. “Pourquoi ma signature webhook échoue-t-elle systématiquement ?”
+   - Assurez-vous d’utiliser le **raw body** (corps brut avant tout parsing **`JSON.parse`** ou **`express.json()`**). Tout reformatage d’espace ou d’ordre de clés invalide le HMAC.
+   - Vérifiez que l’horloge de votre serveur est synchronisée via NTP (**`X-Webhook-Timestamp`** tolère un écart maximal de 300 secondes).
+   - Assurez-vous d’utiliser le secret configuré dans votre Dashboard SasPay (**`SASPAY_WEBHOOK_SECRET`**).
+   ---
+   ## Checklist de Mise en Production (Live)
+   Avant d’activer votre clé **`sk_live_...`** auprès de vos vrais clients :
+   - **Clés d’API** : Remplacez votre clé **`sk_test_`** par votre clé **`sk_live_`** dans vos variables d’environnement de production.
+   - **Sécurité des clés** : Assurez-vous qu’aucune clé secrète n’apparaît dans votre code frontend, commit git ou repo public.
+   - **Endpoint Webhook HTTPS** : Vérifiez que l’URL de votre webhook utilise un certificat SSL/TLS valide (**`https://...`**).
+   - **Idempotence** : Vérifiez que vos appels **`softpay`** et **`payout`** intègrent bien un en-tête **`Idempotency-Key`** unique par tentative.
+   - **Gestion des timeouts** : Ne considérez jamais un timeout réseau comme un échec. Effectuez une vérification active (**`/verify`**) ou attendez le webhook.
+   - **Whitelist IP SasPay** : Déclarez votre adresse IP de production pour les fonctionnalités de décaissement (Payouts).
+   ---
+   ## Contacts & Support
+   - **Support Technique PichFlow** : [**contactpichflow@gmail.com**](mailto:contactpichflow@gmail.com)
+   - **Documentation SasPay Officielle** : [**https://docs.saspay.me**](https://docs.saspay.me)
+   - **Spécification OpenAPI SasPay** : [**https://docs.saspay.me/api-reference/openapi.json**](https://docs.saspay.me/api-reference/openapi.json)
+   [**Exemples de payloads SasPay**](https://pichflow.mintlify.site/real-payloads)
+
+   car c'est trop remarquable et c'est pas trop bon pour notre image . Donc il faut bien faire ma documentation maintenant et que ce soit vraiment au complet et maintenant l'autre chose c'est que quand j'ai déployé le projet en ligne je veux me connecter et ca ne marche pas de même pour l'inscription et j'ai quand j'appui sur les boutons : Unexpected token 'T', "The page c"... is not valid JSON: index-Cf8WTKOf.js:1088 POST https\://pichflow\.vercel.app/api/auth/login 404 (Not Found)request@index-Cf8WTKOf.js:1088login@index-Cf8WTKOf.js:1088onSubmit@index-Cf8WTKOf.js:1088Bf@index-Cf8WTKOf.js:8(anonymous)@index-Cf8WTKOf.js:8wn@index-Cf8WTKOf.js:8Gf@index-Cf8WTKOf.js:8yh@index-Cf8WTKOf.js:9_h@index-Cf8WTKOf.js:9 index-Cf8WTKOf.js:1088 POST https\://pichflow\.vercel.app/api/auth/register 404 (Not Found)request@index-Cf8WTKOf.js:1088register@index-Cf8WTKOf.js:1088onSubmit@index-Cf8WTKOf.js:1088Bf@index-Cf8WTKOf.js:8(anonymous)@index-Cf8WTKOf.js:8wn@index-Cf8WTKOf.js:8Gf@index-Cf8WTKOf.js:8yh@index-Cf8WTKOf.js:9_h@index-Cf8WTKOf.js:9 Maintenant il faut faire ceci en premier avant de régler le problème de la documentation. . Je veux donc un prompt complet pour ca
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   # MISSION PRIORITAIRE — RÉPARER L'INSCRIPTION ET LA CONNEXION DE PICHFLOW EN PRODUCTION SUR VERCEL
+
+Tu interviens directement dans le dépôt source de PichFlow. Tu dois analyser le code existant, identifier la cause exacte des erreurs de production, implémenter une correction robuste, effectuer les vérifications possibles et préparer le déploiement.
+
+**Priorité absolue : rétablir l'inscription et la connexion en production. Ne travaille pas sur la refonte de la documentation Mintlify pendant cette mission.**
+
+## 1. CONTEXTE DU PROJET
+
+Application : PichFlow  
+URL de production : https://pichflow.vercel.app/
+
+Stack déjà utilisée dans le projet :
+- Next.js / App Router et TypeScript, selon les parties de l'application.
+- Backend existant à identifier précisément : routes API, handlers, éventuels serveurs Express et middlewares.
+- Base de données Turso/libSQL, si elle est toujours utilisée par le code actuel.
+- Interface frontend déjà développée.
+- Déploiement hébergé sur Vercel.
+
+Ne suppose pas que tous ces éléments sont encore configurés comme prévu : vérifie-les dans le dépôt et dans la configuration disponible.
+
+## 2. ERREURS OBSERVÉES EN PRODUCTION
+
+Lorsqu'un utilisateur essaie de se connecter :
+
+POST https://pichflow.vercel.app/api/auth/login
+404 (Not Found)
+
+Lorsqu'un utilisateur essaie de s'inscrire :
+
+POST https://pichflow.vercel.app/api/auth/register
+404 (Not Found)
+
+Le frontend affiche également une erreur similaire à :
+
+Unexpected token 'T', "The page c"... is not valid JSON
+
+Les erreurs apparaissent après avoir cliqué sur les boutons d'inscription ou de connexion.
+
+Le message JSON indique probablement que le frontend essaie d'interpréter une réponse d'erreur textuelle ou HTML comme du JSON. Il faut confirmer ce comportement dans le code.
+
+## 3. PREMIÈRE PHASE : AUDIT DU CODE EXISTANT
+
+Avant toute modification, inspecte réellement le dépôt.
+
+A. Identifie :
+- Le framework et la version effectivement utilisés.
+- Le point d'entrée frontend et le mécanisme de routage.
+- L'implémentation des formulaires d'inscription et de connexion.
+- Les fonctions ou services appelés lors de ces soumissions.
+- Les fichiers qui définissent les routes `/api/auth/login` et `/api/auth/register`.
+- La présence éventuelle de routes Next.js dans `app/api/` ou `src/app/api/`.
+- La présence éventuelle de routes Express, d'un serveur Node séparé ou de fonctions serverless.
+- Les fichiers `package.json`, scripts de build, configuration Vercel et éventuels `vercel.json`, rewrites ou redirects.
+- Les variables d'environnement attendues par l'authentification.
+- Le système réel de stockage des utilisateurs, de hachage des mots de passe, de session et de cookies.
+- Les éventuelles différences entre le fonctionnement local et la production.
+
+B. Recherche dans tout le dépôt les occurrences de :
+- `/api/auth/login`
+- `/api/auth/register`
+- `login`
+- `register`
+- `NextResponse`
+- `express.json`
+- `vercel.json`
+- Les URL d'API absolues et les variables de base URL.
+
+C. Vérifie si les routes d'authentification :
+1. n'existent pas ;
+2. existent mais sont situées au mauvais emplacement ;
+3. existent dans un serveur backend séparé non déployé sur Vercel ;
+4. existent, mais sont masquées par un rewrite ou une configuration de routage ;
+5. échouent lors du build ou ne sont pas incluses dans le déploiement ;
+6. sont déployées mais renvoient une réponse incompatible avec le frontend.
+
+Ne choisis pas une hypothèse sans preuve. Relie chaque conclusion à des fichiers, fonctions et configurations réellement trouvés.
+
+## 4. DEUXIÈME PHASE : CHOISIR LA CORRECTION ADAPTÉE À L'ARCHITECTURE RÉELLE
+
+Le domaine principal de l'application doit continuer à être :
+
+https://pichflow.vercel.app
+
+L'objectif est que le frontend puisse appeler correctement :
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+
+Privilégie les URL relatives, par exemple `/api/auth/login`, lorsque le frontend et le backend sont servis par la même origine.
+
+### Cas A : le projet utilise Next.js App Router
+
+Si le projet est réellement structuré avec Next.js App Router et que l'authentification doit être servie par la même application, vérifie et corrige les Route Handlers correspondant à :
+- `app/api/auth/login/route.ts`
+- `app/api/auth/register/route.ts`
+
+Si le projet utilise `src/app`, respecte sa structure existante et ne crée pas de routes concurrentes dans un autre emplacement.
+
+Chaque route doit exporter les méthodes HTTP nécessaires, notamment `POST`, et respecter le contrat réellement utilisé par le frontend.
+
+### Cas B : le backend est un serveur Express ou un service distinct
+
+Si le code démontre que l'authentification est gérée par Express ou un backend séparé :
+- Identifie son URL réelle de production.
+- Vérifie si ce backend est effectivement déployé et accessible.
+- Détermine si Vercel doit le servir directement, le router via une configuration valide ou si le frontend doit appeler un backend distinct.
+- Ne crée pas artificiellement des Route Handlers Next.js qui dupliquent la logique métier existante.
+- Ne remplace pas le backend par une fausse API pour faire disparaître le 404.
+
+Si l'architecture actuelle ne peut pas fonctionner sur Vercel telle qu'elle est configurée, explique la modification minimale nécessaire et implémente-la si elle est possible sans inventer de services ou de secrets.
+
+### Cas C : problème de configuration de déploiement
+
+Si le problème vient des rewrites, redirects, fonctions serverless, du routage ou de la structure du build :
+- Corrige la configuration à l'origine du 404.
+- Conserve les routes frontend existantes.
+- Évite les règles générales qui détourneraient les requêtes API vers la page HTML de l'application.
+- Vérifie que les requêtes `/api/*` atteignent bien le backend prévu.
+
+## 5. TROISIÈME PHASE : RÉPARER LE CONTRAT HTTP ET LE TRAITEMENT DES ERREURS
+
+Inspecte le code frontend qui envoie les requêtes de connexion et d'inscription.
+
+Corrige le traitement des réponses pour qu'une réponse non JSON ou une page d'erreur ne provoque plus directement :
+
+`Unexpected token 'T'`
+
+Exigences :
+- Vérifier `response.ok` avant de traiter la réponse comme un succès.
+- Vérifier le `Content-Type` avant de parser du JSON.
+- Gérer proprement les réponses vides, textuelles, HTML et JSON mal formé.
+- Afficher à l'utilisateur un message clair et compréhensible.
+- Conserver les informations de diagnostic utiles côté serveur sans exposer les détails internes à l'utilisateur.
+- Ne jamais présenter une réponse 404 ou 500 comme une authentification réussie.
+- Ne pas masquer le véritable problème backend derrière un simple message générique.
+- Ne pas ajouter de dépendance si une solution simple est possible avec les API existantes.
+
+Respecte le format de réponse déjà adopté par le projet lorsqu'il est cohérent. Si tu dois l'uniformiser, documente le contrat retenu et adapte ensemble les routes et le frontend.
+
+## 6. QUATRIÈME PHASE : SÉCURISER ET PRÉSERVER L'AUTHENTIFICATION
+
+La correction ne doit pas seulement faire disparaître le 404. Elle doit préserver ou réparer le fonctionnement réel de l'authentification.
+
+Vérifie et corrige si nécessaire :
+- La validation des champs d'inscription.
+- La validation de l'email.
+- La vérification des mots de passe.
+- Le hachage sécurisé des mots de passe avant leur stockage.
+- La recherche des utilisateurs en base.
+- Le comportement lorsqu'un email existe déjà.
+- Le comportement lorsqu'un mot de passe est incorrect.
+- La création de session ou de jeton selon le mécanisme réellement utilisé.
+- La persistance de la session après rechargement de la page.
+- Les cookies en production : `HttpOnly`, `Secure` en HTTPS, `SameSite` et `Path` appropriés au fonctionnement de l'application.
+- La protection des routes qui nécessitent une authentification.
+- Les réponses génériques adaptées aux erreurs d'authentification afin de limiter l'énumération des comptes.
+- La limitation des tentatives répétées si un mécanisme de rate limiting existe déjà ou peut être ajouté proprement.
+- La protection contre les doubles soumissions.
+- La gestion des erreurs de base de données et des variables d'environnement manquantes.
+
+Ne stocke jamais les mots de passe en clair. N'expose jamais les clés API, les secrets de session, les mots de passe ou les variables sensibles dans le frontend, les logs publics ou les réponses HTTP.
+
+N'invente pas de nouvelle méthode d'authentification si le projet en possède déjà une fonctionnelle.
+
+## 7. CINQUIÈME PHASE : VÉRIFIER LA BASE DE DONNÉES ET LES VARIABLES D'ENVIRONNEMENT
+
+Inspecte la configuration actuelle de la base de données et les migrations.
+
+Confirme :
+- Que la table ou le modèle utilisateur attendu existe.
+- Que les requêtes d'inscription et de connexion utilisent le bon schéma.
+- Que les noms de colonnes correspondent au schéma réel.
+- Que la connexion à Turso/libSQL, si utilisée, fonctionne côté serveur.
+- Que les variables d'environnement requises sont identifiées et documentées.
+- Que les variables de production doivent être configurées dans Vercel lorsque nécessaire.
+
+Ne modifie pas le schéma de production sans justifier la migration. Ne supprime aucune donnée utilisateur.
+
+Si une variable manque, indique son nom exact et où la configurer dans Vercel, sans demander de révéler sa valeur dans le chat ou de la committer dans Git.
+
+## 8. SIXIÈME PHASE : TESTS AUTOMATISÉS
+
+Ajoute ou adapte des tests en fonction de l'outillage déjà présent dans le projet.
+
+Teste au minimum :
+
+### Inscription
+- Une inscription valide crée un compte.
+- Une inscription invalide renvoie une erreur JSON exploitable.
+- Une adresse email déjà utilisée est gérée proprement.
+- Aucun mot de passe en clair n'est stocké.
+
+### Connexion
+- Une connexion valide suit le mécanisme de session prévu.
+- Un mot de passe incorrect est refusé.
+- Un utilisateur inexistant est refusé.
+- La réponse est conforme au contrat du frontend.
+- La session reste valide selon le mécanisme de persistance prévu.
+
+### Contrat HTTP
+- Les routes attendues existent.
+- Les méthodes HTTP incorrectes sont traitées correctement.
+- Une erreur backend ne provoque pas de crash du parseur JSON frontend.
+- Les réponses d'erreur sont correctement structurées.
+
+### Build et déploiement
+- Exécute le lint et les tests disponibles.
+- Exécute le build de production.
+- Corrige les régressions causées par tes modifications.
+- Vérifie la configuration Vercel et les chemins de routage.
+
+Ne prétends pas qu'un test a réussi si tu ne l'as pas exécuté. Si un test exige des secrets, une base de données ou un environnement indisponible, indique clairement cette limite.
+
+## 9. SEPTIÈME PHASE : TESTS DE PRODUCTION APRÈS DÉPLOIEMENT
+
+Prépare une checklist de vérification de :
+
+`https://pichflow.vercel.app/api/auth/register`
+
+`https://pichflow.vercel.app/api/auth/login`
+
+Ces endpoints sont conçus pour recevoir des requêtes POST. Un test GET peut légitimement retourner 404 ou 405 selon l'implémentation ; ne conclus donc pas qu'une route POST est absente uniquement à partir d'un test GET.
+
+Utilise des requêtes POST de test appropriées, sans exposer de vrais mots de passe ou de données personnelles.
+
+Après déploiement :
+- Vérifie que les requêtes POST atteignent le bon handler.
+- Vérifie que les réponses sont JSON et possèdent le statut HTTP attendu.
+- Vérifie que l'inscription et la connexion fonctionnent depuis l'interface web.
+- Vérifie les cookies et la persistance de session dans le navigateur.
+- Vérifie les logs Vercel en cas d'erreur serveur.
+- Ne crée pas de faux comptes dans la base de production sans autorisation.
+- Ne prétends pas avoir testé la production si tu n'as pas accès au réseau ou au déploiement.
+
+## 10. CONTRAINTES IMPORTANTES
+
+- Travaille dans le dépôt existant.
+- Inspecte les fichiers avant de les modifier.
+- Préserve le design et les fonctionnalités sans rapport avec le problème.
+- Ne supprime aucune page.
+- Ne remplace pas l'authentification par des données fictives.
+- Ne contourne pas les contrôles de sécurité.
+- Ne désactive pas les protections de production pour rendre la connexion fonctionnelle.
+- Ne remplace pas la base de données par un stockage temporaire en mémoire ou local.
+- N'ajoute pas un deuxième système d'authentification en parallèle.
+- N'expose pas les secrets.
+- Ne travaille pas sur la documentation Mintlify pendant cette mission.
+- Effectue les corrections réelles dans le code, pas seulement une proposition théorique.
+
+## 11. RAPPORT FINAL OBLIGATOIRE
+
+À la fin, présente un rapport concis et précis avec :
+
+1. **Cause racine** : explique pourquoi les endpoints retournaient 404.
+2. **Fichiers examinés** : liste les fichiers importants.
+3. **Fichiers modifiés** : liste chaque fichier modifié et le but du changement.
+4. **Correction appliquée** : explique le fonctionnement retenu.
+5. **Base de données et variables** : indique les éventuelles actions manuelles requises.
+6. **Tests exécutés** : donne les résultats réels du lint, des tests et du build.
+7. **Déploiement** : précise si un déploiement a effectivement été réalisé ou si un commit/push est encore nécessaire.
+8. **Tests de production** : indique ce qui a été vérifié et ce qui reste à vérifier.
+9. **Actions restantes** : donne les étapes exactes à effectuer dans GitHub et Vercel si nécessaire.
+
+Commence maintenant par l'audit du dépôt. Identifie la cause racine avant de modifier le code, puis applique la correction la plus simple et la plus robuste compatible avec l'architecture réelle de PichFlow.

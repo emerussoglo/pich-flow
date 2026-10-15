@@ -1,5 +1,5 @@
 // src/server/main.ts
-import express from "express";
+import express2 from "express";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -12,15 +12,22 @@ dotenv.config();
 var dbClient = null;
 function getDb() {
   if (dbClient) return dbClient;
-  const url = process.env.TURSO_DATABASE_URL || "file:local.db";
-  const authToken = process.env.TURSO_AUTH_TOKEN || void 0;
+  const isProduction = process.env.NODE_ENV === "production" || process.env.VERCEL === "1";
+  const url = process.env.TURSO_DATABASE_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+  if (isProduction && (!url || !authToken)) {
+    throw new Error("TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be configured in production.");
+  }
   try {
     dbClient = createClient({
-      url,
-      authToken: authToken && authToken.length > 0 ? authToken : void 0
+      url: url || "file:local.db",
+      authToken: authToken || void 0
     });
     return dbClient;
   } catch (err) {
+    if (isProduction) {
+      throw err;
+    }
     console.warn("[DB] Fallback to local SQLite file due to error:", err);
     dbClient = createClient({
       url: "file:local.db"
@@ -408,6 +415,9 @@ async function seedInitialDataIfNeeded() {
     console.error("[DB] Seeding error:", err);
   }
 }
+
+// src/server/app.ts
+import express from "express";
 
 // src/server/api.ts
 import { Router } from "express";
@@ -1682,9 +1692,9 @@ var apiRouter = Router();
 var EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 apiRouter.post("/auth/register", async (req, res) => {
   try {
-    const { email, password, country, phone } = req.body;
-    const fullName = (req.body.fullName || req.body.name || "").trim();
-    if (!email || !password || !fullName) {
+    const { email, password, country, phone } = req.body || {};
+    const fullNameValue = req.body?.fullName || req.body?.name;
+    if (typeof email !== "string" || typeof password !== "string" || typeof fullNameValue !== "string" || !fullNameValue.trim()) {
       res.status(400).json({ success: false, error: "Email, mot de passe et nom complet requis." });
       return;
     }
@@ -1705,7 +1715,7 @@ apiRouter.post("/auth/register", async (req, res) => {
     if (existing.rows.length > 0) {
       const existingUser = existing.rows[0];
       if (Number(existingUser.is_verified) === 1) {
-        res.status(400).json({ success: false, error: "Un compte v\xE9rifi\xE9 existe d\xE9j\xE0 avec cette adresse email. Veuillez vous connecter." });
+        res.status(400).json({ success: false, error: "Impossible de cr\xE9er le compte avec ces informations. Si vous avez d\xE9j\xE0 un compte, connectez-vous." });
         return;
       }
       await db.execute({ sql: "DELETE FROM email_verification_codes WHERE email = ?", args: [cleanEmail] });
@@ -1721,7 +1731,7 @@ apiRouter.post("/auth/register", async (req, res) => {
         userId,
         cleanEmail,
         passwordHash,
-        fullName.trim(),
+        fullNameValue.trim(),
         phone || "",
         country || "BJ",
         "merchant",
@@ -1748,7 +1758,7 @@ apiRouter.post("/auth/register", async (req, res) => {
     console.log(`[PICHFLOW AUTH] Code de confirmation g\xE9n\xE9r\xE9 et envoy\xE9 \xE0 : ${cleanEmail}`);
     let emailSent = false;
     try {
-      emailSent = await sendVerificationCodeEmail(cleanEmail, verificationCode, fullName);
+      emailSent = await sendVerificationCodeEmail(cleanEmail, verificationCode, fullNameValue.trim());
     } catch (mailErr) {
       console.warn("[PichFlow Auth] Email delivery warning:", mailErr.message);
     }
@@ -1771,7 +1781,7 @@ apiRouter.post("/auth/register", async (req, res) => {
     });
   } catch (err) {
     console.error("[API] Register error:", err);
-    res.status(500).json({ success: false, error: err.message || "Erreur interne du serveur" });
+    res.status(500).json({ success: false, error: "Une erreur interne est survenue lors de la cr\xE9ation du compte." });
   }
 });
 apiRouter.post("/auth/verify-code", async (req, res) => {
@@ -1939,8 +1949,8 @@ apiRouter.post("/auth/resend-code", async (req, res) => {
 });
 apiRouter.post("/auth/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const { email, password } = req.body || {};
+    if (typeof email !== "string" || typeof password !== "string" || !email.trim() || !password) {
       res.status(400).json({ success: false, error: "Email et mot de passe requis." });
       return;
     }
@@ -1995,7 +2005,7 @@ apiRouter.post("/auth/login", async (req, res) => {
     });
   } catch (err) {
     console.error("[API] Login error:", err);
-    res.status(500).json({ success: false, error: err.message || "Erreur interne" });
+    res.status(500).json({ success: false, error: "Une erreur interne est survenue lors de la connexion." });
   }
 });
 apiRouter.post("/auth/test-login-alert", requireAuth, async (req, res) => {
@@ -5021,20 +5031,8 @@ apiRouter.post("/v1/wallets/transfer", requireApiKey, async (req, res) => {
   }
 });
 
-// src/server/main.ts
-dotenv4.config();
-var __filename = fileURLToPath(import.meta.url);
-var __dirname = path.dirname(__filename);
-var PORT = parseInt(process.env.PORT || "3000", 10);
-var isExplicitDev = process.env.npm_lifecycle_event === "dev";
-var distPath = path.resolve(process.cwd(), "dist");
-var isProd = !isExplicitDev && (process.env.NODE_ENV === "production" || fs.existsSync(distPath));
-var serverStarted = false;
-async function startServer() {
-  if (serverStarted) {
-    return;
-  }
-  serverStarted = true;
+// src/server/app.ts
+function createApiApp() {
   const app = express();
   app.use(
     express.json({
@@ -5055,26 +5053,63 @@ async function startServer() {
     }
     next();
   });
-  app.get("/api/health", (req, res) => {
+  app.get("/api/health", (_req, res) => {
     res.json({
       status: "ok",
       service: "PichFlow Payment Core",
-      port: PORT,
       env: process.env.NODE_ENV || "development",
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
   });
+  app.use("/api", apiRouter);
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ success: false, error: "Route API introuvable." });
+  });
+  app.post("/webhooks/saspay", (req, res, next) => {
+    req.url = "/webhooks/saspay";
+    apiRouter(req, res, next);
+  });
+  app.use((err, _req, res, next) => {
+    if (res.headersSent) {
+      next(err);
+      return;
+    }
+    const errorWithStatus = err;
+    if (errorWithStatus instanceof SyntaxError && errorWithStatus.status === 400 && "body" in errorWithStatus) {
+      res.status(400).json({ success: false, error: "Le corps de la requ\xEAte JSON est invalide." });
+      return;
+    }
+    if (errorWithStatus.status === 413) {
+      res.status(413).json({ success: false, error: "La requ\xEAte est trop volumineuse." });
+      return;
+    }
+    console.error("[API] Unhandled request error:", err);
+    res.status(500).json({ success: false, error: "Une erreur interne est survenue." });
+  });
+  return app;
+}
+
+// src/server/main.ts
+dotenv4.config();
+var __filename = fileURLToPath(import.meta.url);
+var __dirname = path.dirname(__filename);
+var PORT = parseInt(process.env.PORT || "3000", 10);
+var isExplicitDev = process.env.npm_lifecycle_event === "dev";
+var distPath = path.resolve(process.cwd(), "dist");
+var isProd = !isExplicitDev && (process.env.NODE_ENV === "production" || fs.existsSync(distPath));
+var serverStarted = false;
+async function startServer() {
+  if (serverStarted) {
+    return;
+  }
+  serverStarted = true;
+  const app = createApiApp();
   try {
     await initDatabase();
     await seedInitialDataIfNeeded();
   } catch (err) {
     console.error("[DB] Database startup error:", err);
   }
-  app.use("/api", apiRouter);
-  app.post("/webhooks/saspay", (req, res, next) => {
-    req.url = "/webhooks/saspay";
-    apiRouter(req, res, next);
-  });
   if (!isProd) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
@@ -5085,7 +5120,7 @@ async function startServer() {
   } else {
     const distPath2 = path.resolve(process.cwd(), "dist");
     if (fs.existsSync(distPath2)) {
-      app.use(express.static(distPath2));
+      app.use(express2.static(distPath2));
       app.get("*", (req, res) => {
         const indexPath = path.resolve(distPath2, "index.html");
         if (fs.existsSync(indexPath)) {

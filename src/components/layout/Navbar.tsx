@@ -110,12 +110,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentRoute }) => {
             >
               Tarifs
             </button>
-            <button
-              onClick={() => handleNavClick('/documentation')}
-              className={`pf-nav-link ${currentRoute === 'documentation' ? 'active' : ''}`}
-            >
-              Documentation
-            </button>
+            <button 
+  onClick={() => window.open('https://pichflow.mintlify.site/', '_blank', 'noopener,noreferrer')} 
+  className={`pf-nav-link ${currentRoute === 'documentation' ? 'active' : ''}`}
+>
+  Documentation
+</button>
+
           </nav>
 
           {/* Right Action Buttons */}

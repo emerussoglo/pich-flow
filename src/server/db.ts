@@ -9,16 +9,24 @@ let dbClient: Client | null = null;
 export function getDb(): Client {
   if (dbClient) return dbClient;
 
-  const url = process.env.TURSO_DATABASE_URL || 'file:local.db';
-  const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+  const url = process.env.TURSO_DATABASE_URL;
+  const authToken = process.env.TURSO_AUTH_TOKEN;
+
+  if (isProduction && (!url || !authToken)) {
+    throw new Error('TURSO_DATABASE_URL and TURSO_AUTH_TOKEN must be configured in production.');
+  }
 
   try {
     dbClient = createClient({
-      url,
-      authToken: authToken && authToken.length > 0 ? authToken : undefined,
+      url: url || 'file:local.db',
+      authToken: authToken || undefined,
     });
     return dbClient;
   } catch (err) {
+    if (isProduction) {
+      throw err;
+    }
     console.warn('[DB] Fallback to local SQLite file due to error:', err);
     dbClient = createClient({
       url: 'file:local.db',

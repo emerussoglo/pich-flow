@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { initDatabase } from './db';
 import { seedInitialDataIfNeeded } from './seed';
-import { apiRouter } from './api';
+import { createApiApp } from './app';
 
 dotenv.config();
 
@@ -26,41 +26,7 @@ export async function startServer() {
   }
   serverStarted = true;
 
-  const app = express();
-
-  // Basic middleware with rawBody capture for webhook HMAC verification
-  app.use(
-    express.json({
-      limit: '10mb',
-      verify: (req: any, _res, buf) => {
-        req.rawBody = buf.toString('utf8');
-      },
-    })
-  );
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-  // CORS headers for API
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    if (req.method === 'OPTIONS') {
-      res.sendStatus(200);
-      return;
-    }
-    next();
-  });
-
-  // Health check endpoint (always available before DB init so probes don't time out)
-  app.get('/api/health', (req, res) => {
-    res.json({
-      status: 'ok',
-      service: 'PichFlow Payment Core',
-      port: PORT,
-      env: process.env.NODE_ENV || 'development',
-      timestamp: new Date().toISOString(),
-    });
-  });
+  const app = createApiApp();
 
   // Initialize database schema and initial data
   try {
@@ -69,15 +35,6 @@ export async function startServer() {
   } catch (err) {
     console.error('[DB] Database startup error:', err);
   }
-
-  // Mount API routes
-  app.use('/api', apiRouter);
-
-  // Direct alias for SasPay dashboard webhook URL (e.g. https://domain.com/webhooks/saspay)
-  app.post('/webhooks/saspay', (req, res, next) => {
-    req.url = '/webhooks/saspay';
-    apiRouter(req, res, next);
-  });
 
   if (!isProd) {
     // Mount Vite dev middleware in development
