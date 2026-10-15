@@ -1,13 +1,14 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "PichFlow",
-  "logo": "/img/log.png",
-  "favicon": "/img/log.png",
-  "colors": {
-    "primary": "#5E30E8",
-    "light": "#7C4DFF",
-    "dark": "#4520B0"
-  },
+"name": "PichFlow",
+"theme": "mint",
+"logo": "/img/log.png",
+"favicon": "/img/log.png",
+"colors": {
+"primary": "#5E30E8",
+"light": "#7C4DFF",
+"dark": "#4520B0"
+},
   "topbarLinks": [
     {
       "name": "Dashboard",
