@@ -1,14 +1,14 @@
 {
-  "$schema": "https://mintlify.com/schema.json",
-"name": "PichFlow",
-"theme": "mint",
-"logo": "/img/log.png",
-"favicon": "/img/log.png",
-"colors": {
-"primary": "#5E30E8",
-"light": "#7C4DFF",
-"dark": "#4520B0"
-},
+  "$schema": "https://mintlify.com/docs.json",
+  "name": "PichFlow",
+  "theme": "mint",
+  "logo": "/img/log.png",
+  "favicon": "/img/log.png",
+  "colors": {
+    "primary": "#5E30E8",
+    "light": "#7C4DFF",
+    "dark": "#4520B0"
+  },
   "topbarLinks": [
     {
       "name": "Dashboard",
@@ -33,51 +33,53 @@
       "mode": "hide"
     }
   },
-  "navigation": [
-    {
-      "group": "Démarrer",
-      "pages": [
-        "index",
-        "create-account",
-        "quickstart",
-        "authentication",
-        "concepts"
-      ]
-    },
-    {
-      "group": "Paiements",
-      "pages": [
-        "payments-overview",
-        "hosted-checkout",
-        "payment-links",
-        "softpay-otp",
-        "payment-verification"
-      ]
-    },
-    {
-      "group": "Opérations",
-      "pages": [
-        "customers-transactions",
-        "payouts",
-        "wallets",
-        "countries-networks"
-      ]
-    },
-    {
-      "group": "Sécurité et intégration",
-      "pages": [
-        "webhooks",
-        "errors",
-        "code-samples"
-      ]
-    },
-    {
-      "group": "Référence",
-      "pages": [
-        "api-reference",
-        "real-payloads",
-        "faq"
-      ]
-    }
-  ]
+  "navigation": {
+    "groups": [
+      {
+        "group": "Démarrer",
+        "pages": [
+          "index",
+          "create-account",
+          "quickstart",
+          "authentication",
+          "concepts"
+        ]
+      },
+      {
+        "group": "Paiements",
+        "pages": [
+          "payments-overview",
+          "hosted-checkout",
+          "payment-links",
+          "softpay-otp",
+          "payment-verification"
+        ]
+      },
+      {
+        "group": "Opérations",
+        "pages": [
+          "customers-transactions",
+          "payouts",
+          "wallets",
+          "countries-networks"
+        ]
+      },
+      {
+        "group": "Sécurité et intégration",
+        "pages": [
+          "webhooks",
+          "errors",
+          "code-samples"
+        ]
+      },
+      {
+        "group": "Référence",
+        "pages": [
+          "api-reference",
+          "real-payloads",
+          "faq"
+        ]
+      }
+    ]
+  }
 }
