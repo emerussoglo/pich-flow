@@ -23,7 +23,7 @@ export const SocialProof: React.FC = () => {
       name: 'Celtiis Cash',
       category: 'Mobile Money',
       logoUrl: 'https://celtiis.bj/_next/image?url=%2Fceltiis-logo-rounded.svg&w=64&q=75',
-    },
+    }, 
     {
       name: 'Orange Money',
       category: 'Mobile Money',
@@ -40,9 +40,9 @@ export const SocialProof: React.FC = () => {
       logoUrl: 'https://play-lh.googleusercontent.com/COFlFnBiED3WHi-J8CRd6ehKOzBjvgKGySJasSaOm1OrMZbsn0NVzk3uL4PpzGo7mF91EBaOvbsqRL9ImD_-7A=w240-h480-rw',
     },
     {
-      name: 'Orange Money',
+      name: 'Smartcash PSB',
       category: 'Mobile Money',
-      logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/1/19/Logo_Orange_Money.svg',
+      logoUrl: 'https://images.seeklogo.com/logo-png/50/1/smartcash-psb-logo-png_seeklogo-509081.png',
     },
     {
       name: 'Airtel Money',
