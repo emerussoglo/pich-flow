@@ -34,6 +34,8 @@ export const AuthPages: React.FC<AuthPageProps> = ({ onNavigate, initialView = '
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
   const [isResending, setIsResending] = useState(false);
   const [verificationError, setVerificationError] = useState('');
 
@@ -131,24 +133,34 @@ export const AuthPages: React.FC<AuthPageProps> = ({ onNavigate, initialView = '
     }
   };
 
-  const handleForgotSubmit = (e: React.FormEvent) => {
+  const handleForgotSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      showToast('Un code de réinitialisation a été envoyé à votre adresse email.', 'info');
+    try {
+      const result = await apiClient.auth.forgotPassword(email);
+      setResetCode('');
+      setResetPassword('');
+      showToast(result.message, 'info');
       setView('reset-password');
-    }, 800);
+    } catch (err: any) {
+      showToast(err.message || 'Impossible de demander la réinitialisation du mot de passe.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleResetSubmit = (e: React.FormEvent) => {
+  const handleResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      showToast('Votre mot de passe a été réinitialisé ! Vous pouvez vous connecter.', 'success');
+    try {
+      const result = await apiClient.auth.resetPassword(email, resetCode, resetPassword);
+      showToast(result.message, 'success');
       setView('login');
-    }, 800);
+    } catch (err: any) {
+      showToast(err.message || 'Impossible de réinitialiser le mot de passe.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -718,6 +730,22 @@ export const AuthPages: React.FC<AuthPageProps> = ({ onNavigate, initialView = '
           <form onSubmit={handleResetSubmit}>
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>
+                Code reçu par e-mail
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                style={{ width: '100%', height: '2.75rem', borderRadius: '0.5rem', border: '1px solid #CBD5E1', fontSize: '0.9375rem', padding: '0 0.875rem' }}
+                placeholder="Code à 6 chiffres"
+                value={resetCode}
+                onChange={(e) => setResetCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+              />
+            </div>
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: '#334155' }}>
                 Nouveau mot de passe
               </label>
               <div style={{ position: 'relative' }}>
@@ -728,6 +756,9 @@ export const AuthPages: React.FC<AuthPageProps> = ({ onNavigate, initialView = '
                   type={showPassword ? 'text' : 'password'}
                   style={{ width: '100%', paddingLeft: '2.5rem', paddingRight: '2.25rem', height: '2.75rem', borderRadius: '0.5rem', border: '1px solid #CBD5E1', fontSize: '0.9375rem' }}
                   placeholder="Nouveau mot de passe"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  minLength={8}
                   required
                 />
                 <button

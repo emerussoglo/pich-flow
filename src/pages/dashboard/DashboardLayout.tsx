@@ -8,6 +8,7 @@ import {
 } from '../../components/dashboard/Modals';
 import { Application, EnvironmentMode, PaymentLink, Withdrawal } from '../../types';
 import { useRouter } from '../../lib/router';
+import { apiClient } from '../../lib/api';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -75,12 +76,18 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     navigate(`/dashboard/${tab}`);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     try {
-      localStorage.removeItem('pf_auth_token');
-      localStorage.removeItem('pf_active_app_id');
-    } catch {}
-    navigate('/login');
+      await apiClient.auth.logout();
+    } catch (error) {
+      console.warn('[Auth] Server-side logout failed:', error);
+      apiClient.clearToken();
+    } finally {
+      try {
+        localStorage.removeItem('pf_active_app_id');
+      } catch {}
+      navigate('/login');
+    }
   };
 
   return (

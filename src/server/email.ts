@@ -58,8 +58,15 @@ export function formatLoginDate(date: Date = new Date()): { utcString: string; l
 
 async function getTransporter(): Promise<{ transport: Transporter; isFallback: boolean }> {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '465', 10);
-  const secure = port === 465;
+  const port = Number(process.env.SMTP_PORT || '465');
+  const secureSetting = process.env.SMTP_SECURE?.trim().toLowerCase();
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('Configuration SMTP invalide : SMTP_PORT doit être un port TCP valide.');
+  }
+  if (secureSetting && secureSetting !== 'true' && secureSetting !== 'false') {
+    throw new Error('Configuration SMTP invalide : SMTP_SECURE doit valoir true ou false.');
+  }
+  const secure = secureSetting ? secureSetting === 'true' : port === 465;
   const user = (process.env.SMTP_USER || '').trim();
   const pass = (process.env.SMTP_PASSWORD || '').replace(/\s+/g, '');
 
@@ -91,9 +98,6 @@ async function getTransporter(): Promise<{ transport: Transporter; isFallback: b
       connectionTimeout: 10000,
       greetingTimeout: 10000,
       socketTimeout: 15000,
-      tls: {
-        rejectUnauthorized: false,
-      },
     });
   }
 

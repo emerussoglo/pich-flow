@@ -173,6 +173,20 @@ export const apiClient = {
       });
     },
 
+    async forgotPassword(email: string) {
+      return apiClient.request<{ success: boolean; message: string }>('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+    },
+
+    async resetPassword(email: string, code: string, newPassword: string) {
+      return apiClient.request<{ success: boolean; message: string }>('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ email, code, newPassword }),
+      });
+    },
+
     async testLoginAlert() {
       return apiClient.request<{ success: boolean; message: string }>('/auth/test-login-alert', {
         method: 'POST',
@@ -183,8 +197,14 @@ export const apiClient = {
       return apiClient.request<{ success: boolean; user: any }>('/auth/me');
     },
 
-    logout() {
-      apiClient.clearToken();
+    async logout() {
+      try {
+        return await apiClient.request<{ success: boolean; message: string }>('/auth/logout', {
+          method: 'POST',
+        });
+      } finally {
+        apiClient.clearToken();
+      }
     },
 
     async changePassword(currentPassword: string, newPassword: string) {
