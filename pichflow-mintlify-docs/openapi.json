@@ -377,19 +377,6 @@
         }
       }
     },
-    "/api/v1/transactions/export": {
-      "get": {
-        "tags": ["Transactions"],
-        "operationId": "exportTransactions",
-        "summary": "Demander un export au fournisseur",
-        "description": "Le handler local renvoie le résultat du service sous forme JSON; il ne garantit pas un téléchargement CSV.",
-        "responses": {
-          "200": { "$ref": "#/components/responses/GenericJson" },
-          "401": { "$ref": "#/components/responses/Error" },
-          "500": { "$ref": "#/components/responses/Error" }
-        }
-      }
-    },
     "/api/v1/transactions/{id}/invoice": {
       "get": {
         "tags": ["Transactions"],

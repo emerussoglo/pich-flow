@@ -23,56 +23,59 @@
     }
   },
   "navigation": {
-    "groups": [
+    "tabs": [
       {
-        "group": "Découvrir",
-        "pages": [
-          "index",
-          "create-account",
-          "quickstart",
-          "authentication",
-          "concepts"
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Découvrir",
+            "pages": [
+              "index",
+              "create-account",
+              "quickstart",
+              "authentication",
+              "concepts"
+            ]
+          },
+          {
+            "group": "Paiements",
+            "pages": [
+              "payments-overview",
+              "hosted-checkout",
+              "payment-links",
+              "softpay-otp",
+              "payment-verification"
+            ]
+          },
+          {
+            "group": "Opérations",
+            "pages": [
+              "customers-transactions",
+              "wallets",
+              "payouts",
+              "countries-networks"
+            ]
+          },
+          {
+            "group": "Intégration",
+            "pages": [
+              "webhooks",
+              "errors",
+              "code-samples",
+              "real-payloads"
+            ]
+          },
+          {
+            "group": "Aide",
+            "pages": [
+              "faq"
+            ]
+          }
         ]
       },
       {
-        "group": "Paiements",
-        "pages": [
-          "payments-overview",
-          "hosted-checkout",
-          "payment-links",
-          "softpay-otp",
-          "payment-verification"
-        ]
-      },
-      {
-        "group": "Opérations",
-        "pages": [
-          "customers-transactions",
-          "wallets",
-          "payouts",
-          "countries-networks"
-        ]
-      },
-      {
-        "group": "Intégration",
-        "pages": [
-          "webhooks",
-          "errors",
-          "code-samples",
-          "real-payloads"
-        ]
-      },
-      {
-        "group": "Référence",
-        "pages": [
-          "api-reference"
-        ]
-      },
-      {
-        "group": "Aide",
-        "pages": [
-          "faq"
-        ]
+        "tab": "Référence API",
+        "openapi": "openapi.json"
       }
     ]
   }

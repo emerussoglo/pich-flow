@@ -19,11 +19,10 @@ La réponse comprend `success`, `environment` et `transactions`. Les éléments 
 | Opération | Route |
 |---|---|
 | Lire le détail | `GET /api/v1/transactions/:id` |
-| Export demandé au fournisseur | `GET /api/v1/transactions/export` |
 | Facture demandée au fournisseur | `GET /api/v1/transactions/:id/invoice` |
 | Lire par référence interne | `GET /api/v1/payments/status/:reference` |
 
-Les handlers d'export et de facture renvoient une réponse JSON du service SasPay (et non un fichier CSV/PDF garanti par le code local).
+Le code contient également un handler `GET /api/v1/transactions/export`, mais il est enregistré après `GET /api/v1/transactions/:id`. Avec le routage Express actuel, la route dynamique intercepte `export`; l'opération d'export n'est donc pas exposée correctement et n'est pas présentée comme disponible ici. Le handler de facture renvoie une réponse JSON du service SasPay, pas un fichier PDF garanti par le code local.
 
 ## Clients du tableau de bord
 
