@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { ToastProvider } from './components/ui/ToastContext';
 import { RouterProvider, useRouter } from './lib/router';
@@ -21,8 +23,8 @@ import { FaqAccordion, FinalCta } from './components/landing/FaqAccordion';
 import { AuthPages } from './components/auth/AuthPages';
 
 // Legal & Privacy Pages
-import { LegalMentionsPage } from './pages/public/LegalMentionsPage';
-import { PrivacyPolicyPage } from './pages/public/PrivacyPolicyPage';
+import { LegalMentionsPage } from './legacy-pages/public/LegalMentionsPage';
+import { PrivacyPolicyPage } from './legacy-pages/public/PrivacyPolicyPage';
 
 // Documentation Page
 import { DocumentationView } from './components/docs/DocumentationView';
@@ -34,21 +36,21 @@ import { HostedCheckoutPage } from './components/checkout/HostedCheckoutPage';
 import { BackToTop } from './components/ui/BackToTop';
 
 // Modular Dashboard Layout & Pages
-import { DashboardLayout } from './pages/dashboard/DashboardLayout';
-import { OverviewPage } from './pages/dashboard/OverviewPage';
-import { TransactionsPage } from './pages/dashboard/TransactionsPage';
-import { WalletsPage } from './pages/dashboard/WalletsPage';
-import { PaymentLinksPage } from './pages/dashboard/PaymentLinksPage';
-import { CustomersPage } from './pages/dashboard/CustomersPage';
-import { WithdrawalsPage } from './pages/dashboard/WithdrawalsPage';
-import { DevelopersPage } from './pages/dashboard/DevelopersPage';
-import { SettingsPage } from './pages/dashboard/SettingsPage';
-import { CheckoutSessionsPage } from './pages/dashboard/CheckoutSessionsPage';
-import { StatisticsPage } from './pages/dashboard/StatisticsPage';
-import { WebhooksPage } from './pages/dashboard/WebhooksPage';
-import { WebhookLogsPage } from './pages/dashboard/WebhookLogsPage';
-import { PricingDashboardPage } from './pages/dashboard/PricingDashboardPage';
-import { SupportDashboardPage } from './pages/dashboard/SupportDashboardPage';
+import { DashboardLayout } from './legacy-pages/dashboard/DashboardLayout';
+import { OverviewPage } from './legacy-pages/dashboard/OverviewPage';
+import { TransactionsPage } from './legacy-pages/dashboard/TransactionsPage';
+import { WalletsPage } from './legacy-pages/dashboard/WalletsPage';
+import { PaymentLinksPage } from './legacy-pages/dashboard/PaymentLinksPage';
+import { CustomersPage } from './legacy-pages/dashboard/CustomersPage';
+import { WithdrawalsPage } from './legacy-pages/dashboard/WithdrawalsPage';
+import { DevelopersPage } from './legacy-pages/dashboard/DevelopersPage';
+import { SettingsPage } from './legacy-pages/dashboard/SettingsPage';
+import { CheckoutSessionsPage } from './legacy-pages/dashboard/CheckoutSessionsPage';
+import { StatisticsPage } from './legacy-pages/dashboard/StatisticsPage';
+import { WebhooksPage } from './legacy-pages/dashboard/WebhooksPage';
+import { WebhookLogsPage } from './legacy-pages/dashboard/WebhookLogsPage';
+import { PricingDashboardPage } from './legacy-pages/dashboard/PricingDashboardPage';
+import { SupportDashboardPage } from './legacy-pages/dashboard/SupportDashboardPage';
 import { AppsSelectionScreen } from './components/dashboard/AppsSelectionScreen';
 import { NewAppModal } from './components/dashboard/Modals';
 

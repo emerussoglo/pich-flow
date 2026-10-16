@@ -63,8 +63,8 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
     setIsLoading(true);
     try {
       const [wList, mList] = await Promise.all([
-        apiClient.withdrawals.getAll().catch(() => []),
-        apiClient.payoutMethods.getAll().catch(() => []),
+        apiClient.withdrawals.getAll(),
+        apiClient.payoutMethods.getAll(),
       ]);
       setWithdrawals(wList);
       setPayoutMethods(mList);

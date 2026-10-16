@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import type { Row } from '@libsql/client';
 import crypto from 'crypto';
 import { getDb } from './db';
 import {
@@ -3028,7 +3029,7 @@ apiRouter.post('/webhooks/saspay', async (req: Request, res: Response) => {
     }
 
     if (event === 'transaction.success') {
-      let session = null;
+      let session: Row | null = null;
       if (externalId) {
         const sRes = await db.execute({
           sql: 'SELECT * FROM checkout_sessions WHERE saspay_session_id = ? LIMIT 1',

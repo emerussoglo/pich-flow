@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, ReactNode, useTransition } from 'react';
+import { usePathname, useRouter as useNextRouter } from 'next/navigation';
 
 export interface RouterContextType {
   pathname: string;
@@ -39,96 +42,91 @@ export interface RouterContextType {
 
 const RouterContext = createContext<RouterContextType | undefined>(undefined);
 
-// Normalizes path from hash fallback, browser pathname, or persistent storage
-const getInitialPath = (): string => {
-  if (typeof window === 'undefined') return '/';
+export const RouterProvider: React.FC<{ children: ReactNode; initialPathname?: string }> = ({
+  children,
+  initialPathname,
+}) => {
+  const nextRouter = useNextRouter();
+  const nextPathname = usePathname();
+  const [, startTransition] = useTransition();
 
-  // 1. Check if there is an explicit hash route like "#/dashboard/transactions"
-  if (window.location.hash && window.location.hash.startsWith('#/')) {
-    const fromHash = window.location.hash.slice(1);
-    if (fromHash) return fromHash;
-  }
-
-  // 2. Check standard browser pathname
-  const path = window.location.pathname;
-  if (path && path !== '' && path !== '/') {
-    return path;
-  }
-
-  // 3. Fallback to localStorage so that hitting F5 in an iframe never resets to landing
-  try {
-    const saved = localStorage.getItem('pichflow_current_path');
-    if (saved && saved !== '/' && saved !== '/landing') {
-      return saved;
+  const [currentPath, setCurrentPath] = useState<string>(() => {
+    if (initialPathname) return initialPathname;
+    if (nextPathname) return nextPathname;
+    if (typeof window !== 'undefined') {
+      if (window.location.hash && window.location.hash.startsWith('#/')) {
+        return window.location.hash.slice(1);
+      }
+      return window.location.pathname || '/';
     }
-  } catch (e) {
-    // localStorage might be unavailable in some sandboxes
-  }
+    return '/';
+  });
 
-  return '/';
-};
-
-export const RouterProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [pathname, setPathname] = useState<string>(getInitialPath);
+  // Keep synced with Next.js pathname when it changes
+  useEffect(() => {
+    if (nextPathname && nextPathname !== currentPath) {
+      setCurrentPath(nextPathname);
+    }
+  }, [nextPathname]);
 
   useEffect(() => {
-    // Sync when user clicks browser Back / Forward or hash changes
-    const handleUrlChange = () => {
-      setPathname(getInitialPath());
+    const handlePopState = () => {
+      if (typeof window !== 'undefined') {
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#/')) {
+          setCurrentPath(hash.slice(1));
+        } else {
+          setCurrentPath(window.location.pathname || '/');
+        }
+      }
     };
 
-    window.addEventListener('popstate', handleUrlChange);
-    window.addEventListener('hashchange', handleUrlChange);
-
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handlePopState);
     return () => {
-      window.removeEventListener('popstate', handleUrlChange);
-      window.removeEventListener('hashchange', handleUrlChange);
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handlePopState);
     };
   }, []);
 
   const navigate = (to: string, options?: { replace?: boolean; scrollToTop?: boolean }) => {
     let cleanPath = to.startsWith('/') ? to : `/${to}`;
 
-    // Normalize root
     if (cleanPath === '/landing' || cleanPath === '/home') {
       cleanPath = '/';
     }
 
-    // Persist to localStorage so reloads are guaranteed to restore position
     try {
       localStorage.setItem('pichflow_current_path', cleanPath);
-    } catch (e) {
-      // ignore
-    }
+    } catch {}
 
-    // Update both history and hash to ensure iframe URL bar & reload capability works
-    try {
-      if (options?.replace) {
-        window.history.replaceState(null, '', cleanPath);
-      } else {
-        window.history.pushState(null, '', cleanPath);
+    setCurrentPath(cleanPath);
+
+    startTransition(() => {
+      try {
+        if (options?.replace) {
+          nextRouter.replace(cleanPath);
+        } else {
+          nextRouter.push(cleanPath);
+        }
+      } catch {
+        if (typeof window !== 'undefined') {
+          if (options?.replace) {
+            window.history.replaceState(null, '', cleanPath);
+          } else {
+            window.history.pushState(null, '', cleanPath);
+          }
+        }
       }
-    } catch (e) {
-      // ignore security restrictions if in cross-origin sandbox
-    }
+    });
 
-    // Also update hash so it's directly visible and bookmarkable even inside AI Studio preview
-    if (cleanPath !== '/') {
-      window.location.hash = `#${cleanPath}`;
-    } else {
-      if (window.location.hash && window.location.hash.startsWith('#/')) {
-        window.history.replaceState(null, '', window.location.pathname);
-      }
-    }
-
-    setPathname(cleanPath);
-
-    if (options?.scrollToTop !== false) {
+    if (options?.scrollToTop !== false && typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   // Compute current major route
+  const pathname = currentPath || '/';
   let currentRoute: RouterContextType['currentRoute'] = 'landing';
   let dashboardTab: RouterContextType['dashboardTab'] = 'overview';
   let docsTab: RouterContextType['docsTab'] = 'quickstart';

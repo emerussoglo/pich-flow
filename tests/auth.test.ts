@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import { randomUUID } from 'node:crypto';
 import { after, before, test } from 'node:test';
 
-process.env.NODE_ENV = 'test';
+Reflect.set(process.env, 'NODE_ENV', 'test');
 process.env.TURSO_DATABASE_URL = 'file::memory:';
 process.env.TURSO_AUTH_TOKEN = '';
 process.env.SMTP_MOCK = 'true';
@@ -92,7 +92,7 @@ test('auth API validates requests, persists accounts and sessions, and tolerates
   });
 
   await t.test('creates a persistent session and allows login when the alert SMTP is unavailable', async () => {
-    process.env.NODE_ENV = 'production';
+    Reflect.set(process.env, 'NODE_ENV', 'production');
     process.env.SMTP_MOCK = 'false';
     process.env.SMTP_USER = '';
     process.env.SMTP_PASSWORD = '';
