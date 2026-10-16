@@ -3,14 +3,8 @@
   "info": {
     "title": "PichFlow API",
     "version": "1.0.0",
-    "description": "Spécification partielle générée à partir des handlers Express de ce dépôt. L'origine locale est indiquée; aucune origine de production n'est définie dans le code."
+    "description": "Spécification partielle générée à partir des handlers Express de ce dépôt. Les chemins incluent le préfixe /api; l'origine de production n'est pas définie dans le code."
   },
-  "servers": [
-    {
-      "url": "http://localhost:3000",
-      "description": "Serveur de développement local. Les routes PichFlow incluent leur préfixe /api."
-    }
-  ],
   "security": [
     {
       "BearerApiKey": []

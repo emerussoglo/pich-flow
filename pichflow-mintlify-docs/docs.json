@@ -13,7 +13,6 @@
   "api": {
     "openapi": "openapi.json",
     "mdx": {
-      "server": "http://localhost:3000",
       "auth": {
         "method": "bearer"
       }
