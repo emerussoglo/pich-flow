@@ -1,75 +1,42 @@
 ---
-title: "Retraits & Payouts"
-description: "Initialisation et vérification des décaissements vers Mobile Money et comptes bancaires."
+title: "Retraits et payouts"
+description: "Initialiser un décaissement via l'API marchande avec le contrat réellement lu par le handler."
 ---
 
-# Retraits & Transferts Sortants (Payouts)
+# Retraits et payouts
 
-Le module de Payout permet d'ordonner des virements automatiques depuis votre solde PichFlow vers les comptes Mobile Money de vos partenaires, fournisseurs ou utilisateurs.
+## Initialiser un payout
 
----
-
-## Prérequis de Sécurité SasPay Obligatoires
-
-> ⚠️ **Sécurité Critique : Liste Blanche IP (IP Whitelisting)**
-> Conformément à la politique de sécurité stricte de SasPay, tout appel à l'endpoint de Payout (`POST /v1/payouts/initialize`) initié par clé d'API exige que **l'adresse IP publique de votre serveur soit préalablement déclarée dans votre tableau de bord SasPay**.
-> 
-> Si votre IP n'est pas autorisée, SasPay renvoie immédiatement une erreur HTTP `403 Forbidden` (`ip_not_whitelisted`).
-
----
-
-## 1. Initialiser un Retrait (cURL)
-
-L'en-tête `Idempotency-Key` est **strictement obligatoire** pour prévenir tout risque de double virement lors des réessais réseau.
+`POST /api/v1/payouts/initialize` exige une clé dont le scope est `payout` ou `both`. Le corps attendu par le handler contient `amount`, `currency`, `country`, `method` et `recipient.msisdn`.
 
 ```bash
-curl -X POST https://api.pichflow.com/v1/payouts/initialize \
-  -H "Authorization: Bearer sk_live_votre_cle" \
+curl -X POST http://localhost:3000/api/v1/payouts/initialize \
+  -H "Authorization: Bearer $PICHFLOW_API_KEY" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: d4e5f6a7-8901-4b2c-aef0-123456789abc" \
   -d '{
     "amount": "50000.00",
     "currency": "XOF",
     "country": "BJ",
-    "network": "mtn_bj",
-    "recipient_name": "Cabinet Conseils SAS",
-    "recipient_phone": "+22997123456",
-    "description": "Règlement Facture F-2026-09"
+    "method": "mtn_bj",
+    "recipient": {
+      "msisdn": "+22997000000"
+    },
+    "description": "Payout de démonstration"
   }'
 ```
 
-### Réponse :
+`customer`, `description` et `fee_charge_mode` peuvent aussi être transmis. Le handler vérifie d'abord le solde local et renvoie `422` avec `insufficient_balance` lorsque le solde est insuffisant. L'en-tête `Idempotency-Key` est facultatif dans le code; une valeur est générée si elle manque.
 
-```json
-{
-  "success": true,
-  "data": {
-    "id": "payout_98124701bc",
-    "reference": "WDR-PF-120934",
-    "status": "pending",
-    "amount": "50000.00",
-    "fee": "500.00",
-    "net_amount": "49500.00",
-    "currency": "XOF",
-    "recipient_phone": "+22997123456"
-  }
-}
-```
+La réponse de succès inclut `success`, `environment` et `data` renvoyé par le fournisseur. Aucun schéma de payout complet n'est construit dans le handler.
 
----
-
-## 2. Vérifier le Statut d'un Retrait
+## Vérifier le payout
 
 ```bash
-curl -X GET https://api.pichflow.com/v1/payouts/payout_98124701bc/verify \
-  -H "Authorization: Bearer sk_live_votre_cle"
+curl http://localhost:3000/api/v1/payouts/payout_demo_001/verify \
+  -H "Authorization: Bearer $PICHFLOW_API_KEY"
 ```
 
-### Statuts des Retraits :
+Le résultat est transmis par SasPay sous `data` si réussi, sinon sous `error` et éventuellement `data`.
 
-| Statut | Description |
-| :--- | :--- |
-| `pending` | Demande en cours de traitement par le réseau télécom ou la compensation bancaire. |
-| `completed` | Fonds déposés avec succès sur le wallet ou compte bancaire du bénéficiaire. |
-| `failed` | Numéro bénéficiaire inactif, compte plafonné ou rejet opérateur. Le solde du marchand est automatiquement recrédité. |
-
+Le code traduit certaines erreurs fournisseur `403` en `ip_not_whitelisted`. Cela ne permet pas de conclure que tous les comptes nécessitent une IP déclarée; vérifiez le message concret de votre environnement. Les retraits du tableau de bord à `/api/withdrawals` sont une autre fonctionnalité, authentifiée par session.

@@ -1,40 +1,26 @@
 ---
-title: "Guide d'intégration des paiements"
-description: "Choisir le flux d'intégration adapté à votre cas d'usage : Checkout Hébergé ou Softpay Direct."
+title: "Vue d'ensemble des paiements"
+description: "Choisir entre Softpay, checkout hébergé et l'endpoint unifié."
 ---
 
-# Guide d'Intégration des Paiements
+# Vue d'ensemble des paiements
 
-PichFlow offre deux modes d'encaissement principaux pour s'adapter à l'architecture de votre application :
+Le serveur fournit trois voies d'initialisation côté API marchande :
 
-```mermaid
-graph TD
-    Start["Quel est votre besoin d'encaissement ?"] --> Decision{"Avez-vous une interface de formulaire personnalisée ?"}
-    Decision -->|Non, je veux une page prête à l'emploi| Hosted["Checkout Hébergé (/checkout-sessions)"]
-    Decision -->|Oui, je collecte le numéro sur mon site| Softpay["Softpay Direct (/payments/softpay)"]
-    Hosted --> Redirect["Redirection client vers checkout_url"]
-    Softpay --> USSD["Push USSD / OTP immédiat sur mobile"]
-```
+| Opération | Route locale | Usage |
+|---|---|---|
+| Softpay | `POST /api/v1/payments/softpay` | Passe `amount`, `network` et l'objet `customer` au fournisseur. |
+| Checkout hébergé | `POST /api/v1/checkout-sessions` | Crée une session et transmet au fournisseur les informations du client. |
+| Création unifiée | `POST /api/v1/payments/create` | Choisit Softpay si `network` et `customerPhone` sont présents; sinon checkout hébergé. |
 
----
+Toutes ces routes exigent `Authorization: Bearer <clé_API>`. La base locale est `http://localhost:3000`; l'hôte public et son préfixe n'ont pas été confirmés dans la configuration du dépôt.
 
-## Comparatif des Solutions
+## Quel flux choisir ?
 
-| Critère | Checkout Hébergé | Softpay Direct |
-| :--- | :--- | :--- |
-| **Endpoint API** | `POST /v1/checkout-sessions` | `POST /v1/payments/softpay` |
-| **Effort de développement** | Minimal (quelques lignes de code) | Moyen (formulaire personnalisé requis) |
-| **Expérience utilisateur** | Redirection vers la page de paiement sécurisée PichFlow / SasPay | L'utilisateur reste dans votre application |
-| **Moyens supportés** | Tous les moyens disponibles du pays sélectionné | Mobile Money direct, Wave, Cartes bancaires |
-| **Idempotency-Key** | Non requis selon spécification | **Obligatoire** (`Idempotency-Key: <UUID>`) |
-| **Cas d'usage recommandés** | E-commerce standard, abonnements SaaS, factures ponctuelles | Applications mobiles natives, bornes de commande, tunnels de vente sur-mesure |
+- Utilisez **Softpay** si votre serveur dispose déjà du réseau, du téléphone et des informations client nécessaires.
+- Utilisez **Checkout hébergé** si vous souhaitez recevoir une URL `checkout_url` à présenter au client.
+- Utilisez **payments/create** si vous souhaitez déléguer le choix au serveur selon la présence de `network` et `customerPhone`.
 
----
+Les réponses de ces appels encapsulent généralement le résultat fournisseur sous `data`; le schéma exact de cette donnée dépend de SasPay. Ne traitez pas une session créée comme une preuve de paiement réussi. Vérifiez le paiement ou attendez un événement confirmé.
 
-## Règles Fondamentales de Gestion des Montants
-
-1. **Formatage décimal chaîne** : Selon la spécification officielle SasPay, tous les montants transmis dans les payloads doivent être des chaînes avec exactement deux décimales (ex: `"15000.00"`, `"250.50"`). Les flottants JavaScript bruts sont strictement déconseillés afin d'éviter les erreurs d'arrondi.
-2. **Gestion des frais (`fee_charge_mode`)** :
-   - `ADD_ON` : Les frais de passerelle sont ajoutés en supplément au total à payer par le client final.
-   - `DEDUCTED` : Les frais de passerelle sont absorbés par le marchand et déduits du montant net perçu.
-
+Voir [Softpay et OTP](./softpay-otp), [Checkout hébergé](./hosted-checkout) et [Vérification](./payment-verification).

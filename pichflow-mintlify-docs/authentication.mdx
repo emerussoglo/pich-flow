@@ -1,61 +1,40 @@
 ---
-title: "Authentification & Clés API"
-description: "Comprendre les clés Sandbox et Live, la gestion des en-têtes et les meilleures pratiques de sécurité."
+title: "Authentification et clés API"
+description: "Authentifier les requêtes marchandes avec une clé Bearer Sandbox ou Live."
 ---
 
-# Authentification & Clés API
+# Authentification et clés API
 
-Toutes les requêtes vers l'API PichFlow doivent être authentifiées via une clé d'API transmise dans l'en-tête standard HTTP `Authorization`.
+Les routes `/api/v1/...` de l'API marchande passent par le middleware `requireApiKey`. Celui-ci attend un en-tête HTTP Bearer :
 
 ```http
-Authorization: Bearer <PICHFLOW_API_KEY>
-```
-ou pour la production :
-```http
-Authorization: Bearer <PICHFLOW_API_KEY>
+Authorization: Bearer <votre_clé_api>
 ```
 
----
+Ne placez pas une clé secrète dans du code livré au navigateur, une application mobile non sécurisée, un dépôt Git ou une variable publique.
 
-## Modèle de Clés API Duales
+## Environnements
 
-Dans PichFlow, vous n'avez plus à choisir entre Sandbox et Live lors de la création d'une clé d'application. 
+La route de création de clés du tableau de bord génère deux secrets :
 
-Lorsque vous générez une nouvelle clé dans le Dashboard :
-1. **Deux clés distinctes** sont générées cryptographiquement à partir d'entropie aléatoire sécurisée :
-   - Une clé **Sandbox** au préfixe `sk_test_`.
-   - Une clé **Live** au préfixe `sk_live_`.
-2. **Stockage** : Le code d'authentification accepte une clé stockée dans `secret_key` ou son hash SHA-256 dans `secret_hash`. La documentation source ne permet donc pas d'affirmer que seul le hash est conservé.
-3. **Affichage unique** : Les secrets complets vous sont présentés une seule et unique fois dans la modale de création. Ensuite, ils sont masqués (`sk_test_...abc12`).
+| Environnement | Préfixe | Utilisation |
+|---|---|---|
+| Sandbox | `sk_test_` | Requêtes traitées dans l'environnement sandbox associé à la clé. |
+| Live | `sk_live_` | Requêtes traitées dans l'environnement live associé à la clé. |
 
-```mermaid
-graph TD
-    User["Marchand clique sur 'Générer une clé'"] --> Gen["Génération Aléatoire Sécurisée"]
-    Gen --> KeyTest["Clé Sandbox : sk_test_..."]
-    Gen --> KeyLive["Clé Live : sk_live_..."]
-    KeyTest --> HashTest["Hachage SHA-256"]
-    KeyLive --> HashLive["Hachage SHA-256"]
-    HashTest --> DB[(Stockage des identifiants)]
-    HashLive --> DB
-    KeyTest --> Modal["Modale d'affichage unique"]
-    KeyLive --> Modal
+Le middleware associe l'environnement à la clé, et les réponses de plusieurs routes le renvoient dans `environment`. Les garanties de simulation, les fonds impliqués et les règles d'activation ne sont pas spécifiés par le serveur; confirmez-les avant un appel Live.
+
+## Générer et révoquer
+
+Dans le tableau de bord, la route `POST /api/developer/keys` crée une paire et renvoie les clés complètes dans sa réponse de création. La route `DELETE /api/developer/keys/:id` révoque une clé. Ces deux routes utilisent la session du compte et ne font pas partie de la référence publique par clé API.
+
+## En-têtes facultatifs
+
+Pour les opérations financières, fournissez une valeur unique et persistante dans `Idempotency-Key`. Le code génère une valeur si elle est omise sur les routes Softpay, retry, payout et transfert; cela évite cependant à votre client de contrôler l'identité du retry. La clé n'est pas exigée par le middleware d'authentification.
+
+## Exemple
+
+```bash
+curl http://localhost:3000/api/v1/transactions \
+  -H "Authorization: Bearer $PICHFLOW_API_KEY"
 ```
-
----
-
-## Environnements & Étanchéité
-
-| Environnement | Préfixe Clé | Comportement & Passerelle SasPay |
-| :--- | :--- | :--- |
-| **Sandbox (Test)** | `sk_test_...` | Les paiements n'entraînent **aucun débit financier réel**. Utilisé pour le développement et la validation de vos webhooks. |
-| **Live (Production)** | `sk_live_...` | Les paiements déclenchent des **débits et crédits réels** sur les comptes Mobile Money et bancaires. |
-
-> Le serveur associe chaque clé à un environnement. Le domaine public propre à Sandbox et les garanties de simulation ne sont pas établis par les fichiers audités : vérifiez ces paramètres dans le tableau de bord avant tout test financier.
-
----
-
-## Bonnes Pratiques de Sécurité
-
-1. **Ne jamais exposer les clés secrètes côté client** : N'utilisez jamais vos clés `sk_test_` ou `sk_live_` dans une application React, Vue, mobile iOS/Android ou dans une variable publique `NEXT_PUBLIC_*`.
-2. **Rotation des clés** : En cas de fuite de secret suspectée, rendez-vous immédiatement dans le Dashboard pour **révoquer** la clé concernée et en générer une nouvelle.
-3. **Idempotence systématique** : Spécifiez toujours l'en-tête `Idempotency-Key` sur les appels de création de paiement ou de virement pour éviter tout double traitement lors des réessais réseau.

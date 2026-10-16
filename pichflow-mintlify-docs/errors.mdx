@@ -1,61 +1,38 @@
 ---
-title: "Gestion des Erreurs & Codes HTTP"
-description: "Tableau de référence des erreurs HTTP, codes d'erreurs SasPay et gestion de l'idempotence."
+title: "Erreurs et réponses HTTP"
+description: "Codes explicitement renvoyés par les handlers PichFlow et erreurs transmises par SasPay."
 ---
 
-# Gestion des Erreurs & Codes HTTP
+# Erreurs et réponses HTTP
 
-PichFlow et SasPay utilisent des codes de statut HTTP conventionnels pour indiquer la réussite ou l'échec des requêtes API.
+Les opérations renvoient JSON pour leurs erreurs contrôlées. Plusieurs handlers relaient le statut et le message du fournisseur; les codes possibles peuvent donc varier selon la route et l'environnement.
 
----
+| Code | Cas confirmé dans le code |
+|---|---|
+| `400` | Corps requis manquant, montant invalide ou OTP absent sur les opérations concernées. |
+| `401` | Clé API absente/invalide; signature de webhook SasPay invalide. |
+| `403` | Scope de clé insuffisant pour le payout; certaines erreurs fournisseur `403` sont mappées à `ip_not_whitelisted`. |
+| `404` | Référence de paiement ou transaction interne introuvable. |
+| `422` | Solde insuffisant pour le payout via API marchande. |
+| `500` | Erreur interne attrapée ou erreur des routes de référence. |
 
-## 1. Codes de Statut HTTP
+Les erreurs JSON utilisent généralement `success: false` et `error`; certaines incluent aussi `code`, `data` ou `environment`. Le code ne définit pas une enveloppe d'erreur uniforme pour toutes les routes.
 
-Les codes ci-dessous sont des références générales mentionnées dans les pages existantes ; la spécification OpenAPI ne définit pas les réponses de toutes les routes. Consultez la référence de chaque opération avant de dépendre d'un code précis.
+## Exemple de gestion côté client
 
-| Code HTTP | Définition | Contexte fréquent |
-| :--- | :--- | :--- |
-| `200 OK` | Succès | Requête exécutée normalement. |
-| `201 Created` | Ressource créée | Le code de réponse exact dépend de l'opération. |
-| `400 Bad Request` | Requête invalide | Paramètre manquant, montant négatif, format de numéro invalide. |
-| `401 Unauthorized` | Non authentifié | Clé API absente ou préfixe non reconnu. |
-| `403 Forbidden` | Accès refusé | Clé révoquée, scope insuffisant ou **IP non déclarée dans la whitelist SasPay** (payouts). |
-| `404 Not Found` | Ressource introuvable | Transaction, session ou lien de paiement inexistant. |
-| `409 Conflict` | Conflit / Doublon | Réutilisation d'une clé d'idempotence avec un payload différent. |
-| `410 Gone` | Ressource expirée | Session de paiement arrivée à échéance. |
-| `422 Unprocessable Entity` | Erreur métier opérateur | Numéro de téléphone non éligible à la réception de Mobile Money. |
-| `429 Too Many Requests` | Limite de débit atteinte | Trop d'appels simultanés sur un court intervalle (ralentissez le polling). |
-| `500 Internal Server Error` | Erreur interne | Erreur inattendue côté serveur ou indisponibilité temporaire. |
+```ts
+const response = await fetch(url, options);
+const contentType = response.headers.get("content-type") ?? "";
+const body = await response.text();
 
----
+if (!contentType.includes("application/json")) {
+  throw new Error(`Réponse non JSON (HTTP ${response.status})`);
+}
 
-## 2. Codes d'Erreurs Métier SasPay Fréquents
-
-| Code Erreur | Message Typique | Résolution Recommandée |
-| :--- | :--- | :--- |
-| `ip_not_whitelisted` | "Client IP is not whitelisted for payout" | Déclarez l'adresse IP publique de votre serveur dans le Dashboard SasPay. |
-| `invalid_amount` | "Amount must be a decimal string formatted as 0.00" | Utilisez une chaîne avec 2 décimales (ex: `"5000.00"`). |
-| `insufficient_balance` | "Wallet balance insufficient" | Approvisionnez votre compte ou attendez l'encaissement de paiements. |
-| `network_unavailable` | "Provider network temporary maintenance" | Affichez un message invitant le client à choisir un autre réseau. |
-| `otp_required` | "Customer OTP confirmation required" | Demandez au client le code OTP reçu par SMS et soumettez-le via `/confirm-otp`. |
-
----
-
-## 3. Règle d'Or de l'Idempotence (`Idempotency-Key`)
-
-L'idempotence garantit qu'une requête exécutée plusieurs fois avec la même clé produit exactement le même effet qu'un appel unique.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant App as Votre Application
-    participant PF as PichFlow / SasPay
-    App->>PF: POST /payments/softpay (Idempotency-Key: uuid-1)
-    PF-->>App: Perte de connexion réseau (Timeout)
-    Note over App: Pas de panique ! L'App réessaie avec la MÊME clé.
-    App->>PF: POST /payments/softpay (Idempotency-Key: uuid-1)
-    PF-->>App: 200 OK (Même transaction renvoyée, AUCUN double débit)
+const result = JSON.parse(body);
+if (!response.ok || result.success === false) {
+  throw new Error(result.error ?? `Échec HTTP ${response.status}`);
+}
 ```
 
-- **Même intention** : Réutilisez toujours la même `Idempotency-Key` lors d'un réessai suite à une coupure réseau.
-- **Nouvelle intention** : Générez toujours une nouvelle `Idempotency-Key` (UUID v4) pour une nouvelle commande ou un nouveau panier.
+Ne traitez pas un timeout comme une preuve d'échec financier. Pour la même opération, réutilisez la même `Idempotency-Key` fournie par votre serveur puis vérifiez le statut avant toute nouvelle tentative.

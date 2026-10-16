@@ -1,44 +1,39 @@
 ---
 title: "Liens de paiement"
-description: "Créez, partagez et gérez des liens de paiement à montant fixe ou libre sans rédiger de code supplémentaire."
+description: "Routes du tableau de bord pour créer et consulter des liens; distinction avec l'API par clé."
 ---
 
-# Liens de Paiement
+# Liens de paiement
 
-Les **Liens de Paiement** PichFlow permettent de générer une URL publique partageable (par WhatsApp, email, SMS ou sur les réseaux sociaux) permettant à vos clients de régler une prestation ou un produit en toute simplicité.
+Les liens de paiement sont gérés par des routes du tableau de bord protégées par la session utilisateur. Le code ne déclare pas de route `/api/v1/payment-links` authentifiée par clé API.
 
----
+## Routes confirmées dans le serveur
 
-## Types de Liens de Paiement
+| Méthode | Route | Accès |
+|---|---|---|
+| `GET` | `/api/payment-links` | Session du compte; accepte `applicationId` ou `appId` en query. |
+| `POST` | `/api/payment-links` | Session du compte; `title` est requis. |
+| `GET` | `/api/payment-links/slug/:slug` | Lecture publique d'un lien actif. |
+| `GET` | `/api/payment-links/:id` | Session du compte. |
+| `PUT` | `/api/payment-links/:id` | Session du compte. |
+| `DELETE` | `/api/payment-links/:id` | Session du compte. |
 
-PichFlow gère deux types de liens :
-1. **Montant Fixe (`isFixedAmount: true`)** : Idéal pour un produit, un forfait d'abonnement ou un événement précis (ex: 15 000 XOF).
-2. **Montant Libre (`isFixedAmount: false`)** : Idéal pour les dons, cagnottes ou facturations personnalisées où le client saisit le montant qu'il souhaite vous verser.
+Le middleware de session accepte un jeton Bearer de session; ces routes ne doivent pas être appelées avec une clé `sk_test_` ou `sk_live_`.
 
----
+## Création (tableau de bord)
 
-## Gestion depuis le tableau de bord
-
-Les pages existantes décrivent la création et la gestion des liens depuis le tableau de bord. Le serveur confirme des routes de gestion des liens protégées par la session du compte, mais aucune route `/v1/payment-links` authentifiée par clé API n'a été trouvée. Aucun exemple de requête publique par clé API n'est donc fourni ici.
-
-### Exemple de champs décrits
+Le handler reconnaît `title` (requis), `description`, `amount`, `isFixedAmount`, `currency`, `country`, `usageLimit`, `requirePhone`, `redirectUrl` et `applicationId`. Il renvoie `success` et `paymentLink`. Le slug est construit par le serveur.
 
 ```json
 {
-  "title": "Abonnement annuel",
-  "amount": 25000,
-  "currency": "XOF",
+  "title": "Commande de démonstration",
+  "description": "Lien de test",
+  "amount": 2500,
   "isFixedAmount": true,
-  "country": "BJ"
+  "currency": "XOF",
+  "country": "BJ",
+  "requirePhone": true
 }
 ```
 
-Ces champs sont issus de la documentation existante ; le format de réponse et l'URL publique d'un lien doivent être confirmés dans le tableau de bord avant de les traiter comme un contrat d'API.
-
----
-
-## Cycle de Vie & Suivi des Liens
-
-- **Consultation des transactions par lien** : Chaque règlement effectué sur un lien incrémente automatiquement son compteur `paymentCount` et son volume total encaissé `totalCollected`.
-- **Désactivation** : Le code confirme une action de mise à jour des liens via l'API du tableau de bord. Aucun chemin public `/v1/payment-links/:id` n'a été confirmé.
-- **Plafond d'utilisation** : Vous pouvez restreindre le nombre maximum de règlements autorisés (ex: stock limité à 50 exemplaires).
+Il s'agit d'un corps accepté par la route du tableau de bord, pas d'une opération de l'API publique par clé. Le code accepte aussi un montant libre lorsque `isFixedAmount` est faux; les modalités exactes de paiement restent liées au flux du tableau de bord.

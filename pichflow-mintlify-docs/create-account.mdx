@@ -1,23 +1,23 @@
 ---
 title: "Créer un compte développeur"
-description: "Créer un compte PichFlow, confirmer l'adresse e-mail et accéder au centre développeur."
+description: "Créer un compte PichFlow, confirmer l'adresse e-mail et obtenir des clés API."
 ---
 
 # Créer un compte développeur
 
-Le tableau de bord PichFlow permet de créer un compte marchand et d'accéder ensuite au centre développeur.
+Le code d'inscription du serveur requiert un nom complet, une adresse e-mail valide et un mot de passe d'au moins huit caractères. Le compte est créé non vérifié; un code de confirmation est envoyé par e-mail et expire après 15 minutes.
 
-## Inscription
+## Parcours
 
-1. Ouvrez le [tableau de bord PichFlow](https://dashboard.pichflow.com) et choisissez l'inscription.
-2. Renseignez votre nom complet, votre adresse e-mail, votre pays et un mot de passe.
-3. Confirmez le mot de passe et acceptez les conditions affichées par l'application.
-4. Un code de confirmation à six chiffres est envoyé par e-mail. Saisissez-le pour confirmer l'adresse et accéder au tableau de bord.
+1. Ouvrez l'application PichFlow utilisée par votre organisation et choisissez l'inscription. L'URL publique du tableau de bord n'est pas définie dans ce dépôt.
+2. Fournissez votre nom, votre adresse e-mail, votre mot de passe, et éventuellement le pays et le téléphone.
+3. Saisissez le code de vérification reçu par e-mail.
+4. Une fois connecté, ouvrez le centre développeur pour générer les clés.
 
-Le code serveur exige un nom complet, une adresse e-mail valide et un mot de passe d'au moins huit caractères. Le code de confirmation expire après 15 minutes. Si l'e-mail ne paraît pas, utilisez l'action de renvoi du code dans l'application.
+Le formulaire du tableau de bord est l'interface de création de compte; l'API documentée ici est l'API marchande et ne remplace pas ce parcours. Les conditions commerciales, le processus KYC et les critères d'activation Live ne sont pas définis par les fichiers audités.
 
-## Obtenir les clés API
+## Obtenir les clés
 
-Après connexion, ouvrez **Centre Développeur > Clés API** et générez une paire de clés. La procédure d'affichage et les préfixes sont décrits dans [Authentification](./authentication).
+Le serveur génère une paire de clés Sandbox et Live via la route du tableau de bord `POST /api/developer/keys`, protégée par la session du compte. La clé complète est renvoyée lors de sa création; conservez-la dans un gestionnaire de secrets et ne l'intégrez jamais dans le navigateur.
 
-> Les conditions d'éligibilité, la validation d'identité/KYC et la disponibilité régionale ne sont pas détaillées dans les fichiers audités. Consultez le tableau de bord ou contactez le support PichFlow pour ces points.
+Voir [Authentification et clés API](./authentication).

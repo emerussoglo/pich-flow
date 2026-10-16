@@ -1,128 +1,239 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "PichFlow Public & Merchant API",
+    "title": "PichFlow API",
     "version": "1.0.0",
-    "description": "API REST unifiée de paiement, checkout et décaissement Mobile Money & Cartes bancaires pour l'Afrique de l'Ouest et Centrale, propulsée par l'infrastructure SasPay.",
-    "contact": {
-      "name": "Support Technique PichFlow",
-      "email": "contactpichflow@gmail.com",
-      "url": "https://pichflow.com"
-    }
+    "description": "Spécification partielle générée à partir des handlers Express de ce dépôt. L'origine locale est indiquée; aucune origine de production n'est définie dans le code."
   },
   "servers": [
     {
-      "url": "https://api.pichflow.com",
-      "description": "Serveur de Production PichFlow (Clés sk_live_)"
-    },
-    {
-      "url": "http://localhost:3000/api",
-      "description": "Serveur local Express (préfixe de route /api)"
+      "url": "http://localhost:3000",
+      "description": "Serveur de développement local. Les routes PichFlow incluent leur préfixe /api."
     }
+  ],
+  "security": [
+    {
+      "BearerApiKey": []
+    }
+  ],
+  "tags": [
+    { "name": "Paiements" },
+    { "name": "Transactions" },
+    { "name": "Payouts" },
+    { "name": "Portefeuilles" },
+    { "name": "Références" },
+    { "name": "Webhooks" }
   ],
   "components": {
     "securitySchemes": {
-      "BearerAuth": {
+      "BearerApiKey": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "API_KEY",
-        "description": "Clé secrète d'API PichFlow Sandbox (sk_test_...) ou Live (sk_live_...)"
+        "bearerFormat": "PichFlow API key",
+        "description": "Clé API Sandbox sk_test_... ou Live sk_live_...."
       }
     },
     "parameters": {
       "IdempotencyKey": {
         "name": "Idempotency-Key",
         "in": "header",
+        "required": false,
+        "description": "Valeur stable à réutiliser pour les reprises d'une même opération. Le serveur en génère une si elle est omise sur les handlers qui l'utilisent.",
+        "schema": { "type": "string" }
+      },
+      "PaymentId": {
+        "name": "id",
+        "in": "path",
         "required": true,
-        "description": "UUID v4 unique pour garantir l'exécution idempotente d'une opération financière.",
-        "schema": {
-          "type": "string",
-          "format": "uuid"
-        }
+        "schema": { "type": "string" },
+        "description": "Identifiant de paiement transmis au service fournisseur."
+      },
+      "TransactionId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Identifiant ou référence de transaction."
+      },
+      "Reference": {
+        "name": "reference",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "Référence interne PichFlow."
       }
     },
     "schemas": {
-      "CustomerInfo": {
+      "Amount": {
+        "oneOf": [
+          { "type": "string", "examples": ["5000.00"] },
+          { "type": "number", "exclusiveMinimum": 0, "examples": [5000] }
+        ],
+        "description": "Le serveur normalise le montant avant l'appel fournisseur. Les exemples utilisent une chaîne décimale."
+      },
+      "Customer": {
         "type": "object",
-        "required": ["email", "first_name", "last_name", "phone"],
         "properties": {
-          "first_name": { "type": "string", "example": "Paul" },
-          "last_name": { "type": "string", "example": "Dossou" },
-          "email": { "type": "string", "format": "email", "example": "paul.dossou@example.com" },
-          "phone": { "type": "string", "example": "+22997001234" }
-        }
+          "first_name": { "type": "string" },
+          "last_name": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "phone": { "type": "string" }
+        },
+        "additionalProperties": true
       },
       "SoftpayRequest": {
         "type": "object",
-        "required": ["amount", "currency", "country", "network", "customer"],
+        "required": ["amount", "network", "customer"],
         "properties": {
-          "amount": { "type": "string", "pattern": "^\\d+\\.\\d{2}$", "example": "5000.00" },
-          "currency": { "type": "string", "example": "XOF" },
-          "country": { "type": "string", "example": "BJ" },
-          "network": { "type": "string", "example": "mtn_bj" },
-          "customer": { "$ref": "#/components/schemas/CustomerInfo" },
-          "description": { "type": "string", "example": "Commande #PF-8842" },
-          "fee_charge_mode": { "type": "string", "enum": ["ADD_ON", "DEDUCTED"], "default": "ADD_ON" },
-          "otp": { "type": "string", "example": "123456" }
+          "amount": { "$ref": "#/components/schemas/Amount" },
+          "currency": { "type": "string", "default": "XOF" },
+          "country": { "type": "string", "default": "BJ" },
+          "network": { "type": "string", "examples": ["mtn_bj"] },
+          "customer": { "$ref": "#/components/schemas/Customer" },
+          "description": { "type": "string" },
+          "fee_charge_mode": { "type": "string", "enum": ["ADD_ON", "DEDUCTED"] },
+          "otp": { "type": "string" }
         }
       },
       "CheckoutSessionRequest": {
         "type": "object",
-        "required": ["amount", "currency", "customer_name", "customer_email"],
+        "required": ["amount", "customer_name", "customer_email"],
         "properties": {
-          "amount": { "type": "string", "pattern": "^\\d+\\.\\d{2}$", "example": "15000.00" },
-          "currency": { "type": "string", "example": "XOF" },
-          "country": { "type": "string", "example": "BJ" },
-          "customer_name": { "type": "string", "example": "Amina Touré" },
-          "customer_email": { "type": "string", "format": "email", "example": "amina@example.com" },
-          "customer_phone": { "type": "string", "example": "+22996112233" },
-          "description": { "type": "string", "example": "Abonnement Pro" },
-          "return_url": { "type": "string", "format": "uri", "example": "https://maboutique.com/merci" },
-          "fee_charge_mode": { "type": "string", "enum": ["ADD_ON", "DEDUCTED"], "default": "ADD_ON" }
+          "amount": { "$ref": "#/components/schemas/Amount" },
+          "currency": { "type": "string", "default": "XOF" },
+          "country": { "type": "string" },
+          "customer_name": { "type": "string" },
+          "customer_email": { "type": "string", "format": "email" },
+          "customer_phone": { "type": "string" },
+          "description": { "type": "string" },
+          "return_url": { "type": "string", "format": "uri" },
+          "metadata": { "type": "object", "additionalProperties": true }
         }
+      },
+      "CreatePaymentRequest": {
+        "type": "object",
+        "required": ["amount"],
+        "properties": {
+          "amount": { "$ref": "#/components/schemas/Amount" },
+          "currency": { "type": "string", "default": "XOF" },
+          "description": { "type": "string" },
+          "customerName": { "type": "string" },
+          "customerEmail": { "type": "string", "format": "email" },
+          "customerPhone": { "type": "string" },
+          "country": { "type": "string", "default": "BJ" },
+          "network": { "type": "string" },
+          "otp": { "type": "string" },
+          "returnUrl": { "type": "string", "format": "uri" }
+        },
+        "description": "Le handler choisit Softpay si network et customerPhone sont présents, sinon checkout hébergé."
       },
       "PayoutRequest": {
         "type": "object",
-        "required": ["amount", "currency", "country", "network", "recipient_phone"],
+        "required": ["amount", "currency", "country", "method", "recipient"],
         "properties": {
-          "amount": { "type": "string", "pattern": "^\\d+\\.\\d{2}$", "example": "50000.00" },
-          "currency": { "type": "string", "example": "XOF" },
-          "country": { "type": "string", "example": "BJ" },
-          "network": { "type": "string", "example": "mtn_bj" },
-          "recipient_name": { "type": "string", "example": "Cabinet Conseils SAS" },
-          "recipient_phone": { "type": "string", "example": "+22997123456" },
-          "description": { "type": "string", "example": "Règlement Facture F-2026-09" }
+          "amount": { "$ref": "#/components/schemas/Amount" },
+          "currency": { "type": "string" },
+          "country": { "type": "string" },
+          "method": { "type": "string" },
+          "customer": { "$ref": "#/components/schemas/Customer" },
+          "recipient": {
+            "type": "object",
+            "required": ["msisdn"],
+            "properties": {
+              "msisdn": { "type": "string" }
+            },
+            "additionalProperties": true
+          },
+          "description": { "type": "string" },
+          "fee_charge_mode": { "type": "string", "enum": ["ADD_ON", "DEDUCTED"] }
         }
       },
       "WalletTransferRequest": {
         "type": "object",
         "required": ["from_country", "to_country", "from_amount"],
         "properties": {
-          "from_country": { "type": "string", "example": "BJ" },
-          "to_country": { "type": "string", "example": "CI" },
-          "from_amount": { "type": "string", "pattern": "^\\d+\\.\\d{2}$", "example": "25000.00" }
+          "from_country": { "type": "string" },
+          "to_country": { "type": "string" },
+          "from_amount": { "$ref": "#/components/schemas/Amount" }
         }
+      },
+      "OtpRequest": {
+        "type": "object",
+        "required": ["otp"],
+        "properties": {
+          "otp": { "type": "string" }
+        }
+      },
+      "GenericSuccess": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "environment": { "type": "string", "enum": ["sandbox", "live"] },
+          "data": { "type": "object", "additionalProperties": true }
+        },
+        "additionalProperties": true
       },
       "ErrorResponse": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean", "example": false },
-          "error": { "type": "string", "example": "Description de l'erreur survenue" },
-          "code": { "type": "string", "example": "invalid_parameters" }
+          "success": { "type": "boolean", "const": false },
+          "error": { "type": "string" },
+          "code": { "type": "string" },
+          "environment": { "type": "string", "enum": ["sandbox", "live"] },
+          "data": {}
+        },
+        "additionalProperties": true
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Réponse d'erreur JSON; le statut et le détail peuvent être relayés par le fournisseur.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "GenericJson": {
+        "description": "Réponse JSON du handler ou du service fournisseur. La forme exacte de data dépend de SasPay.",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/GenericSuccess" }
+          }
         }
       }
     }
   },
-  "security": [
-    {
-      "BearerAuth": []
-    }
-  ],
   "paths": {
-    "/v1/payments/softpay": {
+    "/api/v1/payments/create": {
       "post": {
-        "summary": "Paiement direct Mobile Money (Softpay)",
-        "description": "Déclenche un push USSD direct sur le numéro de l'utilisateur ou retourne l'URL de paiement.",
+        "tags": ["Paiements"],
+        "operationId": "createPayment",
+        "summary": "Créer un paiement",
+        "description": "Choisit Softpay si network et customerPhone sont transmis; sinon crée une session de checkout.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreatePaymentRequest" }
+            }
+          }
+        },
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/payments/softpay": {
+      "post": {
+        "tags": ["Paiements"],
+        "operationId": "createSoftpayPayment",
+        "summary": "Initier un paiement Softpay",
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": {
           "required": true,
           "content": {
@@ -131,40 +242,19 @@
             }
           }
         },
-        "security": [],
         "responses": {
-          "200": {
-            "description": "Transaction initiée avec succès",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "id": { "type": "string", "example": "pay_soft_8829104bc" },
-                        "reference": { "type": "string", "example": "TX-PF-8842" },
-                        "status": { "type": "string", "example": "pending" },
-                        "amount": { "type": "string", "example": "5000.00" },
-                        "checkout_url": { "type": "string", "example": "" }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": { "description": "Paramètres invalides", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } },
-          "401": { "description": "Non autorisé", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
-    "/v1/checkout-sessions": {
+    "/api/v1/checkout-sessions": {
       "post": {
-        "summary": "Création de Session de Checkout Hébergé",
-        "description": "Génère une page de paiement hébergée sécurisée prête pour la redirection du client.",
+        "tags": ["Paiements"],
+        "operationId": "createCheckoutSession",
+        "summary": "Créer une session de checkout hébergé",
         "requestBody": {
           "required": true,
           "content": {
@@ -173,84 +263,154 @@
             }
           }
         },
-        "security": [],
         "responses": {
-          "200": {
-            "description": "Session créée",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "id": { "type": "string", "example": "cs_01h8a9bcdef234" },
-                        "checkout_url": { "type": "string", "example": "https://checkout.saspay.me/pay/cs_01h8a9bcdef234" },
-                        "status": { "type": "string", "example": "pending" }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
-    "/v1/payments/{id}/verify": {
+    "/api/v1/payments/{id}/verify": {
       "get": {
-        "summary": "Vérification de l'état d'un paiement",
-        "description": "Interroge la passerelle SasPay pour obtenir le statut certifié de la transaction.",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" },
-            "description": "Identifiant SasPay du paiement"
-          }
-        ],
-        "security": [],
+        "tags": ["Paiements"],
+        "operationId": "verifyPayment",
+        "summary": "Vérifier un paiement auprès du fournisseur",
+        "parameters": [{ "$ref": "#/components/parameters/PaymentId" }],
         "responses": {
-          "200": { "description": "Statut récupéré avec succès" }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
-    "/v1/payments/{id}/confirm-otp": {
+    "/api/v1/payments/{id}/confirm-otp": {
       "post": {
-        "summary": "Confirmation OTP d'un paiement",
-        "description": "Valide la transaction avec le code OTP fourni par le client.",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
-        ],
+        "tags": ["Paiements"],
+        "operationId": "confirmPaymentOtp",
+        "summary": "Transmettre un code OTP",
+        "parameters": [{ "$ref": "#/components/parameters/PaymentId" }],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["otp"],
-                "properties": {
-                  "otp": { "type": "string", "example": "489201" }
-                }
-              }
+              "schema": { "$ref": "#/components/schemas/OtpRequest" }
             }
           }
         },
         "responses": {
-          "200": { "description": "OTP validé" }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
-    "/v1/payouts/initialize": {
+    "/api/v1/payments/{id}/retry": {
       "post": {
-        "summary": "Initialisation d'un Payout / Retrait",
-        "description": "Ordonne un virement vers un numéro Mobile Money (Exige une IP whitelistée sur le dashboard SasPay).",
+        "tags": ["Paiements"],
+        "operationId": "retryPayment",
+        "summary": "Relancer une tentative de paiement",
         "parameters": [
+          { "$ref": "#/components/parameters/PaymentId" },
           { "$ref": "#/components/parameters/IdempotencyKey" }
         ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/payments/status/{reference}": {
+      "get": {
+        "tags": ["Paiements"],
+        "operationId": "getPaymentStatusByReference",
+        "summary": "Lire le statut interne par référence",
+        "parameters": [{ "$ref": "#/components/parameters/Reference" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/transactions": {
+      "get": {
+        "tags": ["Transactions"],
+        "operationId": "listTransactions",
+        "summary": "Lister les transactions",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Défaut handler : 50. Le code ne définit pas de plafond.",
+            "schema": { "type": "integer", "default": 50 }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/transactions/{id}": {
+      "get": {
+        "tags": ["Transactions"],
+        "operationId": "getTransaction",
+        "summary": "Lire une transaction par identifiant ou référence",
+        "parameters": [{ "$ref": "#/components/parameters/TransactionId" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/transactions/export": {
+      "get": {
+        "tags": ["Transactions"],
+        "operationId": "exportTransactions",
+        "summary": "Demander un export au fournisseur",
+        "description": "Le handler local renvoie le résultat du service sous forme JSON; il ne garantit pas un téléchargement CSV.",
+        "responses": {
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/transactions/{id}/invoice": {
+      "get": {
+        "tags": ["Transactions"],
+        "operationId": "getTransactionInvoice",
+        "summary": "Demander une facture au fournisseur",
+        "description": "Le handler local renvoie le résultat du service sous forme JSON; il ne garantit pas un téléchargement PDF.",
+        "parameters": [{ "$ref": "#/components/parameters/TransactionId" }],
+        "responses": {
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/payouts/initialize": {
+      "post": {
+        "tags": ["Payouts"],
+        "operationId": "initializePayout",
+        "summary": "Initialiser un payout",
+        "description": "Nécessite un scope de clé payout ou both et un solde local suffisant.",
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": {
           "required": true,
           "content": {
@@ -260,36 +420,58 @@
           }
         },
         "responses": {
-          "200": { "description": "Retrait initialisé" },
-          "403": { "description": "IP non whitelistée ou solde insuffisant" }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "422": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
-    "/v1/wallets/balances": {
+    "/api/v1/payouts/{id}/verify": {
       "get": {
-        "summary": "Consultation des soldes marchands",
-        "description": "Récupère les soldes réels déclarés auprès de la passerelle SasPay par pays et devise.",
+        "tags": ["Payouts"],
+        "operationId": "verifyPayout",
+        "summary": "Vérifier un payout",
+        "parameters": [{ "$ref": "#/components/parameters/PaymentId" }],
         "responses": {
-          "200": { "description": "Soldes récupérés" }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
-    "/v1/wallets/rates": {
+    "/api/v1/wallets/balances": {
       "get": {
-        "summary": "Taux de change officiels",
-        "description": "Consulte la grille actuelle des taux de conversion de devises.",
+        "tags": ["Portefeuilles"],
+        "operationId": "getWalletBalances",
+        "summary": "Consulter les soldes retournés par SasPay",
         "responses": {
-          "200": { "description": "Taux de change renvoyés" }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
-    "/v1/wallets/transfer": {
+    "/api/v1/wallets/rates": {
+      "get": {
+        "tags": ["Portefeuilles"],
+        "operationId": "getWalletRates",
+        "summary": "Consulter les taux retournés par SasPay",
+        "responses": {
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/wallets/transfer": {
       "post": {
-        "summary": "Transfert inter-wallets",
-        "description": "Transfère des fonds d'un wallet marchand à un autre.",
-        "parameters": [
-          { "$ref": "#/components/parameters/IdempotencyKey" }
-        ],
+        "tags": ["Portefeuilles"],
+        "operationId": "createWalletTransfer",
+        "summary": "Créer un transfert inter-pays",
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
         "requestBody": {
           "required": true,
           "content": {
@@ -299,64 +481,97 @@
           }
         },
         "responses": {
-          "200": { "description": "Virement interne exécuté" }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
     "/api/reference/countries": {
       "get": {
-        "summary": "Liste dynamique des pays",
-        "description": "Retourne la liste des pays pris en charge et leurs devises associées.",
+        "tags": ["Références"],
+        "operationId": "listCountries",
+        "summary": "Lister les pays du fournisseur",
         "security": [],
         "responses": {
-          "200": { "description": "Liste des pays" }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
     "/api/reference/networks": {
       "get": {
-        "summary": "Liste dynamique des réseaux télécoms",
-        "description": "Retourne les réseaux disponibles pour chaque pays.",
+        "tags": ["Références"],
+        "operationId": "listNetworks",
+        "summary": "Lister les réseaux du fournisseur",
         "security": [],
         "responses": {
-          "200": { "description": "Liste des réseaux" }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
     "/api/reference/rates": {
       "get": {
-        "summary": "Grille tarifaire de référence",
-        "description": "Retourne les taux du marchand depuis la route de référence du serveur.",
+        "tags": ["Références"],
+        "operationId": "getReferenceRates",
+        "summary": "Lire les tarifs renvoyés par le fournisseur",
         "security": [],
         "responses": {
-          "200": { "description": "Grille tarifaire récupérée" }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     },
     "/webhooks/saspay": {
       "post": {
-        "summary": "Récepteur Webhook SasPay",
-        "description": "Endpoint serveur recevant les notifications d'événements signées en HMAC SHA-256.",
+        "tags": ["Webhooks"],
+        "operationId": "receiveSasPayWebhook",
+        "summary": "Recevoir un webhook SasPay",
+        "description": "Vérifie le HMAC-SHA-256 du timestamp concaténé au corps brut avec un point; fenêtre de tolérance de 300 secondes.",
         "security": [],
         "parameters": [
           {
             "name": "X-Webhook-Signature",
             "in": "header",
             "required": true,
-            "schema": { "type": "string" },
-            "description": "Signature HMAC SHA-256 calculée sur 'timestamp.rawBody'"
+            "schema": { "type": "string" }
           },
           {
             "name": "X-Webhook-Timestamp",
             "in": "header",
             "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "X-Webhook-Event",
+            "in": "header",
+            "required": false,
             "schema": { "type": "string" },
-            "description": "Horodatage Unix en secondes"
+            "description": "Le code utilise cet en-tête, ou event dans le JSON."
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "event": { "type": "string" },
+                  "id": { "type": "string" },
+                  "data": { "type": "object", "additionalProperties": true }
+                },
+                "additionalProperties": true
+              }
+            }
+          }
+        },
         "responses": {
-          "200": { "description": "Événement reçu et traité avec succès" },
-          "400": { "description": "Signature invalide ou horodatage expiré" }
+          "200": { "$ref": "#/components/responses/GenericJson" },
+          "401": { "$ref": "#/components/responses/Error" },
+          "500": { "$ref": "#/components/responses/Error" }
         }
       }
     }

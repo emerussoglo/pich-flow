@@ -1,6 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "name": "PichFlow",
+  "description": "Documentation développeur PichFlow : intégration des paiements, opérations et API.",
   "theme": "mint",
   "logo": "/img/log.png",
   "favicon": "/img/log.png",
@@ -9,34 +10,22 @@
     "light": "#7C4DFF",
     "dark": "#4520B0"
   },
-  "topbarLinks": [
-    {
-      "name": "Dashboard",
-      "url": "https://dashboard.pichflow.com"
-    },
-    {
-      "name": "Support",
-      "url": "mailto:contactpichflow@gmail.com"
-    }
-  ],
-  "topbarCtaButton": {
-    "name": "Obtenir mes clés API",
-    "url": "https://dashboard.pichflow.com/developer"
-  },
-  "openapi": "openapi.json",
   "api": {
-    "baseUrl": "https://api.pichflow.com/v1",
-    "auth": {
-      "method": "bearer"
+    "openapi": "openapi.json",
+    "mdx": {
+      "server": "http://localhost:3000",
+      "auth": {
+        "method": "bearer"
+      }
     },
     "playground": {
-      "mode": "hide"
+      "display": "none"
     }
   },
   "navigation": {
     "groups": [
       {
-        "group": "Démarrer",
+        "group": "Découvrir",
         "pages": [
           "index",
           "create-account",
@@ -59,24 +48,29 @@
         "group": "Opérations",
         "pages": [
           "customers-transactions",
-          "payouts",
           "wallets",
+          "payouts",
           "countries-networks"
         ]
       },
       {
-        "group": "Sécurité et intégration",
+        "group": "Intégration",
         "pages": [
           "webhooks",
           "errors",
-          "code-samples"
+          "code-samples",
+          "real-payloads"
         ]
       },
       {
         "group": "Référence",
         "pages": [
-          "api-reference",
-          "real-payloads",
+          "api-reference"
+        ]
+      },
+      {
+        "group": "Aide",
+        "pages": [
           "faq"
         ]
       }

@@ -1,69 +1,37 @@
 ---
-title: "Gestion des Clients & Transactions"
-description: "Recherche, filtrage, export CSV et téléchargement de factures PDF pour la comptabilité."
+title: "Clients et transactions"
+description: "Distinguer les endpoints marchands par clé API des routes du tableau de bord."
 ---
 
-# Gestion des Clients & Transactions
+# Clients et transactions
 
-PichFlow centralise l'ensemble de vos flux financiers et vos carnets clients avec un niveau de détail élevé.
+## Transactions de l'API marchande
 
----
-
-## 1. Lister et Filtrer les Transactions
-
-Interrogez l'historique complet de vos encaissements :
+La liste est authentifiée par clé API et accepte `status` et `limit`. Le handler utilise une limite par défaut de 50; il n'applique pas de pagination `offset` ni de filtre `search`.
 
 ```bash
-curl -X GET "https://api.pichflow.com/v1/transactions?limit=20&status=success" \
-  -H "Authorization: Bearer sk_test_votre_cle"
+curl "http://localhost:3000/api/v1/transactions?status=success&limit=20" \
+  -H "Authorization: Bearer $PICHFLOW_API_KEY"
 ```
 
-### Paramètres de recherche supportés
+La réponse comprend `success`, `environment` et `transactions`. Les éléments de liste exposent notamment `id`, `reference`, `amount`, `netAmount`, `currency`, `status`, `customerName`, `customerEmail` et `createdAt`.
 
-- `status` : Filtrer par `success`, `pending`, `failed`, `cancelled`.
-- `limit` : Nombre de résultats par page (par défaut: 20, max: 100).
-- `offset` : Décalage pour la pagination.
-- `search` : Recherche textuelle par référence, email ou nom de client.
-- `applicationId` : Filtrer sur une application spécifique de votre compte.
+| Opération | Route |
+|---|---|
+| Lire le détail | `GET /api/v1/transactions/:id` |
+| Export demandé au fournisseur | `GET /api/v1/transactions/export` |
+| Facture demandée au fournisseur | `GET /api/v1/transactions/:id/invoice` |
+| Lire par référence interne | `GET /api/v1/payments/status/:reference` |
 
----
+Les handlers d'export et de facture renvoient une réponse JSON du service SasPay (et non un fichier CSV/PDF garanti par le code local).
 
-## 2. Export Comptable CSV
+## Clients du tableau de bord
 
-Téléchargez l'ensemble de votre relevé de transactions pour l'intégrer dans vos outils comptables (Excel, QuickBooks, SAP) :
+Les routes `/api/customers` et `/api/customers/:id` utilisent l'authentification de session du compte, et non une clé de l'API marchande :
 
-```bash
-curl -X GET "https://api.pichflow.com/v1/transactions/export?format=csv" \
-  -H "Authorization: Bearer sk_test_votre_cle" \
-  --output relevé_transactions_pichflow.csv
-```
+- `GET /api/customers` accepte `applicationId` ou `appId`.
+- `POST /api/customers` exige `name` et `email`.
+- `PUT /api/customers/:id` met à jour `name`, `phone` et/ou `country`.
+- `DELETE /api/customers/:id` supprime la fiche du compte.
 
-Le fichier CSV exporté contient :
-- Référence de la transaction
-- Date et heure UTC
-- Nom, email et téléphone du client
-- Opérateur et pays (ex: `MTN Bénin (BJ)`)
-- Montant brut, frais de passerelle et montant net encaissé
-- Statut final
-
----
-
-## 3. Génération de Reçus et Factures PDF
-
-Chaque transaction réussie dispose d'une route permettant d'éditer une facture normalisée au format PDF :
-
-```bash
-curl -X GET "https://api.pichflow.com/v1/transactions/tx_1728945600000/invoice" \
-  -H "Authorization: Bearer sk_test_votre_cle" \
-  --output facture_tx_1728945600000.pdf
-```
-
----
-
-## 4. Auto-Population des Clients
-
-Dès qu'un client effectue un paiement valide :
-1. PichFlow vérifie si l'adresse email existe déjà pour votre compte et cette application.
-2. Si le client existe : son `total_spent` et son `payment_count` sont incrémentés, et sa date `last_transaction_at` est actualisée.
-3. Si le client est nouveau : une fiche complète est immédiatement créée dans votre carnet d'adresses.
-
+La réponse de la route de liste est `success` et `customers`. Les champs sont construits par le serveur et peuvent être consultés dans le contrat du tableau de bord; ces routes ne sont pas incluses dans la spécification OpenAPI de l'API par clé.

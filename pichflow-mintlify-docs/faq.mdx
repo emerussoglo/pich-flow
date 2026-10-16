@@ -1,48 +1,30 @@
 ---
-title: "FAQ & Dépannage"
-description: "Questions fréquentes, diagnostic des incidents de paiement et checklist de mise en production."
+title: "FAQ et diagnostic"
+description: "Réponses aux questions tirées des routes et limites identifiées dans le dépôt."
 ---
 
-# FAQ & Dépannage
+# FAQ et diagnostic
 
-Retrouvez ici les réponses aux questions techniques récurrentes et les étapes recommandées avant de lancer votre solution en production.
+## Quelle URL dois-je appeler ?
 
----
+En local, l'origine par défaut est `http://localhost:3000`. Les routes marchandes sont sous `/api/v1`, par exemple `/api/v1/payments/softpay`. Le dépôt ne fixe pas le nom de domaine public de l'API; faites confirmer l'URL et les éventuels rewrites avant de l'utiliser.
 
-## Problèmes Courants & Solutions
+## Quel type de clé utiliser ?
 
-### 1. "Pourquoi mon paiement reste-t-il au statut 'pending' ?"
-- Le paiement Mobile Money attend que l'utilisateur valide l'invite USSD sur son téléphone en saisissant son code PIN secret.
-- Si le client ne reçoit pas l'invite : vérifiez qu'il dispose de réseau télécom suffisant et que son solde Mobile Money couvre le montant ainsi que les éventuels frais de retrait opérateur.
-- Certains opérateurs (notamment Orange) exigent la génération manuelle d'un code d'autorisation par le client avant l'opération.
+Les routes `/api/v1/...` attendent `Authorization: Bearer <clé_API>`. Le centre développeur génère des clés `sk_test_` et `sk_live_`; le code associe chaque secret à son environnement. Les conditions d'activation des clés ne sont pas décrites ici.
 
-### 2. "Erreur 403 ip_not_whitelisted lors d'un appel Payout"
-- SasPay impose par mesure de sécurité que toute clé effectuant un virement sortant provienne d'une adresse IP whitelistée.
-- Connectez-vous à votre [Tableau de bord SasPay](https://saspay.me) > Paramètres de sécurité > Liste blanche IP, et renseignez l'adresse IP publique de votre serveur de production.
+## Pourquoi un appel de référence renvoie-t-il une erreur ?
 
-### 3. "Pourquoi ma signature webhook échoue-t-elle systématiquement ?"
-- Assurez-vous d'utiliser le **raw body** (corps brut avant tout parsing `JSON.parse` ou `express.json()`). Tout reformatage d'espace ou d'ordre de clés invalide le HMAC.
-- Vérifiez que l'horloge de votre serveur est synchronisée via NTP (`X-Webhook-Timestamp` tolère un écart maximal de 300 secondes).
-- Assurez-vous d'utiliser le secret configuré dans votre Dashboard SasPay (`SASPAY_WEBHOOK_SECRET`).
+Les endpoints `/api/reference/...` interrogent SasPay à la demande. Une erreur fournisseur est renvoyée en HTTP 500 par les handlers; vérifiez la configuration du service et ses logs côté serveur.
 
----
+## Pourquoi ma commande reste-t-elle en attente ?
 
-## Checklist de Mise en Production (Live)
+Une session créée ou un paiement initié ne signifie pas que le paiement est confirmé. Vérifiez l'état via `GET /api/v1/payments/:id/verify` ou, pour une référence déjà persistée, `GET /api/v1/payments/status/:reference`.
 
-Avant d'activer votre clé `sk_live_...` auprès de vos vrais clients :
+## Les webhooks marchands sont-ils livrés ?
 
-- [ ] **Clés d'API** : Remplacez votre clé `sk_test_` par votre clé `sk_live_` dans vos variables d'environnement de production.
-- [ ] **Sécurité des clés** : Assurez-vous qu'aucune clé secrète n'apparaît dans votre code frontend, commit git ou repo public.
-- [ ] **Endpoint Webhook HTTPS** : Vérifiez que l'URL de votre webhook utilise un certificat SSL/TLS valide (`https://...`).
-- [ ] **Idempotence** : Vérifiez que vos appels `softpay` et `payout` intègrent bien un en-tête `Idempotency-Key` unique par tentative.
-- [ ] **Gestion des timeouts** : Ne considérez jamais un timeout réseau comme un échec. Effectuez une vérification active (`/verify`) ou attendez le webhook.
-- [ ] **Whitelist IP SasPay** : Déclarez votre adresse IP de production pour les fonctionnalités de décaissement (Payouts).
+Pas par le dispatcher présent dans ce dépôt : il journalise les événements mais ne fait pas de requête HTTP vers l'URL configurée. N'utilisez pas ce flux comme mécanisme de confirmation sans une implémentation et une vérification ultérieures.
 
----
+## L'adresse de production `api.pichflow.com` est-elle valide ?
 
-## Contacts & Support
-
-- **Support Technique PichFlow** : [contactpichflow@gmail.com](mailto:contactpichflow@gmail.com)
-- **Documentation SasPay Officielle** : [https://docs.saspay.me](https://docs.saspay.me)
-- **Spécification OpenAPI SasPay** : [https://docs.saspay.me/api-reference/openapi.json](https://docs.saspay.me/api-reference/openapi.json)
-
+Elle n'est pas définie dans le code ou la configuration du dépôt et la résolution de ce nom n'a pas pu être vérifiée depuis l'environnement d'audit. Elle n'est donc pas utilisée dans les exemples.

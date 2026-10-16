@@ -1,22 +1,22 @@
 ---
 title: "Référence API"
-description: "Spécification OpenAPI disponible et limites connues de la référence PichFlow."
+description: "Référence OpenAPI partielle, générée à partir des routes marchandes identifiées dans le serveur."
 ---
 
 # Référence API
 
-La spécification [OpenAPI 3.1](./openapi.json) fournie avec ce dépôt décrit une partie de l'API PichFlow. Mintlify s'en sert pour générer les pages de référence des opérations décrites.
+La spécification [OpenAPI](./openapi.json) décrit les routes marchandes `/api/v1`, les routes de référence `/api/reference` et le récepteur de webhook SasPay. Elle est volontairement partielle : les réponses transitant par SasPay sont génériques et certaines routes du tableau de bord utilisent une session plutôt qu'une clé API.
 
-<Warning>
-  Cette spécification n'est pas exhaustive : elle ne décrit pas toutes les routes présentes dans le serveur et certaines informations de déploiement restent à confirmer. Le bac à sable interactif est désactivé pour éviter d'envoyer des requêtes à une URL non vérifiée.
-</Warning>
+## Base URL vérifiée dans le code
 
-## Limites vérifiées
+Le serveur local monte Express sur `/api` et les routes marchandes sur `/api/v1`. Pour développer localement, utilisez `http://localhost:3000` comme origine. Aucun nom de domaine de production ni rewrite API n'est déclaré dans `vercel.json`; les URL de production présentes dans d'anciennes pages ne sont donc pas reprises comme garanties.
 
-- Le fichier décrit 12 opérations. Le serveur contient d'autres routes, notamment pour les transactions, les tentatives de paiement et les retraits.
-- Les liens de paiement et la gestion des clients existent dans l'API du tableau de bord, protégée par la session du compte. Aucune route `/v1/payment-links` ou `/v1/customers` avec clé API n'a été trouvée.
-- Le code Express monte le routeur sous `/api`; la spécification et les pages existantes utilisent aussi le préfixe public `/v1`. Le routage de production qui relie ces chemins au domaine `api.pichflow.com` doit être confirmé avant d'utiliser l'API Playground ou de mettre en production.
-- Les routes de pays et de réseaux sont montées sous `/api/reference/...` dans le serveur et le fichier OpenAPI de ce dossier reprend ces chemins.
-- Les champs de transfert inter-pays confirmés par le code sont `from_country`, `to_country` et `from_amount`.
+## Authentification
 
-Consultez [Authentification](./authentication), [Gestion des transactions](./customers-transactions) et [Portefeuilles](./wallets) pour les exemples et restrictions documentés.
+Les routes `/api/v1/...` utilisent `Authorization: Bearer <clé_API>`. Les opérations de référence sont publiques. Le webhook SasPay entrant utilise les en-têtes de signature spécifiques et non la clé API marchande.
+
+## Couverture OpenAPI
+
+Sont notamment décrits : création de paiement, Softpay, checkout, vérification et retry, transactions, payouts, soldes/taux/transferts et références pays/réseaux. Les routes de compte, clients, liens, withdrawals et réglages du tableau de bord ne sont pas exposées sous le même mécanisme de clé API et restent hors de cette spécification.
+
+Le playground est masqué : aucun serveur public fiable n'a été confirmé pour exécuter des appels depuis la documentation.

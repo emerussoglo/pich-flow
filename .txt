@@ -659,266 +659,350 @@ Dès qu’un client effectue un paiement valide :
 
 
 
-   # MISSION PRIORITAIRE — RÉPARER L'INSCRIPTION ET LA CONNEXION DE PICHFLOW EN PRODUCTION SUR VERCEL
 
-Tu interviens directement dans le dépôt source de PichFlow. Tu dois analyser le code existant, identifier la cause exacte des erreurs de production, implémenter une correction robuste, effectuer les vérifications possibles et préparer le déploiement.
 
-**Priorité absolue : rétablir l'inscription et la connexion en production. Ne travaille pas sur la refonte de la documentation Mintlify pendant cette mission.**
+
+
+
+
+
+
+
+
+# MISSION : RÉGLER DÉFINITIVEMENT LA DOCUMENTATION API DE PICHFLOW SUR MINTLIFY
+
+Tu interviens sur mon projet PichFlow. Le problème de la documentation n'est pas encore réglé. Je veux que tu prennes en charge le diagnostic, les corrections, la configuration et la préparation de la publication de la documentation sur Mintlify.
+
+**Ne te contente pas d'auditer le projet ou de me donner des recommandations. Effectue réellement toutes les opérations possibles dans le code et les fichiers accessibles.**
 
 ## 1. CONTEXTE DU PROJET
 
-Application : PichFlow  
-URL de production : https://pichflow.vercel.app/
+Documentation Mintlify actuellement accessible :
+https://pichflow.mintlify.site/quickstart
+
+Le projet local PichFlow contient notamment un dossier de documentation existant `docs/`, ainsi qu'une copie destinée à Mintlify dans :
+
+`pichflow-mintlify-docs/`
+
+Cette copie est censée contenir directement à sa racine :
+- `docs.json`
+- `openapi.json`
+- `index.mdx`
+- `quickstart.mdx`
+- `authentication.mdx`
+- `payments-overview.mdx`
+- `hosted-checkout.mdx`
+- `payment-links.mdx`
+- `softpay-otp.mdx`
+- `payment-verification.mdx`
+- `customers-transactions.mdx`
+- `wallets.mdx`
+- `payouts.mdx`
+- `countries-networks.mdx`
+- `webhooks.mdx`
+- `errors.mdx`
+- `code-samples.mdx`
+- `api-reference.mdx`
+- `real-payloads.mdx`
+- `faq.mdx`
+- d'autres pages MDX éventuellement présentes
+- `img/log.png`
+
+Un premier audit avait indiqué que :
+- une documentation existe déjà dans le projet ;
+- une copie indépendante `pichflow-mintlify-docs/` a été créée ;
+- aucun dépôt GitHub n'était confirmé comme connecté à Mintlify ;
+- aucune publication effective de cette nouvelle documentation n'était confirmée ;
+- la validation officielle Mintlify n'avait pas abouti ;
+- plusieurs différences entre les exemples documentés et les routes réellement trouvées dans le code devaient être vérifiées.
+
+Il faut repartir de **l'état actuel réel du dépôt et de Mintlify**, pas supposer que ce rapport est encore parfaitement à jour.
+
+## 2. OBJECTIF FINAL
+
+Je veux obtenir une documentation PichFlow professionnelle, cohérente, fonctionnelle et publiée sur Mintlify.
+
+À la fin de ta mission :
+1. Toutes les pages prévues doivent exister et être correctement reliées dans la navigation.
+2. Les exemples doivent correspondre à l'API réellement implémentée.
+3. Les routes, paramètres, en-têtes, réponses, erreurs et webhooks doivent être vérifiés dans le code.
+4. La configuration Mintlify doit être valide.
+5. Les références OpenAPI doivent correspondre aux routes réellement prises en charge.
+6. Les liens internes, images, exemples de code et références doivent être vérifiés.
+7. Le dépôt Git doit être prêt pour le déploiement.
+8. Si les outils disponibles permettent réellement de connecter GitHub et de publier sur Mintlify, effectue ces opérations avec les autorisations nécessaires.
+9. Si une action externe nécessite mon intervention, indique exactement ce que je dois faire, sur quel site, dans quel menu et quelle valeur saisir. Ne prétends jamais avoir publié ou connecté quelque chose si ce n'est pas vérifié.
+
+## 3. ÉTAPE 1 — EXAMINER L'ÉTAT ACTUEL
+
+Commence par examiner le dépôt réel :
+- identifie la racine du projet ;
+- vérifie l'existence de `docs/` et de `pichflow-mintlify-docs/` ;
+- examine les fichiers `docs.json`, `openapi.json` et les pages `.mdx` ;
+- examine les modifications Git en cours avant de toucher aux fichiers ;
+- identifie les scripts disponibles dans `package.json` ;
+- vérifie la configuration du serveur et le système réel de routage API ;
+- recherche les fichiers de routes, contrôleurs, schémas de validation, middleware d'authentification et gestionnaires d'erreurs ;
+- identifie l'URL de base de l'API utilisée en production, mais ne la considère comme officielle que si le code ou la configuration le confirme ;
+- détermine si le dépôt est relié à un dépôt GitHub et si un outil de déploiement Mintlify est accessible.
+
+Ne supprime, ne remplace et ne déplace aucun fichier original sans nécessité démontrée. Ne perds aucune modification existante. La documentation originale doit rester intacte, sauf si une modification est explicitement nécessaire et sûre.
+
+## 4. ÉTAPE 2 — VÉRIFIER L'API À PARTIR DU CODE SOURCE
+
+Le code source est la référence prioritaire. Ne crée pas de routes fictives pour rendre la documentation plus complète.
+
+Vérifie chaque fonctionnalité documentée :
+- authentification et gestion des clés API ;
+- création et consultation des paiements ;
+- checkout hébergé ;
+- liens de paiement ;
+- vérification de paiement ;
+- transactions et clients ;
+- wallets et soldes ;
+- retraits et transferts ;
+- pays, réseaux, méthodes de paiement et tarifs ;
+- OTP, notamment SoftPay, si cette fonctionnalité est réellement implémentée ;
+- webhooks ;
+- codes d'erreur ;
+- historique, pagination et filtres ;
+- exemples de requêtes et réponses.
+
+Pour chaque fonctionnalité, identifie :
+1. La route exacte.
+2. La méthode HTTP exacte.
+3. Le préfixe réellement monté par le serveur.
+4. Les paramètres de chemin, de query et de corps.
+5. Les champs obligatoires et facultatifs.
+6. Les en-têtes requis.
+7. Le mécanisme d'authentification.
+8. Les formats de réponses réellement retournés.
+9. Les erreurs et codes HTTP réellement utilisés.
+10. Les éventuelles restrictions par pays, réseau, rôle ou type de compte.
 
-Stack déjà utilisée dans le projet :
-- Next.js / App Router et TypeScript, selon les parties de l'application.
-- Backend existant à identifier précisément : routes API, handlers, éventuels serveurs Express et middlewares.
-- Base de données Turso/libSQL, si elle est toujours utilisée par le code actuel.
-- Interface frontend déjà développée.
-- Déploiement hébergé sur Vercel.
+Une première vérification avait notamment signalé :
+- l'utilisation de `Authorization: Bearer ...` pour l'authentification ;
+- l'absence apparente d'une route publique `/v1/payment-links` ;
+- des paramètres de transfert tels que `from_country`, `to_country` et `from_amount` ;
+- des routes de référence sous `/api/reference/...` ;
+- un serveur Express qui monte des routes sous `/api`, alors que certains documents utilisent `https://api.pichflow.com/v1`.
+
+Ce sont des pistes à vérifier, pas des vérités à recopier aveuglément. Confirme chacune d'elles dans le code actuel.
+
+**Si une fonctionnalité n'existe pas dans le code, ne la documente pas comme disponible.** Si son implémentation est ambiguë ou incomplète, signale-le et utilise une formulation prudente plutôt que d'inventer son fonctionnement.
+
+## 5. ÉTAPE 3 — CORRIGER LA DOCUMENTATION
+
+Corrige toutes les pages `.mdx` de la copie destinée à Mintlify.
+
+La documentation doit être en français, claire, professionnelle, adaptée aux développeurs et cohérente avec le produit PichFlow.
+
+Elle doit inclure, selon les fonctionnalités effectivement disponibles :
+- une page d'accueil avec une présentation concise ;
+- un guide de création de compte et de préparation à l'intégration ;
+- un démarrage rapide ;
+- les concepts fondamentaux ;
+- l'authentification ;
+- les paiements ;
+- le checkout hébergé ;
+- les liens de paiement, uniquement si leur implémentation est confirmée ;
+- la vérification de paiement ;
+- les clients et transactions ;
+- les wallets ;
+- les retraits ;
+- les pays et réseaux ;
+- les webhooks ;
+- les erreurs ;
+- des exemples de code ;
+- des exemples de payloads réels ou fidèles au code ;
+- une FAQ ;
+- une référence API complète ou partielle, selon ce que le code permet réellement de documenter.
 
-Ne suppose pas que tous ces éléments sont encore configurés comme prévu : vérifie-les dans le dépôt et dans la configuration disponible.
+Chaque page doit être utile. Évite les pages vides, les textes génériques, les répétitions et les promesses non confirmées.
 
-## 2. ERREURS OBSERVÉES EN PRODUCTION
+Les exemples doivent être cohérents avec les vraies routes, les vrais noms de champs et les vraies réponses. N'invente ni clés API, ni identifiants réels, ni transactions réelles. Utilise des valeurs fictives clairement identifiées.
 
-Lorsqu'un utilisateur essaie de se connecter :
+Inclue des exemples `curl` et, lorsque c'est utile et compatible avec l'API réelle, JavaScript/TypeScript et d'autres langages pertinents.
 
-POST https://pichflow.vercel.app/api/auth/login
-404 (Not Found)
+Les exemples d'authentification doivent utiliser le mécanisme confirmé dans le code. Si l'API utilise bien un Bearer token, montre le format correspondant, sans exposer de secret réel.
 
-Lorsqu'un utilisateur essaie de s'inscrire :
+Documente correctement les webhooks : événements pris en charge, structure du payload, méthode de vérification de signature et politique de nouvelles tentatives uniquement si ces comportements sont confirmés. Ne prétends pas qu'une signature est vérifiée si ce n'est pas le cas.
 
-POST https://pichflow.vercel.app/api/auth/register
-404 (Not Found)
+## 6. ÉTAPE 4 — CORRIGER `docs.json`
 
-Le frontend affiche également une erreur similaire à :
+Examine le schéma et les exigences actuelles de configuration Mintlify, puis corrige `pichflow-mintlify-docs/docs.json`.
 
-Unexpected token 'T', "The page c"... is not valid JSON
+Vérifie :
+- la version de configuration requise ;
+- le titre et l'identité PichFlow ;
+- le logo et les chemins d'images ;
+- la navigation complète ;
+- l'existence réelle de chaque page référencée ;
+- les groupes et sous-groupes de navigation ;
+- les liens vers le site officiel, le tableau de bord et les ressources utiles uniquement si leurs URL sont confirmées ;
+- les liens vers les références API ;
+- les paramètres ou options obsolètes.
 
-Les erreurs apparaissent après avoir cliqué sur les boutons d'inscription ou de connexion.
+La navigation doit être logique et simple pour un développeur qui découvre PichFlow.
 
-Le message JSON indique probablement que le frontend essaie d'interpréter une réponse d'erreur textuelle ou HTML comme du JSON. Il faut confirmer ce comportement dans le code.
+Ne fais pas pointer la configuration vers des fichiers absents. Si une page est supprimée de la navigation, vérifie d'abord si elle est réellement inutile. Préserve les pages utiles.
 
-## 3. PREMIÈRE PHASE : AUDIT DU CODE EXISTANT
+## 7. ÉTAPE 5 — CORRIGER `openapi.json`
 
-Avant toute modification, inspecte réellement le dépôt.
+Examine la spécification OpenAPI existante et rapproche-la des routes réellement implémentées.
 
-A. Identifie :
-- Le framework et la version effectivement utilisés.
-- Le point d'entrée frontend et le mécanisme de routage.
-- L'implémentation des formulaires d'inscription et de connexion.
-- Les fonctions ou services appelés lors de ces soumissions.
-- Les fichiers qui définissent les routes `/api/auth/login` et `/api/auth/register`.
-- La présence éventuelle de routes Next.js dans `app/api/` ou `src/app/api/`.
-- La présence éventuelle de routes Express, d'un serveur Node séparé ou de fonctions serverless.
-- Les fichiers `package.json`, scripts de build, configuration Vercel et éventuels `vercel.json`, rewrites ou redirects.
-- Les variables d'environnement attendues par l'authentification.
-- Le système réel de stockage des utilisateurs, de hachage des mots de passe, de session et de cookies.
-- Les éventuelles différences entre le fonctionnement local et la production.
+Vérifie :
+- la version OpenAPI ;
+- le titre et la description ;
+- les serveurs et leurs URL de base ;
+- les méthodes HTTP ;
+- les chemins ;
+- les paramètres ;
+- les corps de requête ;
+- les schémas JSON ;
+- les réponses de succès ;
+- les réponses d'erreur ;
+- les exigences de sécurité ;
+- les en-têtes ;
+- les opérations et leurs identifiants ;
+- les exemples ;
+- les références internes `$ref`.
 
-B. Recherche dans tout le dépôt les occurrences de :
-- `/api/auth/login`
-- `/api/auth/register`
-- `login`
-- `register`
-- `NextResponse`
-- `express.json`
-- `vercel.json`
-- Les URL d'API absolues et les variables de base URL.
+N'ajoute pas de route supposée. N'affiche pas de serveur de production comme confirmé si l'URL n'a pas été vérifiée.
 
-C. Vérifie si les routes d'authentification :
-1. n'existent pas ;
-2. existent mais sont situées au mauvais emplacement ;
-3. existent dans un serveur backend séparé non déployé sur Vercel ;
-4. existent, mais sont masquées par un rewrite ou une configuration de routage ;
-5. échouent lors du build ou ne sont pas incluses dans le déploiement ;
-6. sont déployées mais renvoient une réponse incompatible avec le frontend.
+Si l'API ne peut pas être entièrement décrite, crée une spécification partielle mais exacte et documente clairement les limites. La précision est plus importante que le nombre d'opérations.
 
-Ne choisis pas une hypothèse sans preuve. Relie chaque conclusion à des fichiers, fonctions et configurations réellement trouvés.
+Vérifie également que les pages MDX et la référence API utilisent les mêmes noms de champs, les mêmes chemins et les mêmes mécanismes d'authentification.
 
-## 4. DEUXIÈME PHASE : CHOISIR LA CORRECTION ADAPTÉE À L'ARCHITECTURE RÉELLE
+## 8. ÉTAPE 6 — VALIDER LES FICHIERS
 
-Le domaine principal de l'application doit continuer à être :
+Exécute les validations disponibles, en utilisant des commandes compatibles avec les dépendances et la version du projet.
 
-https://pichflow.vercel.app
+Au minimum :
+- parse le JSON de `docs.json` ;
+- parse le JSON de `openapi.json` ;
+- vérifie le frontmatter de toutes les pages MDX ;
+- vérifie que toutes les pages de la navigation existent ;
+- vérifie les liens internes ;
+- vérifie les chemins des images ;
+- vérifie les références OpenAPI ;
+- vérifie les blocs de code et les exemples ;
+- vérifie les incohérences de routes et de paramètres ;
+- lance le validateur Mintlify officiel recommandé pour la configuration utilisée, si possible.
 
-L'objectif est que le frontend puisse appeler correctement :
-- `POST /api/auth/register`
-- `POST /api/auth/login`
+Ne considère pas une validation statique personnalisée comme équivalente à la validation officielle Mintlify.
 
-Privilégie les URL relatives, par exemple `/api/auth/login`, lorsque le frontend et le backend sont servis par la même origine.
+Si une commande échoue à cause d'une dépendance manquante ou d'un problème réseau :
+1. indique la commande exacte ;
+2. donne la cause identifiée ;
+3. tente une solution raisonnable si elle est sûre ;
+4. indique les validations qui restent réellement à faire.
 
-### Cas A : le projet utilise Next.js App Router
+Ne déclare jamais la documentation « validée » si les vérifications correspondantes n'ont pas été exécutées avec succès.
 
-Si le projet est réellement structuré avec Next.js App Router et que l'authentification doit être servie par la même application, vérifie et corrige les Route Handlers correspondant à :
-- `app/api/auth/login/route.ts`
-- `app/api/auth/register/route.ts`
+## 9. ÉTAPE 7 — VÉRIFIER L'INTÉGRATION MINTLIFY
 
-Si le projet utilise `src/app`, respecte sa structure existante et ne crée pas de routes concurrentes dans un autre emplacement.
+Le site actuel est :
+https://pichflow.mintlify.site/quickstart
 
-Chaque route doit exporter les méthodes HTTP nécessaires, notamment `POST`, et respecter le contrat réellement utilisé par le frontend.
+Je veux que la documentation corrigée soit celle que Mintlify utilise réellement, et non seulement un dossier local.
 
-### Cas B : le backend est un serveur Express ou un service distinct
+Vérifie le fonctionnement de l'intégration GitHub/Mintlify à partir des informations et des outils auxquels tu as effectivement accès.
 
-Si le code démontre que l'authentification est gérée par Express ou un backend séparé :
-- Identifie son URL réelle de production.
-- Vérifie si ce backend est effectivement déployé et accessible.
-- Détermine si Vercel doit le servir directement, le router via une configuration valide ou si le frontend doit appeler un backend distinct.
-- Ne crée pas artificiellement des Route Handlers Next.js qui dupliquent la logique métier existante.
-- Ne remplace pas le backend par une fausse API pour faire disparaître le 404.
+### Cas A — Dépôt GitHub dédié à la documentation
 
-Si l'architecture actuelle ne peut pas fonctionner sur Vercel telle qu'elle est configurée, explique la modification minimale nécessaire et implémente-la si elle est possible sans inventer de services ou de secrets.
-
-### Cas C : problème de configuration de déploiement
+Si le projet n'est pas encore relié à un dépôt approprié, prépare une solution propre consistant à créer un dépôt dédié, par exemple `pichflow-docs`, contenant le contenu de `pichflow-mintlify-docs/`.
 
-Si le problème vient des rewrites, redirects, fonctions serverless, du routage ou de la structure du build :
-- Corrige la configuration à l'origine du 404.
-- Conserve les routes frontend existantes.
-- Évite les règles générales qui détourneraient les requêtes API vers la page HTML de l'application.
-- Vérifie que les requêtes `/api/*` atteignent bien le backend prévu.
+Dans ce dépôt dédié, `docs.json` doit être à la racine. La configuration Mintlify doit donc utiliser le chemin `.` pour le fichier `docs.json`, si le champ de chemin de l'interface est bien celui attendu.
 
-## 5. TROISIÈME PHASE : RÉPARER LE CONTRAT HTTP ET LE TRAITEMENT DES ERREURS
+N'affirme pas avoir créé le dépôt GitHub si tu n'as pas réellement accès à GitHub et que l'opération n'a pas été confirmée.
 
-Inspecte le code frontend qui envoie les requêtes de connexion et d'inscription.
+### Cas B — Utilisation du dépôt principal PichFlow
 
-Corrige le traitement des réponses pour qu'une réponse non JSON ou une page d'erreur ne provoque plus directement :
+Si la documentation doit rester dans le dépôt principal et que le dossier se nomme `pichflow-mintlify-docs`, le chemin vers `docs.json` sera normalement `pichflow-mintlify-docs`, sous réserve de la configuration exacte du dépôt et de l'interface Mintlify.
 
-`Unexpected token 'T'`
+Ne déplace pas les fichiers vers la racine du projet principal sans vérifier les conséquences sur l'application.
 
-Exigences :
-- Vérifier `response.ok` avant de traiter la réponse comme un succès.
-- Vérifier le `Content-Type` avant de parser du JSON.
-- Gérer proprement les réponses vides, textuelles, HTML et JSON mal formé.
-- Afficher à l'utilisateur un message clair et compréhensible.
-- Conserver les informations de diagnostic utiles côté serveur sans exposer les détails internes à l'utilisateur.
-- Ne jamais présenter une réponse 404 ou 500 comme une authentification réussie.
-- Ne pas masquer le véritable problème backend derrière un simple message générique.
-- Ne pas ajouter de dépendance si une solution simple est possible avec les API existantes.
+### Cas C — Starter kit Mintlify générique
 
-Respecte le format de réponse déjà adopté par le projet lorsqu'il est cohérent. Si tu dois l'uniformiser, documente le contrat retenu et adapte ensemble les routes et le frontend.
+Si Mintlify est encore relié à un starter kit générique, détermine si les fichiers actuellement publiés proviennent de ce dépôt. Prépare ensuite une migration sûre vers la documentation PichFlow, en conservant un moyen de revenir en arrière.
 
-## 6. QUATRIÈME PHASE : SÉCURISER ET PRÉSERVER L'AUTHENTIFICATION
+N'écrase pas la documentation publiée avant d'avoir vérifié quel dépôt et quel chemin Mintlify utilise.
 
-La correction ne doit pas seulement faire disparaître le 404. Elle doit préserver ou réparer le fonctionnement réel de l'authentification.
+### Publication
 
-Vérifie et corrige si nécessaire :
-- La validation des champs d'inscription.
-- La validation de l'email.
-- La vérification des mots de passe.
-- Le hachage sécurisé des mots de passe avant leur stockage.
-- La recherche des utilisateurs en base.
-- Le comportement lorsqu'un email existe déjà.
-- Le comportement lorsqu'un mot de passe est incorrect.
-- La création de session ou de jeton selon le mécanisme réellement utilisé.
-- La persistance de la session après rechargement de la page.
-- Les cookies en production : `HttpOnly`, `Secure` en HTTPS, `SameSite` et `Path` appropriés au fonctionnement de l'application.
-- La protection des routes qui nécessitent une authentification.
-- Les réponses génériques adaptées aux erreurs d'authentification afin de limiter l'énumération des comptes.
-- La limitation des tentatives répétées si un mécanisme de rate limiting existe déjà ou peut être ajouté proprement.
-- La protection contre les doubles soumissions.
-- La gestion des erreurs de base de données et des variables d'environnement manquantes.
+Si tu as réellement accès aux outils nécessaires, effectue les opérations de synchronisation et de publication autorisées, puis vérifie le résultat en ouvrant le site publié.
 
-Ne stocke jamais les mots de passe en clair. N'expose jamais les clés API, les secrets de session, les mots de passe ou les variables sensibles dans le frontend, les logs publics ou les réponses HTTP.
+Si tu n'as pas cet accès, prépare les fichiers et donne-moi des instructions précises, étape par étape, pour :
+1. choisir ou créer le dépôt GitHub ;
+2. y placer les fichiers ;
+3. connecter le bon dépôt dans Mintlify ;
+4. définir le chemin exact vers `docs.json` ;
+5. déclencher le déploiement ;
+6. vérifier que les pages publiées correspondent à la version corrigée.
 
-N'invente pas de nouvelle méthode d'authentification si le projet en possède déjà une fonctionnelle.
+Ne me donne pas seulement « connecte GitHub » ou « publie le site ». Explique où cliquer, quelle option sélectionner et quelle valeur saisir, selon l'interface réellement disponible.
 
-## 7. CINQUIÈME PHASE : VÉRIFIER LA BASE DE DONNÉES ET LES VARIABLES D'ENVIRONNEMENT
+## 10. ÉTAPE 8 — TESTER LE SITE PUBLIÉ
 
-Inspecte la configuration actuelle de la base de données et les migrations.
+Lorsque la publication est réellement effectuée, ouvre :
 
-Confirme :
-- Que la table ou le modèle utilisateur attendu existe.
-- Que les requêtes d'inscription et de connexion utilisent le bon schéma.
-- Que les noms de colonnes correspondent au schéma réel.
-- Que la connexion à Turso/libSQL, si utilisée, fonctionne côté serveur.
-- Que les variables d'environnement requises sont identifiées et documentées.
-- Que les variables de production doivent être configurées dans Vercel lorsque nécessaire.
+https://pichflow.mintlify.site/
 
-Ne modifie pas le schéma de production sans justifier la migration. Ne supprime aucune donnée utilisateur.
+Puis vérifie :
+- que le site charge correctement ;
+- que la page d'accueil PichFlow apparaît ;
+- que la navigation correspond à `docs.json` ;
+- que les principales pages s'ouvrent ;
+- qu'il n'y a pas de pages 404 ;
+- que les images s'affichent ;
+- que les références API sont visibles ;
+- que les liens internes fonctionnent ;
+- que le site n'affiche plus seulement le contenu générique du starter kit, si celui-ci était encore présent.
 
-Si une variable manque, indique son nom exact et où la configurer dans Vercel, sans demander de révéler sa valeur dans le chat ou de la committer dans Git.
+Si la publication n'est pas possible depuis ton environnement, ne simule pas ce test. Distingue clairement les tests locaux des tests sur le site public.
 
-## 8. SIXIÈME PHASE : TESTS AUTOMATISÉS
+## 11. CONTRAINTES IMPORTANTES
 
-Ajoute ou adapte des tests en fonction de l'outillage déjà présent dans le projet.
+- Travaille dans les fichiers réellement accessibles.
+- Ne t'arrête pas après un rapport d'audit.
+- Ne me redemande pas des informations que tu peux trouver directement dans le dépôt.
+- N'invente aucune route, aucun comportement API et aucune fonctionnalité.
+- Ne crée pas de faux résultats de déploiement.
+- Ne supprime pas les fichiers originaux.
+- Préserve les modifications sans rapport avec la documentation.
+- Ne modifie pas inutilement l'application PichFlow.
+- Ne mets aucun secret, token ou identifiant privé dans les fichiers.
+- N'ajoute pas de dépendance inutile.
+- Si une décision nécessite mon autorisation, arrête-toi uniquement pour cette décision et explique précisément ce qui est nécessaire.
+- Si tu rencontres un blocage, continue toutes les autres tâches qui peuvent être effectuées indépendamment.
 
-Teste au minimum :
+## 12. RAPPORT FINAL OBLIGATOIRE
 
-### Inscription
-- Une inscription valide crée un compte.
-- Une inscription invalide renvoie une erreur JSON exploitable.
-- Une adresse email déjà utilisée est gérée proprement.
-- Aucun mot de passe en clair n'est stocké.
+À la fin, fournis un rapport concret avec les rubriques suivantes :
 
-### Connexion
-- Une connexion valide suit le mécanisme de session prévu.
-- Un mot de passe incorrect est refusé.
-- Un utilisateur inexistant est refusé.
-- La réponse est conforme au contrat du frontend.
-- La session reste valide selon le mécanisme de persistance prévu.
+### A. Problème initial identifié
+Explique la cause réelle pour laquelle la documentation n'était pas correctement intégrée ou publiée.
 
-### Contrat HTTP
-- Les routes attendues existent.
-- Les méthodes HTTP incorrectes sont traitées correctement.
-- Une erreur backend ne provoque pas de crash du parseur JSON frontend.
-- Les réponses d'erreur sont correctement structurées.
+### B. Fichiers modifiés
+Liste les fichiers créés, modifiés ou supprimés. Justifie toute suppression. Précise les fichiers originaux préservés.
 
-### Build et déploiement
-- Exécute le lint et les tests disponibles.
-- Exécute le build de production.
-- Corrige les régressions causées par tes modifications.
-- Vérifie la configuration Vercel et les chemins de routage.
+### C. Corrections API
+Liste les incohérences détectées entre la documentation et le code, et les corrections réalisées.
 
-Ne prétends pas qu'un test a réussi si tu ne l'as pas exécuté. Si un test exige des secrets, une base de données ou un environnement indisponible, indique clairement cette limite.
+### D. Validations
+Pour chaque commande exécutée, indique le résultat réel : réussite, échec ou non exécutée.
 
-## 9. SEPTIÈME PHASE : TESTS DE PRODUCTION APRÈS DÉPLOIEMENT
+### E. Intégration Mintlify
+Indique le dépôt GitHub effectivement utilisé, le chemin vers `docs.json` et l'état réel de la connexion, si ces informations sont accessibles.
 
-Prépare une checklist de vérification de :
+### F. Publication
+Indique si le site a réellement été déployé et testé. Fournis l'URL vérifiée et les éventuelles erreurs observées.
 
-`https://pichflow.vercel.app/api/auth/register`
+### G. Actions restantes
+S'il reste des étapes nécessitant mon intervention, donne-moi une liste numérotée, précise et courte. Pour chacune, indique le site à ouvrir, l'écran à rechercher, l'action à effectuer et la valeur à saisir.
 
-`https://pichflow.vercel.app/api/auth/login`
+### H. Prochaine action
+Termine en me donnant une seule prochaine action claire si quelque chose bloque encore.
 
-Ces endpoints sont conçus pour recevoir des requêtes POST. Un test GET peut légitimement retourner 404 ou 405 selon l'implémentation ; ne conclus donc pas qu'une route POST est absente uniquement à partir d'un test GET.
-
-Utilise des requêtes POST de test appropriées, sans exposer de vrais mots de passe ou de données personnelles.
-
-Après déploiement :
-- Vérifie que les requêtes POST atteignent le bon handler.
-- Vérifie que les réponses sont JSON et possèdent le statut HTTP attendu.
-- Vérifie que l'inscription et la connexion fonctionnent depuis l'interface web.
-- Vérifie les cookies et la persistance de session dans le navigateur.
-- Vérifie les logs Vercel en cas d'erreur serveur.
-- Ne crée pas de faux comptes dans la base de production sans autorisation.
-- Ne prétends pas avoir testé la production si tu n'as pas accès au réseau ou au déploiement.
-
-## 10. CONTRAINTES IMPORTANTES
-
-- Travaille dans le dépôt existant.
-- Inspecte les fichiers avant de les modifier.
-- Préserve le design et les fonctionnalités sans rapport avec le problème.
-- Ne supprime aucune page.
-- Ne remplace pas l'authentification par des données fictives.
-- Ne contourne pas les contrôles de sécurité.
-- Ne désactive pas les protections de production pour rendre la connexion fonctionnelle.
-- Ne remplace pas la base de données par un stockage temporaire en mémoire ou local.
-- N'ajoute pas un deuxième système d'authentification en parallèle.
-- N'expose pas les secrets.
-- Ne travaille pas sur la documentation Mintlify pendant cette mission.
-- Effectue les corrections réelles dans le code, pas seulement une proposition théorique.
-
-## 11. RAPPORT FINAL OBLIGATOIRE
-
-À la fin, présente un rapport concis et précis avec :
-
-1. **Cause racine** : explique pourquoi les endpoints retournaient 404.
-2. **Fichiers examinés** : liste les fichiers importants.
-3. **Fichiers modifiés** : liste chaque fichier modifié et le but du changement.
-4. **Correction appliquée** : explique le fonctionnement retenu.
-5. **Base de données et variables** : indique les éventuelles actions manuelles requises.
-6. **Tests exécutés** : donne les résultats réels du lint, des tests et du build.
-7. **Déploiement** : précise si un déploiement a effectivement été réalisé ou si un commit/push est encore nécessaire.
-8. **Tests de production** : indique ce qui a été vérifié et ce qui reste à vérifier.
-9. **Actions restantes** : donne les étapes exactes à effectuer dans GitHub et Vercel si nécessaire.
-
-Commence maintenant par l'audit du dépôt. Identifie la cause racine avant de modifier le code, puis applique la correction la plus simple et la plus robuste compatible avec l'architecture réelle de PichFlow.
+**Commence maintenant par examiner l'état réel du projet et continue jusqu'à avoir corrigé tout ce qui est possible. Ne t'arrête pas à l'audit.**

@@ -1,67 +1,29 @@
 ---
-title: "Modèle de données & Concepts clés"
-description: "Objets fondamentaux, cycles de vie et relations de données dans PichFlow."
+title: "Concepts essentiels"
+description: "Comprendre les clés, paiements, sessions de checkout, transactions et environnements."
 ---
 
-# Modèle de Données & Concepts Clés
+# Concepts essentiels
 
-L'architecture PichFlow repose sur plusieurs entités clés garantissant l'isolation des données marchands et la conformité avec la spécification officielle SasPay.
+## Clé API et environnement
 
----
+Une clé `sk_test_...` ou `sk_live_...` est liée à un environnement. Le middleware enregistre également l'application associée à la clé. Certaines opérations, comme l'initialisation d'un payout, contrôlent le scope (`payout` ou `both`).
 
-## 1. Application (`applications`)
+## Paiement, session et transaction
 
-Une application représente une boutique, un service ou une entité métier spécifique au sein de votre compte. 
-- Les clés API, webhooks, transactions, clients et liens de paiement sont strictement cloisonnés par `application_id`.
-- Un marchand peut gérer plusieurs applications (ex: "Boutique Cotonou", "Plateforme SaaS Abidjan").
+- Un paiement Softpay est créé par `POST /api/v1/payments/softpay`.
+- Une session hébergée est créée par `POST /api/v1/checkout-sessions`.
+- Le point d'entrée unifié `POST /api/v1/payments/create` choisit Softpay lorsque `network` et `customerPhone` sont transmis; sinon il crée une session hébergée.
+- La base interne distingue les sessions de checkout et les transactions. Une réponse fournisseur n'est pas nécessairement une transaction déjà finalisée.
 
----
+## Référence et identifiants
 
-## 2. Transaction (`transactions`)
+La réponse du fournisseur peut fournir un identifiant de paiement. La route `/api/v1/payments/:id/verify` reçoit cet identifiant; `/api/v1/payments/status/:reference` consulte une référence interne présente dans la base PichFlow. Ne les intervertissez pas.
 
-Représente une opération de paiement entrant (Pay-in).
+## Montants et champs
 
-| Champ | Type | Description |
-| :--- | :--- | :--- |
-| `id` | `string` | Identifiant interne unique PichFlow (ex: `tx_1728945600000`). |
-| `reference` | `string` | Référence métier unique de la commande (ex: `TX-PF-891234`). |
-| `external_id` / `saspay_id` | `string` | Identifiant officiel renvoyé par la passerelle SasPay. |
-| `amount` | `number` | Montant total débité au client. |
-| `currency` | `string` | Code devise ISO (ex: `XOF`). |
-| `status` | `string` | État : `pending`, `success`, `failed`, `cancelled`. |
-| `customer_name` | `string` | Nom du client payeur. |
-| `customer_email` | `string` | Adresse email du client pour l'envoi de la facture. |
-| `customer_phone` | `string` | Numéro de téléphone au format international. |
-| `net_amount` | `number` | Montant net crédité sur votre wallet après déduction des frais. |
-| `platform_fee` | `number` | Frais de la plateforme PichFlow. |
-| `provider_fee` | `number` | Frais facturés par la passerelle SasPay / opérateur. |
+Le serveur normalise le montant avant de le transmettre au fournisseur. Les exemples utilisent des chaînes décimales telles que `"5000.00"` pour éviter les arrondis côté client; la validation exacte des décimales dépend du fournisseur.
 
-```mermaid
-stateDiagram-v2
-    [*] --> pending: Initialisation paiement
-    pending --> success: Confirmation USSD / Webhook SasPay
-    pending --> failed: Solde insuffisant / Expiration
-    pending --> cancelled: Annulation par le client
-    success --> [*]
-    failed --> [*]
-    cancelled --> [*]
-```
+## Liens de paiement et clients
 
----
-
-## 3. Client (`customers`)
-
-PichFlow gère automatiquement un carnet d'adresses clients étanche par marchand et par application :
-- Lorsqu'une transaction réussit, PichFlow met à jour la fiche client correspondante ou en crée une nouvelle si l'adresse email n'existait pas.
-- Champs enregistrés : `name`, `email`, `phone`, `country`, `payment_count`, `total_spent`, `last_transaction_at`.
-- Aucune fuite d'information client entre marchands ou entre applications d'un même compte.
-
----
-
-## 4. Wallet (`wallets`)
-
-Chaque marchand dispose de portefeuilles électroniques multi-devises (`XOF`, etc.) enregistrant son solde disponible en temps réel.
-- **Crédit automatique** : Lorsqu'un paiement est confirmé par SasPay, le montant net est immédiatement crédité sur le wallet correspondant.
-- **Débit sur retrait** : Une demande de payout déduit instantanément le solde du wallet.
-- **Transfert inter-wallets** : Possibilité de transférer des fonds d'un wallet à un autre avec application des taux de change officiels.
-
+Le code expose des routes de liens de paiement et de clients sous `/api/...`, mais elles utilisent l'authentification de session du tableau de bord. Elles ne sont pas des opérations de l'API marchande `/api/v1` par clé API.

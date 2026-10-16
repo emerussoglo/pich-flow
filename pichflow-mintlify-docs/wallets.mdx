@@ -1,76 +1,42 @@
 ---
-title: "Wallets, Devises & Taux de Change"
-description: "Gestion des soldes marchands multi-devises, consultation des taux de change et virements inter-wallets."
+title: "Portefeuilles et transferts"
+description: "Consulter les soldes et taux via l'API marchande; paramètres exacts du transfert."
 ---
 
-# Wallets & Gestion Multi-Devises
+# Portefeuilles et transferts
 
-PichFlow permet aux marchands d'opérer des comptes multi-devises à travers plusieurs pays africains tout en conservant une vision consolidée de leurs finances.
+## API marchande
 
----
-
-## 1. Consulter les Soldes Réels des Wallets
-
-Pour interroger vos soldes réels déclarés auprès de la passerelle SasPay :
+Les opérations ci-dessous nécessitent une clé API Bearer :
 
 ```bash
-curl -X GET https://api.pichflow.com/v1/wallets/balances \
-  -H "Authorization: Bearer sk_live_votre_cle"
+curl http://localhost:3000/api/v1/wallets/balances \
+  -H "Authorization: Bearer $PICHFLOW_API_KEY"
+
+curl http://localhost:3000/api/v1/wallets/rates \
+  -H "Authorization: Bearer $PICHFLOW_API_KEY"
 ```
 
-### Réponse officielle :
+Elles transmettent les requêtes à SasPay et enveloppent le résultat sous `data` en cas de succès. Les soldes et taux exacts dépendent du fournisseur et ne sont pas inventés ici.
 
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "currency": "XOF",
-      "country": "BJ",
-      "balance": "428500.00",
-      "available_balance": "428500.00",
-      "pending_balance": "0.00"
-    },
-    {
-      "currency": "XOF",
-      "country": "CI",
-      "balance": "154200.00",
-      "available_balance": "154200.00",
-      "pending_balance": "0.00"
-    }
-  ]
-}
-```
+## Transfert inter-pays
 
-> **Zéro Simulation** : PichFlow ne simule aucun solde financier. Les données affichées reflètent strictement les relevés de trésorerie de votre compte SasPay marchand.
-
----
-
-## 2. Consulter les Taux de Change Officiels
-
-Pour obtenir la grille des taux de change appliqués lors des règlements ou conversions :
+`POST /api/v1/wallets/transfer` exige `from_country`, `to_country` et `from_amount`. Le serveur normalise le montant et génère une idempotency key si elle n'est pas fournie.
 
 ```bash
-curl -X GET https://api.pichflow.com/v1/wallets/rates \
-  -H "Authorization: Bearer sk_test_votre_cle"
-```
-
----
-
-## 3. Transfert Inter-Wallets
-
-Pour transférer des fonds d'un wallet à un autre (ex: transférer du solde XOF Bénin vers XOF Côte d'Ivoire) :
-
-```bash
-curl -X POST https://api.pichflow.com/v1/wallets/transfer \
-  -H "Authorization: Bearer sk_live_votre_cle" \
+curl -X POST http://localhost:3000/api/v1/wallets/transfer \
+  -H "Authorization: Bearer $PICHFLOW_API_KEY" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: a1b2c3d4-e5f6-7890-1234-56789abcdef0" \
   -d '{
     "from_country": "BJ",
     "to_country": "CI",
-    "from_amount": "50000.00"
+    "from_amount": "25000.00"
   }'
 ```
 
-Le serveur attend `from_country`, `to_country` et `from_amount`. Il génère une clé d'idempotence si l'en-tête n'est pas fourni.
+Le code ne fixe pas de devise source ou cible dans le corps de la route; n'ajoutez pas ces champs à titre de contrat sans confirmation du fournisseur.
+
+## Routes du tableau de bord
+
+`GET /api/wallets`, `POST /api/wallets` et `POST /api/wallets/transfer` existent également dans l'API du tableau de bord, protégée par session. Elles sont distinctes de `/api/v1/wallets/...`.
