@@ -15,7 +15,7 @@ async function bootstrap() {
     if (typeof mod.startServer === 'function') {
       await mod.startServer();
     }
-  } else {
+  } else { 
     // Development mode with Vite HMR/middlewares (tsx server.ts)
     const { startServer } = await import('./src/server/main.ts');
     await startServer();
