@@ -82,44 +82,38 @@ export async function destroySession(token: string): Promise<void> {
 // Next.js Route Handler Authentication Helper
 export async function getAuthUserFromRequest(request: globalThis.Request): Promise<AuthUser | null> {
   const authHeader = request.headers.get('authorization') || '';
-  let token = '';
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookieMatch = cookieHeader.match(/(?:^|;\s*)pf_auth_token=([^;]+)/);
+  const cookieToken = cookieMatch?.[1] || '';
+  const tokens = [...new Set([cookieToken, bearerToken].filter(Boolean))];
+  if (tokens.length === 0) return null;
 
-  if (authHeader.startsWith('Bearer ')) {
-    token = authHeader.substring(7).trim();
-  }
+  const db = getDb();
+  for (const token of tokens) {
+    const sessionRes = await db.execute({
+      sql: `SELECT s.*, u.id as u_id, u.email, u.full_name, u.phone, u.country, u.role, u.is_verified
+            FROM sessions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.token = ? AND datetime(s.expires_at) > datetime('now')`,
+      args: [token],
+    });
 
-  if (!token) {
-    // Check cookie header
-    const cookieHeader = request.headers.get('cookie') || '';
-    const match = cookieHeader.match(/(?:^|;\s*)pf_auth_token=([^;]+)/);
-    if (match) {
-      token = match[1];
+    if (sessionRes.rows.length > 0) {
+      const row = sessionRes.rows[0];
+      return {
+        id: String(row.u_id),
+        email: String(row.email),
+        full_name: String(row.full_name),
+        phone: String(row.phone || ''),
+        country: String(row.country || 'BJ'),
+        role: String(row.role || 'merchant'),
+        is_verified: Number(row.is_verified || 1),
+      };
     }
   }
 
-  if (!token) return null;
-
-  const db = getDb();
-  const sessionRes = await db.execute({
-    sql: `SELECT s.*, u.id as u_id, u.email, u.full_name, u.phone, u.country, u.role, u.is_verified
-          FROM sessions s
-          JOIN users u ON s.user_id = u.id
-          WHERE s.token = ? AND datetime(s.expires_at) > datetime('now')`,
-    args: [token],
-  });
-
-  if (sessionRes.rows.length === 0) return null;
-
-  const row = sessionRes.rows[0];
-  return {
-    id: String(row.u_id),
-    email: String(row.email),
-    full_name: String(row.full_name),
-    phone: String(row.phone || ''),
-    country: String(row.country || 'BJ'),
-    role: String(row.role || 'merchant'),
-    is_verified: Number(row.is_verified || 1),
-  };
+  return null;
 }
 
 // Next.js Route Handler API Key Helper

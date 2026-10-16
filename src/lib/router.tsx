@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useTransition } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useTransition, useCallback } from 'react';
 import { usePathname, useRouter as useNextRouter } from 'next/navigation';
 
 export interface RouterContextType {
@@ -89,7 +89,7 @@ export const RouterProvider: React.FC<{ children: ReactNode; initialPathname?: s
     };
   }, []);
 
-  const navigate = (to: string, options?: { replace?: boolean; scrollToTop?: boolean }) => {
+  const navigate = useCallback((to: string, options?: { replace?: boolean; scrollToTop?: boolean }) => {
     let cleanPath = to.startsWith('/') ? to : `/${to}`;
 
     if (cleanPath === '/landing' || cleanPath === '/home') {
@@ -123,7 +123,7 @@ export const RouterProvider: React.FC<{ children: ReactNode; initialPathname?: s
     if (options?.scrollToTop !== false && typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  };
+  }, [nextRouter, startTransition]);
 
   // Compute current major route
   const pathname = currentPath || '/';

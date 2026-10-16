@@ -2,6 +2,16 @@ import { Application, Transaction, Wallet, PaymentLink, Customer, Withdrawal, Pa
 
 const TOKEN_KEY = 'pf_auth_token';
 
+export class ApiResponseError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiResponseError';
+  }
+}
+
 function getHttpErrorMessage(status: number, isHtml: boolean): string {
   if (status === 404 && isHtml) {
     return 'Le service de connexion est introuvable. L’API n’est peut-être pas déployée correctement.';
@@ -22,18 +32,14 @@ export async function parseApiResponse(response: Response, endpoint: string): Pr
   const isHtml = /text\/html/i.test(contentType) || /^\s*<!doctype html|^\s*<html\b/i.test(body);
 
   if (!response.ok) {
+    let message = '';
     if (isJson && body.trim()) {
       try {
         const data = JSON.parse(body);
         if (data && typeof data.error === 'string' && data.error.trim()) {
-          throw new Error(data.error);
+          message = data.error;
         }
       } catch (error) {
-        if (error instanceof Error && error.message !== 'Unexpected end of JSON input') {
-          if (error.message !== 'Unexpected token' && !error.message.startsWith('Unexpected token')) {
-            throw error;
-          }
-        }
         console.warn('[API] Invalid JSON error response:', {
           endpoint,
           status: response.status,
@@ -42,7 +48,7 @@ export async function parseApiResponse(response: Response, endpoint: string): Pr
         });
       }
     }
-    throw new Error(getHttpErrorMessage(response.status, isHtml));
+    throw new ApiResponseError(message || getHttpErrorMessage(response.status, isHtml), response.status);
   }
 
   if (!isJson) {
@@ -121,6 +127,7 @@ export const apiClient = {
     try {
       response = await fetch(`/api${endpoint}`, {
         ...options,
+        credentials: options.credentials ?? 'same-origin',
         headers,
       });
     } catch (error) {

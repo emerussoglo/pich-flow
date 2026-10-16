@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ToastProvider } from './components/ui/ToastContext';
 import { RouterProvider, useRouter } from './lib/router';
 import { Navbar } from './components/layout/Navbar';
@@ -56,7 +56,7 @@ import { NewAppModal } from './components/dashboard/Modals';
 
 import { Application, Transaction, PaymentLink, Withdrawal, ApiKey, WebhookEndpoint, EnvironmentMode } from './types';
 import { useScrollAnimation } from './lib/useScrollAnimation';
-import { apiClient } from './lib/api';
+import { apiClient, ApiResponseError } from './lib/api';
 
 function AppContent() {
   const { currentRoute, dashboardTab, navigate, publicPaymentSlug } = useRouter();
@@ -73,18 +73,44 @@ function AppContent() {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([]);
+  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
+  const dashboardSessionCheck = useRef<Promise<unknown> | null>(null);
+  const hasHandledUnauthorized = useRef(false);
+
+  const handleUnauthorized = useCallback(() => {
+    if (hasHandledUnauthorized.current) return;
+    hasHandledUnauthorized.current = true;
+    apiClient.clearToken();
+    setApplications([]);
+    setActiveApp(null);
+    setTransactions([]);
+    setWallets([]);
+    setPaymentLinks([]);
+    setWithdrawals([]);
+    setApiKeys([]);
+    setWebhooks([]);
+    try { localStorage.removeItem('pf_active_app_id'); } catch {}
+    navigate('/login', { replace: true });
+  }, [navigate]);
 
   // Function to load all isolated data for a specific application
   const loadAppData = useCallback(async (appId?: string) => {
-    if (!apiClient.getToken()) return;
     try {
+      const withFallback = <T,>(request: Promise<T>, fallback: T): Promise<T> =>
+        request.catch((error: unknown) => {
+          if (error instanceof ApiResponseError && error.status === 401) {
+            throw error;
+          }
+          return fallback;
+        });
+
       const [wals, txs, links, wdrs, keys, whs] = await Promise.all([
-        apiClient.wallets.getAll().catch(() => []),
-        apiClient.transactions.getAll(appId).catch(() => []),
-        apiClient.paymentLinks.getAll(appId).catch(() => []),
-        apiClient.withdrawals.getAll().catch(() => []),
-        apiClient.developer.getKeys(appId).catch(() => []),
-        apiClient.developer.getWebhooks(appId).catch(() => []),
+        withFallback(apiClient.wallets.getAll(), []),
+        withFallback(apiClient.transactions.getAll(appId), []),
+        withFallback(apiClient.paymentLinks.getAll(appId), []),
+        withFallback(apiClient.withdrawals.getAll(), []),
+        withFallback(apiClient.developer.getKeys(appId), []),
+        withFallback(apiClient.developer.getWebhooks(appId), []),
       ]);
       if (wals) setWallets(wals);
       if (txs) setTransactions(txs);
@@ -93,51 +119,73 @@ function AppContent() {
       if (keys) setApiKeys(keys);
       if (whs) setWebhooks(whs);
     } catch (err) {
-      console.warn('App data sync error:', err);
+      if (err instanceof ApiResponseError && err.status === 401) {
+        handleUnauthorized();
+      } else {
+        console.warn('App data sync error:', err);
+      }
     }
-  }, []);
+  }, [handleUnauthorized]);
 
   // Synchronize applications from server
   const syncApplications = useCallback(async () => {
-    if (!apiClient.getToken()) {
-      setApplications([]);
-      setActiveApp(null);
-      return;
-    }
-    try {
-      const apps = await apiClient.apps.getAll();
-      const validApps = apps || [];
-      setApplications(validApps);
+    const validApps = await apiClient.apps.getAll();
+    setApplications(validApps);
 
-      if (validApps.length === 0) {
-        setActiveApp(null);
-        try { localStorage.removeItem('pf_active_app_id'); } catch {}
-      } else {
-        const savedAppId = (() => {
-          try { return localStorage.getItem('pf_active_app_id'); } catch { return null; }
-        })();
-        const matchedApp = validApps.find((a) => a.id === savedAppId) || validApps[0];
-        setActiveApp(matchedApp);
-        try { localStorage.setItem('pf_active_app_id', matchedApp.id); } catch {}
-        loadAppData(matchedApp.id);
-      }
-    } catch (err) {
-      console.warn('Applications sync error:', err);
+    if (validApps.length === 0) {
+      setActiveApp(null);
+      try { localStorage.removeItem('pf_active_app_id'); } catch {}
+    } else {
+      const savedAppId = (() => {
+        try { return localStorage.getItem('pf_active_app_id'); } catch { return null; }
+      })();
+      const matchedApp = validApps.find((a) => a.id === savedAppId) || validApps[0];
+      setActiveApp(matchedApp);
+      try { localStorage.setItem('pf_active_app_id', matchedApp.id); } catch {}
+      await loadAppData(matchedApp.id);
     }
   }, [loadAppData]);
 
-  // Sync on mount and when entering dashboard
+  // Validate the session before loading any private dashboard data.
   useEffect(() => {
-    if (currentRoute === 'dashboard') {
-      syncApplications();
+    if (currentRoute !== 'dashboard') {
+      hasHandledUnauthorized.current = false;
+      setIsDashboardLoading(false);
+      return;
     }
-  }, [currentRoute, syncApplications]);
 
-  useEffect(() => {
-    if (apiClient.getToken()) {
-      syncApplications();
-    }
-  }, []);
+    let active = true;
+    hasHandledUnauthorized.current = false;
+    setIsDashboardLoading(true);
+
+    const loadDashboard = async () => {
+      const sessionCheck = dashboardSessionCheck.current ?? apiClient.auth.me();
+      dashboardSessionCheck.current = sessionCheck;
+      try {
+        await sessionCheck;
+        if (!active) return;
+        await syncApplications();
+      } catch (error) {
+        if (!active) return;
+
+        if (error instanceof ApiResponseError && error.status === 401) {
+          handleUnauthorized();
+        } else {
+          console.error('Dashboard authentication or sync failed:', error);
+        }
+      } finally {
+        if (dashboardSessionCheck.current === sessionCheck) {
+          dashboardSessionCheck.current = null;
+        }
+        if (active) setIsDashboardLoading(false);
+      }
+    };
+
+    void loadDashboard();
+    return () => {
+      active = false;
+    };
+  }, [currentRoute, handleUnauthorized, syncApplications]);
 
   // Modals state
   const [isNewLinkModalOpen, setIsNewLinkModalOpen] = useState(false);
@@ -293,7 +341,11 @@ function AppContent() {
 
       {/* 4. MODULAR DASHBOARD APPLICATION (with isolated routes) */}
       {currentRoute === 'dashboard' && (
-        <>
+        isDashboardLoading ? (
+          <main role="status" aria-live="polite" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+            Vérification de la session…
+          </main>
+        ) : <>
           {dashboardTab === 'apps-selection' ? (
             <>
               <AppsSelectionScreen
