@@ -132,6 +132,7 @@ export async function initDatabase(): Promise<void> {
     CREATE TABLE IF NOT EXISTS wallets (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
+      application_id TEXT,
       currency TEXT NOT NULL,
       symbol TEXT NOT NULL,
       balance REAL DEFAULT 0,
@@ -258,6 +259,7 @@ export async function initDatabase(): Promise<void> {
     CREATE TABLE IF NOT EXISTS payout_requests (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
+      application_id TEXT,
       reference TEXT UNIQUE NOT NULL,
       external_id TEXT,
       amount REAL NOT NULL,
@@ -407,9 +409,16 @@ export async function initDatabase(): Promise<void> {
   await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN provider TEXT DEFAULT 'saspay'`);
   await safeAlter(`ALTER TABLE transactions ADD COLUMN idempotency_key TEXT`);
   await safeAlter(`ALTER TABLE transactions ADD COLUMN saspay_id TEXT`);
+  await safeAlter(`ALTER TABLE wallets ADD COLUMN application_id TEXT`);
+  await safeAlter(`ALTER TABLE payout_requests ADD COLUMN application_id TEXT`);
   await safeAlter(`ALTER TABLE api_credentials ADD COLUMN secret_hash TEXT`);
   await safeAlter(`ALTER TABLE webhook_logs ADD COLUMN external_event_id TEXT`);
   await safeAlter(`ALTER TABLE webhook_logs ADD COLUMN signature TEXT`);
+  await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS wallets_user_app_currency_unique
+    ON wallets (user_id, application_id, currency) WHERE application_id IS NOT NULL`);
+  await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS checkout_sessions_idempotency_unique
+    ON checkout_sessions (idempotency_key)
+    WHERE substr(idempotency_key, 1, 9) = 'paydunya:'`);
 
   console.log('[DB] All tables verified successfully.');
 }
