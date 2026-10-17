@@ -1,15 +1,17 @@
 ---
-title: "API PitchFlow v1"
+title: "API PichFlow v1"
 description: "Liens de paiement et checkout PayDunya actuellement disponibles."
 ---
 
-# API PitchFlow v1
+# API PichFlow v1
 
 Cette référence est limitée aux opérations présentes dans les Route Handlers Next.js. Base actuelle : `https://pichflow.vercel.app/api/v1`; localement : `http://localhost:3000/api/v1`.
 
+PichFlow crée une seule clé par requête. Les clés Sandbox et Live doivent être demandées séparément; la création d’une clé Live exige `PAYDUNYA_MODE=live` explicitement configuré. Révoquez une clé compromise depuis le centre développeur.
+
 ## Sécurité et environnements
 
-Utilisez une clé API PitchFlow `pf_test_...` ou `pf_live_...` dans `Authorization: Bearer ...`. La clé est rattachée à une seule application, son hash est stocké côté serveur et sa valeur complète n'est affichée qu'à la création. Ne mettez jamais cette clé ou les secrets PayDunya dans le navigateur.
+Utilisez une clé API PichFlow `pf_test_...` ou `pf_live_...` dans `Authorization: Bearer ...`. La clé est rattachée à une seule application, son hash est stocké côté serveur et sa valeur complète n'est affichée qu'à la création. Ne mettez jamais cette clé ou les secrets PayDunya dans le navigateur.
 
 `PAYDUNYA_MODE` doit correspondre à l'environnement de la clé; en production, il doit être défini explicitement. Les secrets `PAYDUNYA_MASTER_KEY`, `PAYDUNYA_PRIVATE_KEY` et `PAYDUNYA_TOKEN` restent côté serveur. Le mode test ne bascule pas automatiquement en production.
 

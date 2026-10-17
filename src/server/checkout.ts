@@ -27,6 +27,7 @@ interface CheckoutInput {
   customerName?: unknown;
   customerEmail?: unknown;
   customerPhone?: unknown;
+  country?: unknown;
   paymentLinkId?: unknown;
   paymentLinkSlug?: unknown;
   slug?: unknown;
@@ -56,6 +57,9 @@ function validateCustomer(input: CheckoutInput) {
   }
   if (!/^\+229\d{8}$/.test(normalizedPhone)) {
     throw new CheckoutError('Un numéro béninois valide au format +229 suivi de 8 chiffres est requis.', 400);
+  }
+  if (input.country !== undefined && input.country !== 'BJ') {
+    throw new CheckoutError('Le pays de paiement configuré est le Bénin.', 400);
   }
   return { customerName, customerEmail, customerPhone: normalizedPhone };
 }
@@ -203,6 +207,34 @@ export async function createCheckout(
         JSON.stringify({ paymentLinkId: String(link.id) }), now, now, idempotencyKey,
       ],
     });
+    const customer = await tx.execute({
+      sql: `SELECT id FROM customers
+            WHERE user_id = ? AND application_id = ? AND LOWER(email) = LOWER(?)
+            LIMIT 1`,
+      args: [userId, applicationId, customerEmail],
+    });
+    if (customer.rows[0]) {
+      await tx.execute({
+        sql: `UPDATE customers
+              SET name = ?, phone = ?, country = 'BJ', last_transaction_at = ?, updated_at = ?
+              WHERE id = ? AND user_id = ? AND application_id = ?`,
+        args: [
+          customerName, customerPhone, now, now,
+          String(customer.rows[0].id), userId, applicationId,
+        ],
+      });
+    } else {
+      await tx.execute({
+        sql: `INSERT INTO customers
+          (id, user_id, application_id, name, email, phone, country, payment_count,
+           total_spent, currency, last_transaction_at, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 'BJ', 0, 0, 'XOF', ?, ?, ?)`,
+        args: [
+          `cust_${crypto.randomUUID()}`, userId, applicationId, customerName,
+          customerEmail, customerPhone, now, now, now,
+        ],
+      });
+    }
     await tx.commit();
   } catch (error) {
     await tx.rollback();
@@ -314,6 +346,39 @@ async function settleConfirmedSession(session: CheckoutSession, confirmed: Recor
     });
     if (transaction.rowsAffected !== 1) {
       throw new Error('Could not claim the pending transaction for settlement.');
+    }
+
+    const customer = await tx.execute({
+      sql: `SELECT id FROM customers
+            WHERE user_id = ? AND application_id = ? AND LOWER(email) = LOWER(?)
+            LIMIT 1`,
+      args: [session.user_id, session.application_id, session.customer_email],
+    });
+    if (customer.rows[0]) {
+      await tx.execute({
+        sql: `UPDATE customers
+              SET name = ?, phone = ?, country = 'BJ',
+                  payment_count = COALESCE(payment_count, 0) + 1,
+                  total_spent = COALESCE(total_spent, 0) + ?,
+                  last_transaction_at = ?, updated_at = ?
+              WHERE id = ? AND user_id = ? AND application_id = ?`,
+        args: [
+          session.customer_name, session.customer_phone, Number(session.amount), now, now,
+          String(customer.rows[0].id), session.user_id, session.application_id,
+        ],
+      });
+    } else {
+      await tx.execute({
+        sql: `INSERT INTO customers
+          (id, user_id, application_id, name, email, phone, country, payment_count,
+           total_spent, currency, last_transaction_at, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, 'BJ', 1, ?, 'XOF', ?, ?, ?)`,
+        args: [
+          `cust_${crypto.randomUUID()}`, session.user_id, session.application_id,
+          session.customer_name || '', session.customer_email || '',
+          session.customer_phone || '', Number(session.amount), now, now, now,
+        ],
+      });
     }
 
     await tx.execute({

@@ -1,0 +1,146 @@
+{
+  "planHash": "71b0f67ece3fd012d6a92a1b5fc6a42af3356ff3d2a654302e901964e270ba1b",
+  "phase": "standalone",
+  "recordedAtUtc": "2026-10-17T10:52:14.3408651Z",
+  "retryCount": 0,
+  "resetBaseline": false,
+  "complete": true,
+  "result": {
+    "setupSucceeded": true,
+    "setupDurationMs": 0,
+    "setupFailureOutput": null,
+    "assertions": [
+      {
+        "name": "typescript-no-emit",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E react-example@0.0.0 lint\r\n\u003E tsc --noEmit\r\n\r\n",
+        "durationMs": 4536
+      },
+      {
+        "name": "api-and-payment-tests",
+        "kind": "process",
+        "verificationMethod": "test-results",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E react-example@0.0.0 test\r\n\u003E tsx --test tests/auth.test.ts tests/next-api.test.ts tests/payments.test.ts\r\n\r\nTAP version 13\r\n# \u25C7 injected env (14) from .env // tip: \u2301 auth for agents [www.vestauth.com]\r\n# \u25C7 injected env (0) from .env // tip: \u2318 custom filepath { path: \u0027/custom/path/.env\u0027 }\r\n# [DB] Initializing database tables...\r\n# [DB] All tables verified successfully.\r\n# Subtest: auth API validates requests, persists accounts and sessions, and tolerates SMTP alert failure\r\n    # Subtest: login and registration reject missing or invalid fields\r\n    ok 1 - login and registration reject missing or invalid fields\r\n      ---\r\n      duration_ms: 205.8203\r\n      type: \u0027test\u0027\r\n      ...\r\n# [PICHFLOW AUTH] Code de confirmation g\u00E9n\u00E9r\u00E9 et envoy\u00E9 \u00E0 : auth-0e79810d-53b0-4f7a-b99e-aefade4464c7@example.test\r\n# [PichFlow Email] [Test Mode] Email intercept\u00E9 pour auth-0e79810d-53b0-4f7a-b99e-aefade4464c7@example.test (Votre code de validation PichFlow : 976269)\r\n    # Subtest: registers a valid account and confirms it using the persisted email code\r\n    ok 2 - registers a valid account and confirms it using the persisted email code\r\n      ---\r\n      duration_ms: 104.7373\r\n      type: \u0027test\u0027\r\n      ...\r\n    # Subtest: rejects a duplicate verified account and incorrect password\r\n    ok 3 - rejects a duplicate verified account and incorrect password\r\n      ---\r\n      duration_ms: 36.8748\r\n      type: \u0027test\u0027\r\n      ...\r\n# [PichFlow Auth] \uD83D\uDEE1\uFE0F Envoi de l\u0027alerte de connexion pour auth-0e79810d-53b0-4f7a-b99e-aefade4464c7@example.test (IP: 127.0.0.1 (Localhost))\r\n# [PichFlow Email] \u274C Erreur lors de l\u0027envoi de l\u0027e-mail \u00E0 auth-0e79810d-53b0-4f7a-b99e-aefade4464c7@example.test: Configuration SMTP incompl\u00E8te : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.\r\n# [Login Notification Email Error] Configuration SMTP incompl\u00E8te : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.\r\n    # Subtest: creates a persistent session and allows login when the alert SMTP is unavailable\r\n    ok 4 - creates a persistent session and allows login when the alert SMTP is unavailable\r\n      ---\r\n      duration_ms: 162.2317\r\n      type: \u0027test\u0027\r\n      ...\r\n# [PichFlow Auth] \uD83D\uDEE1\uFE0F Envoi de l\u0027alerte de connexion pour auth-0e79810d-53b0-4f7a-b99e-aefade4464c7@example.test (IP: 127.0.0.1 (Localhost))\r\n# [PichFlow Email] \u274C Erreur lors de l\u0027envoi de l\u0027e-mail \u00E0 auth-0e79810d-53b0-4f7a-b99e-aefade4464c7@example.test: Configuration SMTP incompl\u00E8te : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.\r\n# [Login Notification Email Error] Configuration SMTP incompl\u00E8te : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.\r\n# [PichFlow Email] \u274C Erreur lors de l\u0027envoi de l\u0027e-mail \u00E0 auth-0e79810d-53b0-4f7a-b99e-aefade4464c7@example.test: Configuration SMTP incompl\u00E8te : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.\r\n# [Password Reset Email] Configuration SMTP incompl\u00E8te : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.\r\n# [PichFlow Email] \u274C Erreur lors de l\u0027envoi de l\u0027e-mail \u00E0 auth-0e79810d-53b0-4f7a-b99e-aefade4464c7@example.test: Configuration SMTP incompl\u00E8te : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.\r\n# [PichFlow Auth] \uD83D\uDEE1\uFE0F Envoi de l\u0027alerte de connexion pour auth-0e79810d-53b0-4f7a-b99e-aefade4464c7@example.test (IP: 127.0.0.1 (Localhost))\r\n# [PichFlow Email] \u274C Erreur lors de l\u0027envoi de l\u0027e-mail \u00E0 auth-0e79810d-53b0-4f7a-b99e-aefade4464c7@example.test: Configuration SMTP incompl\u00E8te : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.\r\n# [Login Notification Email Error] Configuration SMTP incompl\u00E8te : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.\r\n    # Subtest: resets passwords with a one-time code and invalidates existing sessions\r\n    ok 5 - resets passwords with a one-time code and invalidates existing sessions\r\n      ---\r\n      duration_ms: 89.2246\r\n      type: \u0027test\u0027\r\n      ...\r\n# [PICHFLOW AUTH] Code de confirmation g\u00E9n\u00E9r\u00E9 et envoy\u00E9 \u00E0 : smtp-96c587cb-2dd0-4c30-a9e5-a3c8c3f4\n\u2026[truncated]",
+        "durationMs": 8773,
+        "testResults": {
+          "testFramework": "unknown",
+          "runnerDetectedFrom": "none",
+          "testsTotal": 0,
+          "testsPassed": 0,
+          "testsFailed": 0,
+          "testsSkipped": 0,
+          "parseFailed": true
+        }
+      },
+      {
+        "name": "next-production-build",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "\r\n\u003E react-example@0.0.0 build\r\n\u003E next build\r\n\r\n\u25B2 Next.js 16.4.2 (Turbopack)\r\n- Environments: .env\r\n\u2713 Running next.config.mjs took 92ms\r\n\r\n  Creating an optimized production build ...\r\n\u2713 Compiled successfully in 20.4s\r\n  Running TypeScript ...\r\n  Finished TypeScript in 3.8s ...\r\n  Collecting page data using 3 workers ...\r\n\u25C7 injected env (0) from .env // tip: \u25C8 secrets for agents [www.dotenvx.com]\r\n\u25C7 injected env (0) from .env // tip: \u2318 override existing { override: true }\r\n\u25C7 injected env (0) from .env // tip: \u25C8 secrets for agents [www.dotenvx.com]\r\n\u25C7 injected env (0) from .env // tip: \u25C8 encrypted .env [www.dotenvx.com]\r\n  Generating static pages using 3 workers (0/45) ...\r\n  Generating static pages using 3 workers (11/45) \r\n  Generating static pages using 3 workers (22/45) \r\n  Generating static pages using 3 workers (33/45) \r\n\u2713 Generating static pages using 3 workers (45/45) in 1942ms\r\n  Finalizing page optimization ...\r\n\r\nRoute (app)\r\n\u250C \u25CB /\r\n\u251C \u25CB /_not-found\r\n\u251C \u0192 /api/[...path]\r\n\u251C \u0192 /api/apps\r\n\u251C \u0192 /api/apps/[id]\r\n\u251C \u0192 /api/auth/change-password\r\n\u251C \u0192 /api/auth/forgot-password\r\n\u251C \u0192 /api/auth/login\r\n\u251C \u0192 /api/auth/logout\r\n\u251C \u0192 /api/auth/me\r\n\u251C \u0192 /api/auth/register\r\n\u251C \u0192 /api/auth/resend-code\r\n\u251C \u0192 /api/auth/reset-password\r\n\u251C \u0192 /api/auth/toggle-2fa\r\n\u251C \u0192 /api/auth/verify-code\r\n\u251C \u0192 /api/checkout-sessions\r\n\u251C \u0192 /api/checkout/confirm\r\n\u251C \u0192 /api/checkout/initiate\r\n\u251C \u0192 /api/checkout/retry\r\n\u251C \u0192 /api/checkout/status/[reference]\r\n\u251C \u0192 /api/customers\r\n\u251C \u0192 /api/customers/[id]\r\n\u251C \u0192 /api/developer/keys\r\n\u251C \u0192 /api/developer/keys/[id]\r\n\u251C \u0192 /api/developer/webhook-logs\r\n\u251C \u0192 /api/developer/webhooks\r\n\u251C \u0192 /api/developer/webhooks/[id]\r\n\u251C \u0192 /api/developer/webhooks/[id]/test\r\n\u251C \u0192 /api/developer/webhooks/logs\r\n\u251C \u0192 /api/health\r\n\u251C \u0192 /api/payment-links\r\n\u251C \u0192 /api/payment-links/[id]\r\n\u251C \u0192 /api/payment-links/slug/[slug]\r\n\u251C \u0192 /api/payout-methods\r\n\u251C \u0192 /api/payout-methods/[id]\r\n\u251C \u0192 /api/payout-methods/[id]/default\r\n\u251C \u0192 /api/reference/[...segments]\r\n\u251C \u0192 /api/stats\r\n\u251C \u0192 /api/stats/overview\r\n\u251C \u0192 /api/transactions\r\n\u251C \u0192 /api/transactions/[id]\r\n\u251C \u0192 /api/v1/[...segments]\r\n\u251C \u0192 /api/v1/checkout-sessions\r\n\u251C \u0192 /api/v1/payment-links\r\n\u251C \u0192 /api/v1/payments/[reference]\r\n\u251C \u0192 /api/wallets\r\n\u251C \u0192 /api/wallets/transfer\r\n\u251C \u0192 /api/webhooks/paydunya\r\n\u251C \u0192 /api/webhooks/saspay\r\n\u251C \u0192 /api/withdrawals\r\n\u251C \u0192 /api/withdrawals/methods\r\n\u251C \u25CB /checkout-demo\r\n\u251C \u0192 /dashboard/[[...tab]]\r\n\u251C \u0192 /docs/[[...tab]]\r\n\u251C \u0192 /documentation/[[...tab]]\r\n\u251C \u25CB /legal\r\n\u251C \u25CB /login\r\n\u251C \u25CB /mentions-legales\r\n\u251C \u0192 /pay/[slug]\r\n\u251C \u25CB /politique-de-confidentialite\r\n\u251C \u25CB /pricing\r\n\u251C \u25CB /privacy\r\n\u2514 \u25CB /register\r\n\r\n\r\n\u25CB  (Static)   prerendered as static content\r\n\u0192  (Dynamic)  server-rendered on demand\r\n\r\n",
+        "durationMs": 38673
+      },
+      {
+        "name": "openapi-document-is-valid-json",
+        "kind": "process",
+        "verificationMethod": "exit-code",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": 0,
+        "outputSample": "",
+        "durationMs": 674
+      },
+      {
+        "name": "production-homepage-responds",
+        "kind": "http-probe",
+        "verificationMethod": "http-status",
+        "passed": true,
+        "timedOut": false,
+        "skipped": false,
+        "skippedReason": null,
+        "exitCode": null,
+        "outputSample": "HTTP 200\n\u003C!DOCTYPE html\u003E\u003Chtml lang=\u0022fr\u0022\u003E\u003Chead\u003E\u003Cmeta charSet=\u0022utf-8\u0022/\u003E\u003Cmeta name=\u0022viewport\u0022 content=\u0022width=device-width, initial-scale=1\u0022/\u003E\u003Clink rel=\u0022preload\u0022 as=\u0022image\u0022 href=\u0022https://images.unsplash.com/photo-1563132337-f159f484226c?q=80\u0026amp;w=387\u0026amp;auto=format\u0026amp;fit=crop\u0026amp;ixlib\u0022/\u003E\u003Clink rel=\u0022preload\u0022 as=\u0022image\u0022 href=\u0022https://images.unsplash.com/photo-1637684666772-1f215bfd0f5d?q=80\u0026amp;w=388\u0026amp;auto=format\u0026amp;fit=crop\u0026amp;ixlib\u0022/\u003E\u003Clink rel=\u0022preload\u0022 as=\u0022image\u0022 href=\u0022https://images.unsplash.com/photo-1561406636-b80293969660?q=80\u0026amp;w=387\u0026amp;auto=format\u0026amp;fit=crop\u0026amp;ixlib\u0022/\u003E\u003Clink rel=\u0022preload\u0022 as=\u0022image\u0022 href=\u0022https://plus.unsplash.com/premium_photo-1758836220645-9d0373498f98?q=80\u0026amp;w=870\u0026amp;auto=format\u0026amp;fit=crop\u0026amp;ixlib\u0022/\u003E\u003Clink rel=\u0022stylesheet\u0022 href=\u0022/_next/static/chunks/3x9el5_ce4son.css\u0022 data-precedence=\u0022next\u0022/\u003E\u003Clink rel=\u0022preload\u0022 as=\u0022script\u0022 fetchPriority=\u0022low\u0022 href=\u0022/_next/static/chunks/12jg43355bbw3.js\u0022/\u003E\u003Cscript src=\u0022/_next/static/chunks/22579k2m_q2sx.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/2khxl0v1q4i6n.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/turbopack-2c3mg3r-05n1w.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/0umf92h1sb77c.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Cscript src=\u0022/_next/static/chunks/0xkqsom158aob.js\u0022 async=\u0022\u0022\u003E\u003C/script\u003E\u003Clink rel=\u0022preload\u0022 href=\u0022https://fonts.googleapis.com/css2?family=Plus\u002BJakarta\u002BSans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600\u0026amp;family=JetBrains\u002BMono:wght@400;500;600\u0026amp;display=swap\u0022 as=\u0022style\u0022/\u003E\u003Ctitle\u003EPichFlow \u2014 Infrastructure de Paiement Moderne pour l\u0026#x27;Afrique\u003C/title\u003E\u003Cmeta name=\u0022description\u0022 content=\u0022Infrastructure de paiement moderne pour l\u0026#x27;Afrique et les entreprises technologiques. Encaisser, automatiser et piloter tous les flux de paiement.\u0022/\u003E\u003Cmeta property=\u0022og:title\u0022 content=\u0022PichFlow \u2014 Infrastructure de Paiement Moderne pour l\u0026#x27;Afrique\u0022/\u003E\u003Cmeta property=\u0022og:description\u0022 content=\u0022Infrastructure de paiement moderne pour l\u0026#x27;Afrique et les entreprises technologiques. Encaisser, automatiser et piloter tous les flux de paiement.\u0022/\u003E\u003Cmeta property=\u0022og:type\u0022 content=\u0022website\u0022/\u003E\u003Cmeta name=\u0022twitter:card\u0022 content=\u0022summary\u0022/\u003E\u003Cmeta name=\u0022twitter:title\u0022 content=\u0022PichFlow \u2014 Infrastructure de Paiement Moderne pour l\u0026#x27;Afrique\u0022/\u003E\u003Cmeta name=\u0022twitter:description\u0022 content=\u0022Infrastructure de paiement moderne pour l\u0026#x27;Afrique et les entreprises technologiques. Encaisser, automatiser et piloter tous les flux de paiement.\u0022/\u003E\u003Clink rel=\u0022icon\u0022 href=\u0022/img/log.png\u0022/\u003E\u003Clink rel=\u0022preconnect\u0022 href=\u0022https://fonts.googleapis.com\u0022/\u003E\u003Clink rel=\u0022preconnect\u0022 href=\u0022https://fonts.gstatic.com\u0022 crossorigin=\u0022anonymous\u0022/\u003E\u003Clink href=\u0022https://fonts.googleapis.com/css2?family=Plus\u002BJakarta\u002BSans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600\u0026amp;family=JetBrains\u002BMono:wght@400;500;600\u0026amp;display=swap\u0022 rel=\u0022stylesheet\u0022/\u003E\u003Cscript src=\u0022/_next/static/chunks/0cz1d0mv5g_q7.js\u0022 noModule=\u0022\u0022\u003E\u003C/script\u003E\u003C/head\u003E\u003Cbody\u003E\u003Cdiv hidden=\u0022\u0022\u003E\u003C!--$--\u003E\u003C!--/$--\u003E\u003C/div\u003E\u003Cdiv style=\u0022min-height:100vh;display:flex;flex-direction:column\u0022\u003E\u003Cheader class=\u0022pf-navbar \u0022\u003E\u003Cdiv class=\u0022pf-container pf-navbar-container\u0022\u003E\u003Cbutton class=\u0022pf-brand\u0022 aria-label=\u0022PichFlow Accueil\u0022 style=\u0022background:none;border:none;padding:0\u0022\u003E\u003Cdiv class=\u0022inline-flex items-center select-none \u0022 style=\u0022display:inline-flex;align-items:center;gap:0.625rem;user-select:none\u0022\u003E\u003Cdiv style=\u0022width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg, #2563EB 0%, #1D4ED8 60%, #1E40AF 100%);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px -2px rgba(37, 99, 235, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.35);flex-shrink:0;position:relative;overflow:hidden\u0022\u003E\u003Cdiv style=\u0022position:absolute;top:0;left:0;right:0;height:46%;background:linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 100%);pointer-events:none\u0022\u003E\u003C/div\u003E\u003Csvg width=\u002222\u0022 height=\u002216\u0022 viewBox=\u00220 0 24 18\u0022 fill=\u0022none\u0022 xmlns=\u0022http://www.w3.org/2000/svg\u0022\u003E\u003Crect x=\u00220.75\u0022 y=\u00220.75\u0022 width=\u002222.5\u0022 height=\u002216.5\u0022 rx=\u00223\u0022 stroke=\u0022#FFFFFF\u0022 stroke-width=\u00221.5\u0022 fill=\u0022none\u0022\u003E\u003C/rect\u003E\u003Cline x1=\u00221\u0022 y1=\u00225\u0022 x2=\u002223\u0022 \n\u2026[truncated]",
+        "durationMs": 31010
+      }
+    ],
+    "executions": [
+      {
+        "source": "typescript-no-emit",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "lint"
+        ],
+        "cwd": "C:\\Users\\hp\\Documents\\PROJETS\\pichapay",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "api-and-payment-tests",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "test"
+        ],
+        "cwd": "C:\\Users\\hp\\Documents\\PROJETS\\pichapay",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "next-production-build",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "build"
+        ],
+        "cwd": "C:\\Users\\hp\\Documents\\PROJETS\\pichapay",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "openapi-document-is-valid-json",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\node.EXE",
+        "args": [
+          "--input-type=module",
+          "-e",
+          "import { readFileSync } from \u0027node:fs\u0027; JSON.parse(readFileSync(\u0027pichflow-mintlify-docs\\\\api-v1.openapi.json\u0027, \u0027utf8\u0027));"
+        ],
+        "cwd": "C:\\Users\\hp\\Documents\\PROJETS\\pichapay",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      },
+      {
+        "source": "production-homepage-responds",
+        "resolvedExecutable": "C:\\Program Files\\nodejs\\npm.CMD",
+        "args": [
+          "run",
+          "start"
+        ],
+        "cwd": "C:\\Users\\hp\\Documents\\PROJETS\\pichapay",
+        "env": {},
+        "prependPath": [],
+        "platform": "win32"
+      }
+    ]
+  }
+}

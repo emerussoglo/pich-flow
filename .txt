@@ -1,408 +1,428 @@
-# MISSION PRIORITAIRE — FINALISER LE BACKEND DE PITCHFLOW ET L'INTÉGRATION PAYDUNYA
+# MISSION CRITIQUE — AUDIT, RÉPARATION ET FINALISATION COMPLÈTE DU BACKEND PICHFLOW
 
-Tu travailles sur un projet SaaS existant appelé Pitchflow (respecte le nom de marque officiellement utilisé dans le code et les ressources du projet).
+Tu interviens sur le dépôt existant de PichFlow. Le frontend et la migration vers Next.js ont déjà été réalisés en grande partie, mais de nombreux problèmes subsistent dans le backend, la base de données, les paiements, le dashboard et la documentation.
 
-Le frontend et la migration vers Next.js sont déjà largement réalisés. Le backend, les flux de paiement, l'isolation des applications et la documentation doivent maintenant être audités et finalisés.
+Je ne veux plus de modifications superficielles. Je veux que tu inspectes le code réel, identifies les causes des erreurs, répares les fonctionnalités et prouves leur fonctionnement par des tests.
 
-Tu dois travailler sur le dépôt réel. Ne repars pas de zéro, ne reconstruis pas le frontend inutilement et ne remplace pas les fonctionnalités existantes par des simulations.
+**Notre produit est PichFlow. Notre prestataire de paiement est PayDunya. SaaSPay est un concurrent et ne fait pas partie de notre produit.**
 
-## OBJECTIF GÉNÉRAL
+Ne recommence pas le projet de zéro. Préserve le travail valide déjà réalisé.
 
-Construire une plateforme SaaS opérationnelle qui permet à des marchands de :
+# PHASE 1 — SÉCURISER ET AUDITER LE PROJET
 
-- créer plusieurs applications au sein de leur compte ;
-- disposer d'un dashboard distinct pour chaque application ;
-- créer et partager des liens de paiement ;
-- recevoir des paiements via PayDunya ;
-- suivre les transactions, soldes et historiques ;
-- intégrer les paiements dans leurs propres sites grâce à l'API publique de Pitchflow ;
-- consulter une documentation technique complète et cohérente.
+Avant de modifier quoi que ce soit :
 
-Tous les paiements doivent d'abord être testés avec les identifiants sandbox PayDunya déjà configurés. Aucun paiement réel ne doit être déclenché pendant les tests.
+1. Vérifie la branche Git et `git status`.
+2. Préserve toutes les modifications existantes.
+3. Inspecte `package.json`, la configuration Next.js, `src/app/`, `src/server/`, `src/lib/`, les modèles, les migrations, les tests et la documentation.
+4. Identifie le moteur SQLite utilisé et le fichier ou service qui contient la base de données réelle.
+5. Cartographie toutes les routes API et les fonctionnalités du dashboard.
+6. Identifie les fonctionnalités réellement opérationnelles, celles qui sont incomplètes et celles qui sont simulées.
+7. Vérifie la configuration de production et les variables d'environnement utilisées.
 
-Ne prétends jamais que le backend est opérationnel sans vérifications techniques.
+Ne lance aucune commande destructive. Ne supprime aucune donnée et ne réinitialise pas la base.
 
-# PRIORITÉ 1 — SUPPRIMER LES RÉFÉRENCES À SAASPAY
+Travaille sur la branche de migration existante si elle est appropriée. N'écrase pas les changements non validés.
 
-SaaSPay est un concurrent. Ce n'est ni notre plateforme, ni notre fournisseur de paiement, ni notre backend.
+Fournis un bilan initial, puis commence les réparations concrètes.
 
-Notre plateforme est Pitchflow. Notre prestataire de paiement est PayDunya.
+# PHASE 2 — CORRIGER L'ERREUR SQLITE max_payments
 
-Effectue un audit de l'ensemble du dépôt, notamment :
+Erreur observée lors de la création d'un lien de paiement :
 
-- les pages et composants frontend ;
-- les routes Next.js ;
-- les services backend ;
+`SQLITE_UNKNOWN: SQLite error: table payment_links has no column named max_payments`
+
+Cette erreur doit être corrigée à la source.
+
+Inspecte :
+
+- le schéma réel de `payment_links` ;
+- les requêtes d'insertion et de mise à jour ;
+- les modèles TypeScript ;
+- les migrations de base de données ;
+- les fonctions de création des liens de paiement ;
+- les tests associés.
+
+Utilise notamment `PRAGMA table_info(payment_links)` sur une copie ou un environnement approprié pour vérifier les colonnes réelles.
+
+Détermine si `max_payments` est une fonctionnalité voulue, une colonne oubliée dans une migration ou une référence obsolète.
+
+Si la colonne est nécessaire, crée une migration additive et sûre compatible avec le moteur SQLite utilisé. Si elle n'est pas nécessaire, corrige proprement le code et les modèles concernés.
+
+Ne supprime pas et ne recrée pas la table pour faire disparaître l'erreur.
+
+La migration doit être reproductible, contrôlée et compatible avec une base déjà utilisée.
+
+Vérifie que :
+- les liens existants restent accessibles ;
+- la création d'un nouveau lien fonctionne ;
+- la modification d'un lien fonctionne si elle est implémentée ;
+- la base conserve ses données ;
+- le code et le schéma restent cohérents.
+
+Recherche ensuite les autres colonnes référencées par le code mais absentes du schéma réel. Établis une liste des incohérences et corrige-les progressivement avec des migrations sûres.
+
+N'ajoute pas aveuglément toutes les colonnes mentionnées dans le code : comprends d'abord le modèle métier.
+
+# PHASE 3 — ÉLIMINER TOUTES LES RÉFÉRENCES À SAASPAY
+
+SaaSPay est un concurrent. Il ne doit pas être utilisé comme fournisseur, comme identité de marque ni comme backend de PichFlow.
+
+Recherche toutes ses références dans :
+- les fichiers source ;
+- les noms de fichiers et de dossiers ;
+- les routes API ;
 - les variables d'environnement ;
-- les noms de variables et de fournisseurs ;
-- les exemples de code ;
-- les fichiers Markdown ;
-- la documentation API ;
-- les exemples de requêtes HTTP ;
-- les schémas de base de données ;
-- les tests ;
-- les fichiers de configuration ;
-- les scripts d'installation et de déploiement.
-
-Recherche toutes les occurrences de `SaaSPay`, `SaaSPay API`, ses domaines, ses routes et ses noms de variables.
-
-Pour chaque occurrence, détermine s'il s'agit :
-- d'une référence active dans l'application ;
-- d'un texte de documentation ;
-- d'un exemple de code ;
-- d'une ancienne intégration ;
-- ou d'une mention historique sans effet sur le fonctionnement.
-
-Retire les références concurrentes de l'application et de la documentation destinée aux utilisateurs. Remplace les textes concernés par les informations réelles de Pitchflow et PayDunya.
-
-Ne fais pas un remplacement textuel aveugle qui pourrait casser les routes, les imports ou les données.
-
-Inspecte les clés et variables d'environnement associées à SaaSPay. Détermine si elles sont encore utilisées par du code actif, puis supprime les anciennes intégrations devenues inutiles après avoir vérifié leurs dépendances.
-
-Ne supprime jamais des clés PayDunya valides ni des variables nécessaires à d'autres services.
-
-Ne copie aucune clé, aucun token, aucun endpoint privé ni aucun mécanisme propriétaire du concurrent.
-
-L'inspiration éventuelle d'une interface doit rester une inspiration visuelle générale. L'identité, les textes, l'API, les flux métier et la documentation doivent appartenir à Pitchflow.
-
-À la fin, effectue une nouvelle recherche globale pour confirmer qu'aucune référence active à SaaSPay ne subsiste dans le produit.
-
-# PRIORITÉ 2 — AUDITER LE BACKEND EXISTANT
-
-Avant toute modification, inspecte :
-
-- `package.json` ;
-- les fichiers de configuration Next.js ;
-- `src/app/api/` ou l'emplacement réel des Route Handlers ;
-- `src/server/` ;
-- les services d'authentification ;
-- la connexion à la base de données ;
-- les modèles et migrations ;
+- les noms de variables et de fonctions ;
 - les services de paiement ;
-- les webhooks ;
-- les fichiers de documentation ;
-- les variables d'environnement ;
-- les tests existants.
+- les migrations et les schémas ;
+- les exemples de code ;
+- les tests ;
+- la documentation ;
+- les configurations de déploiement ;
+- les textes visibles dans l'interface.
 
-Établis une carte des routes existantes et de leurs responsabilités.
+Pour chaque référence, identifie son rôle avant de la modifier.
 
-Identifie ce qui est réellement implémenté, ce qui est incomplet et ce qui est simulé.
+Supprime les pages, composants, services et configurations propres à SaaSPay qui ne sont pas nécessaires au fonctionnement de PichFlow.
 
-Conserve les fonctionnalités déjà opérationnelles et réutilise la logique métier existante quand elle est correcte.
+Remplace les références visibles par des informations exactes concernant PichFlow et PayDunya.
 
-Ne considère pas qu'une API fonctionne simplement parce que son endpoint existe.
+Ne réalise pas un remplacement global aveugle. Préserve les fonctionnalités génériques qui auraient été créées pendant la phase d'inspiration.
 
-Ne réinitialise pas la base de données, ne supprime pas les données et ne désactive pas les contrôles de sécurité.
+Ne supprime aucune variable PayDunya valide.
 
-# PRIORITÉ 3 — ISOLATION STRICTE ENTRE LES APPLICATIONS
+Ne supprime pas les références historiques nécessaires aux migrations sans vérifier leurs conséquences. Si une référence interne doit être conservée temporairement pour assurer la compatibilité, explique-la et isole-la du produit et de la documentation publique.
 
-Un utilisateur peut avoir plusieurs applications Pitchflow.
+Après le nettoyage, effectue une nouvelle recherche globale. Le rapport doit distinguer les références actives supprimées des éventuelles occurrences historiques conservées.
 
-Chaque application possède ses propres données métier. Aucune transaction, aucun solde, aucun lien de paiement et aucun historique ne doit être mélangé entre deux applications.
+# PHASE 4 — .ENV ET CONFIGURATION DES SECRETS
 
-Examine les modèles, relations et requêtes de base de données.
+Le fichier `.env` actuellement utilisé est la source de configuration prioritaire pour l'environnement local.
 
-Mets en place ou corrige une séparation des données fondée sur l'identifiant réel de l'application propriétaire, par exemple `appId`, en respectant le modèle de données déjà présent.
+Inspecte les variables réellement lues par le code. Vérifie les noms exacts, les valeurs attendues et les dépendances.
 
-Vérifie systématiquement que :
+Ne remplace pas arbitrairement les variables existantes par des noms supposés.
 
-- chaque transaction est rattachée à la bonne application ;
-- chaque lien de paiement appartient à une seule application ;
-- chaque historique est filtré par application ;
-- chaque solde est calculé à partir des transactions autorisées pour cette application ;
-- les retraits et opérations financières, s'ils sont implémentés, respectent le même périmètre ;
-- les rapports et statistiques ne mélangent pas plusieurs applications ;
-- les requêtes backend vérifient les droits d'accès avant de lire ou de modifier des données.
+- Conserve les variables PayDunya déjà correctement configurées.
+- Retire les variables SaaSPay devenues inutiles après vérification des dépendances.
+- Ne copie aucune clé secrète dans le code source.
+- Ne publie jamais les secrets dans le frontend.
+- Ne révèle pas les valeurs des secrets dans le terminal ou le rapport final.
+- Ne remplace pas le `.env` existant par un fichier d'exemple.
+- Conserve les variables nécessaires aux autres services réellement utilisés.
 
-Ne te contente pas de filtrer les données dans React. L'isolation doit être imposée par le backend.
+Si `.env.example` est utile, crée-le avec des placeholders uniquement. Il ne doit jamais remplacer `.env`.
 
-Ne fais jamais confiance à un `appId` fourni par le navigateur sans vérifier que l'utilisateur connecté a le droit d'accéder à cette application.
+Documente séparément les variables de test et de production. Le passage en mode live doit être explicite et ne doit jamais se produire automatiquement parce qu'une variable manque.
 
-Si une requête tente d'accéder à une application appartenant à un autre utilisateur, refuse-la.
+# PHASE 5 — INTÉGRATION PAYDUNYA RÉELLE
 
-Ajoute des tests avec au moins deux applications de test et des données différentes. Vérifie qu'aucune donnée ne traverse d'une application à l'autre.
+PayDunya est le seul prestataire de paiement externe visé par cette mission.
 
-## Solde et portefeuille
-
-Le portefeuille doit apparaître activé par défaut dans l'interface. Il ne doit pas être nécessaire de cliquer sur un bouton d'activation pour afficher le portefeuille.
-
-Cependant, l'interface ne doit jamais inventer un solde.
-
-Le solde affiché doit provenir des données réelles et autorisées de l'application sélectionnée, selon les règles financières et les statuts de transaction réellement implémentés.
-
-Si aucune transaction n'existe, affiche le solde approprié à partir de la logique métier, sans reprendre celui d'une autre application.
-
-Distingue correctement, si le modèle le permet, les montants en attente, les paiements confirmés, les frais et les montants disponibles. Ne présente pas un paiement en attente comme un paiement confirmé.
-
-Ne présente pas un montant calculé comme étant effectivement disponible chez PayDunya si cette disponibilité n'a pas été vérifiée.
-
-# PRIORITÉ 4 — INTÉGRATION RÉELLE AVEC PAYDUNYA
-
-PayDunya est le prestataire de paiement utilisé par Pitchflow.
-
-Consulte sa documentation officielle :
+Documentation officielle :
 https://developers.paydunya.com/doc/FR/http_json
 
-Vérifie les endpoints, les paramètres, les clés, les statuts, les mécanismes de vérification et les notifications avant d'implémenter ou de modifier l'intégration.
+Vérifie les endpoints et les paramètres directement dans la documentation officielle avant de modifier l'intégration.
 
-Utilise les clés sandbox déjà configurées dans l'environnement, sans les afficher dans les logs ni les copier dans le code.
+Commence par auditer le service PayDunya existant, les clés configurées, les modes sandbox et live, les requêtes réseau et les modèles de transactions.
 
-Les clés doivent être lues exclusivement côté serveur à partir des variables d'environnement prévues.
+Utilise les clés sandbox existantes sans les afficher ni les demander dans la conversation.
 
-Sépare clairement la configuration de test et la configuration de production.
+## Création du paiement
 
-Ne passe jamais automatiquement en production lorsqu'une variable manque. Échoue de manière explicite et sûre.
+Le flux doit fonctionner ainsi :
 
-## Création d'une facture PayDunya
+1. Le marchand crée un lien de paiement PichFlow.
+2. Le lien est enregistré dans la base et rattaché à une application.
+3. Le client ouvre le lien public.
+4. Il remplit ses informations.
+5. Le backend valide le lien, le montant, la devise et les informations du client.
+6. PichFlow crée une transaction interne avec un identifiant unique.
+7. Le backend appelle PayDunya en mode sandbox.
+8. PichFlow enregistre les références et les informations nécessaires.
+9. Le client accède au parcours de paiement PayDunya.
+10. PichFlow vérifie le résultat selon les mécanismes officiels.
+11. La transaction est mise à jour après confirmation vérifiée.
+12. Le dashboard, le portefeuille, l'historique et la page client reflètent les données réelles.
 
-Lorsqu'un client procède au paiement d'un lien Pitchflow :
+Ne simule pas une réussite lorsque PayDunya n'est pas accessible.
 
-1. Le serveur identifie le lien et l'application propriétaire.
-2. Il valide le montant, la devise, le produit et les informations du client.
-3. Il vérifie que le lien est valide et que les conditions de paiement sont respectées.
-4. Il crée une transaction interne avec un identifiant unique.
-5. Il crée la facture PayDunya en mode sandbox.
-6. Il enregistre le token PayDunya et les références nécessaires.
-7. Il retourne au frontend l'URL de paiement attendue.
-8. Le client est redirigé vers le parcours de paiement.
-9. Le backend vérifie le résultat et actualise la transaction.
+Ne marque jamais une transaction comme payée uniquement parce que le navigateur revient sur une URL de succès.
 
-Le navigateur ne doit jamais pouvoir imposer un montant arbitraire pour un lien à montant fixe.
+Les appels PayDunya doivent être réalisés côté serveur. Les clés privées ne doivent jamais être envoyées au client.
 
-Pour un lien à montant libre, valide le montant selon les règles définies par le marchand et les limites autorisées par le système.
+## Webhooks et statuts
 
-N'enregistre pas une transaction comme payée uniquement parce que le client revient sur une URL de succès.
+Vérifie les mécanismes de notification et de vérification de statut réellement pris en charge.
 
-## Statut et notifications
+- Valide les notifications selon la documentation PayDunya.
+- Vérifie les statuts et références.
+- Empêche le double traitement d'une même notification.
+- Assure l'idempotence des opérations financières.
+- Conserve une trace des transitions de statut.
+- N'accorde aucun crédit financier pour une transaction non confirmée.
+- Ne fais pas confiance au seul statut envoyé par le navigateur.
 
-Implémente ou corrige la vérification du statut PayDunya et le traitement des notifications serveur selon sa documentation.
+Teste le parcours dans le sandbox. Si les clés ou le compte ne permettent pas de réaliser une étape, explique exactement ce qui manque.
 
-- Vérifie l'authenticité des notifications.
-- Vérifie les statuts auprès de PayDunya lorsque cela est nécessaire.
-- Évite qu'une notification répétée crédite deux fois une transaction.
-- Conserve une trace des références de paiement et des transitions de statut.
-- Ne transforme jamais une transaction échouée ou annulée en paiement confirmé.
-- Ne fais confiance ni au montant ni au statut transmis par le seul navigateur.
-- Ne divulgue pas les clés ou les données sensibles dans les logs.
+# PHASE 6 — LIENS DE PAIEMENT
 
-Les tests doivent utiliser le sandbox. Si les identifiants actuels ne permettent pas un test réel, signale le blocage plutôt que de simuler une réussite.
+Répare intégralement la création et l'utilisation des liens de paiement.
 
-# PRIORITÉ 5 — FORMULAIRE DE CRÉATION DES LIENS DE PAIEMENT
+Le formulaire du marchand doit permettre de définir :
+- le nom du produit ou service ;
+- la description ;
+- un montant fixe ou libre ;
+- le montant lorsque nécessaire ;
+- la devise réellement autorisée ;
+- l'application propriétaire ;
+- les éventuelles limites de paiement prévues par le modèle existant.
 
-Le formulaire doit permettre au marchand de définir :
+Supprime l'option « répercuter les frais de transaction » et sa logique de supplément personnalisé.
 
-- le nom du produit ou du service ;
-- sa description ;
-- le type de montant : fixe ou libre ;
-- le montant lorsque le type le requiert ;
-- la devise autorisée ;
-- l'application propriétaire du lien.
+Les frais PayDunya doivent être traités conformément à la configuration réelle du prestataire. Ne prétends pas que le client ou le marchand supporte un frais précis sans vérification.
 
-Les champs et validations doivent être cohérents entre frontend et backend.
+Le lien créé doit être persistant, accessible publiquement par son URL prévue et utilisable de bout en bout.
 
-La liste des devises doit être issue des devises réellement prises en charge par la configuration PayDunya applicable. N'affiche pas une devise simplement parce qu'elle existe dans une liste générique.
+Valide le montant et les paramètres côté serveur. Un client ne doit pas pouvoir modifier un montant fixe en éditant la requête.
 
-Supprime l'option « répercuter les frais de transaction » et toute logique de supplément personnalisé associée à cette option.
+# PHASE 7 — PARCOURS CLIENT DU LIEN PUBLIC
 
-Ne crée pas de majoration arbitraire au nom de PayDunya. Les frais et leur répartition doivent respecter la configuration du prestataire et les règles commerciales applicables. Si le coût facturé par PayDunya doit être supporté par le marchand, intègre-le dans le calcul comptable approprié sans prétendre qu'il est débité au client.
+Je veux le parcours suivant.
 
-Le numéro de téléphone du client est obligatoire dans le formulaire public de paiement. Valide-le correctement côté serveur.
+## Première page : informations du client
 
-Après création, le lien doit être réellement utilisable, persistant et associé à la bonne application.
+Lorsqu'un client ouvre un lien de paiement :
 
-# PRIORITÉ 6 — PAGE PUBLIQUE DE PAIEMENT
+- afficher le nom de l'application ou du marchand ;
+- afficher le produit ou service et sa description ;
+- afficher le montant fixe, ou un champ de montant libre ;
+- demander le prénom ;
+- demander le nom ;
+- demander l'adresse e-mail ;
+- demander le numéro de téléphone, obligatoire.
 
-Crée ou finalise la page publique des liens de paiement Pitchflow.
+Sur cette première page, le client ne doit pas encore choisir le pays ou le moyen de paiement.
 
-Elle doit afficher une interface simple et professionnelle, cohérente avec la marque Pitchflow.
+Après validation des informations, passer à l'étape suivante.
 
-Elle doit présenter :
-- le nom de l'application ou du marchand ;
-- le produit ou service ;
-- sa description ;
-- le montant fixe ou le champ permettant de saisir un montant libre ;
-- le choix du pays ;
-- le prénom du client ;
-- le nom du client ;
-- l'adresse e-mail ;
-- le numéro de téléphone obligatoire ;
-- le bouton permettant de poursuivre.
+## Deuxième page : pays et moyen de paiement
 
-Les informations du lien doivent provenir du backend et ne doivent pas être modifiables par un client pour contourner les règles du marchand.
+Afficher les moyens de paiement disponibles dans le cadre de l'intégration PayDunya.
 
-## Pays et moyens de paiement
+Le client choisit le moyen de paiement et le pays, dans un ordre cohérent avec les capacités réelles de PayDunya. Les choix doivent être validés côté serveur.
 
-La liste des pays doit correspondre aux pays réellement éligibles selon les services PayDunya activés pour notre compte et notre intégration.
+Si un moyen de paiement nécessite un pays ou un numéro de téléphone précis, applique les validations correspondantes.
 
-Ne déduis pas qu'un pays est disponible uniquement parce qu'il figure en Afrique francophone.
+La liste des pays et moyens de paiement doit correspondre aux pays et moyens effectivement disponibles pour le compte et le produit PayDunya utilisés.
 
-La liste des moyens de paiement doit être filtrée en fonction du pays et de la disponibilité réelle du prestataire. Si la documentation ou l'API ne fournit pas de disponibilité dynamique, utilise une configuration documentée, validée et maintenable fondée sur les informations officielles.
+Ne présente pas des options non prises en charge. N'invente pas une disponibilité géographique.
 
-Ne promets jamais qu'un moyen de paiement fonctionne dans un pays si sa disponibilité n'a pas été vérifiée.
+## Troisième étape : paiement
 
-Après validation du formulaire, affiche une page de progression claire indiquant que le paiement est en cours.
+Lance le paiement réel via PayDunya sandbox.
 
-Le client doit pouvoir choisir un moyen de paiement réellement disponible dans le parcours PayDunya, saisir les informations demandées par ce moyen et procéder au paiement selon le flux officiel du prestataire.
+Affiche un état de progression lorsque la transaction est en cours. Permets au client de comprendre qu'il doit terminer le parcours sécurisé du prestataire si une redirection ou une validation supplémentaire est requise.
 
-Ne demande pas le code secret Mobile Money du client dans le formulaire Pitchflow. Les informations d'authentification du paiement doivent être collectées dans le parcours sécurisé prévu par le prestataire.
+N'enregistre pas les codes secrets Mobile Money dans PichFlow.
 
-Après le paiement, affiche un résultat cohérent avec le statut réellement vérifié : en attente, confirmé, annulé ou échoué, selon les statuts supportés.
+À la fin, affiche un résultat cohérent avec le statut vérifié : confirmé, en attente, échoué ou annulé, selon les états supportés.
 
-La page publique ne doit pas exposer les clés secrètes, les données privées des autres clients ou les informations d'une autre application.
+Le paiement confirmé doit mettre à jour la bonne transaction, la bonne application et les vues du dashboard correspondantes.
 
-# PRIORITÉ 7 — DASHBOARD, HISTORIQUE ET PORTEFEUILLE
+# PHASE 8 — PORTFEUILLES ET SOLDES
 
-Corrige les écrans pour qu'ils utilisent les données du backend correspondant à l'application actuellement sélectionnée.
+Tous les portefeuilles ou moyens de paiement que nous sommes effectivement autorisés à utiliser doivent apparaître dans l'interface sans activation manuelle préalable.
 
-Quand l'utilisateur change d'application :
+Ne crée pas un faux solde pour rendre les wallets visuellement actifs.
 
-- recharge les statistiques de cette application ;
-- recharge son portefeuille ;
-- recharge ses transactions ;
-- recharge son historique ;
-- recharge ses liens de paiement ;
-- recharge ses rapports ;
-- conserve le contexte de sélection de manière cohérente.
+Il faut distinguer :
+- les moyens de paiement disponibles ;
+- les soldes effectivement consultables auprès du prestataire ;
+- les montants calculés à partir des transactions PichFlow ;
+- les montants en attente ;
+- les montants confirmés ;
+- les montants réellement disponibles pour retrait, si cette fonctionnalité existe.
 
-Évite d'afficher les données précédentes pendant un changement d'application si cela risque de faire croire qu'elles appartiennent à la nouvelle application.
+Un wallet doit être visible par défaut, mais son solde doit être fourni par une source réelle et vérifiée.
 
-Prévois les états de chargement, les erreurs et les listes vides.
+Ne crée pas une fausse correspondance entre une transaction PayDunya et un solde de wallet.
 
-Chaque requête backend doit imposer l'isolation des données. Les identifiants transmis par le frontend ne constituent pas une preuve d'autorisation.
+Si PayDunya ne fournit pas de solde indépendant pour un moyen de paiement ou un pays, affiche l'information disponible et explique la limitation. Ne présente pas le total des transactions comme un solde officiel du prestataire.
 
-# PRIORITÉ 8 — API PUBLIQUE PITCHFLOW
+Les données doivent être rattachées à la bonne application. Aucun solde ne doit provenir d'une autre application.
 
-Pitchflow doit fournir sa propre API aux marchands qui souhaitent intégrer les paiements à leur site web.
+# PHASE 9 — CLIENTS, TRANSACTIONS ET HISTORIQUE
 
-Le client d'intégration doit appeler Pitchflow, et Pitchflow appelle PayDunya côté serveur.
+La page Clients doit afficher les personnes ayant réellement effectué ou tenté de payer via les liens de paiement, selon les statuts et le modèle métier.
 
-Les clés PayDunya ne doivent jamais être données aux intégrateurs de Pitchflow.
+Conserve les informations pertinentes, selon les données réellement recueillies :
+- prénom ;
+- nom ;
+- e-mail ;
+- téléphone ;
+- application propriétaire ;
+- référence de transaction ;
+- lien de paiement utilisé ;
+- montant et devise ;
+- date de création ;
+- date et statut du paiement.
 
-Prépare une API versionnée, par exemple :
+Évite de dupliquer inutilement les clients si le modèle prévoit une identité client réutilisable. Conserve toutefois l'historique de chaque transaction.
 
-- `/api/v1/payment-links`
-- `/api/v1/checkout-sessions`
-- `/api/v1/payments`
-- `/api/v1/webhooks`, uniquement si une route de ce type est réellement nécessaire au modèle d'intégration.
+La page Historique doit afficher les événements et transactions associés à l'application sélectionnée.
 
-Ces noms sont des propositions d'architecture. Vérifie les routes existantes et les fonctionnalités avant de créer ou de modifier les endpoints. Ne duplique pas des routes qui existent déjà.
+Vérifie les relations de base de données et ajoute les migrations nécessaires de manière additive et sûre.
 
-L'API doit inclure, selon les fonctionnalités réellement implémentées :
+N'enregistre que les données nécessaires. N'enregistre jamais de code secret Mobile Money ou de données de carte bancaire sensibles dans PichFlow.
 
-- une authentification adaptée aux intégrateurs ;
-- des clés API propres à Pitchflow ;
-- un mécanisme de révocation et de rotation des clés ;
-- une validation des données ;
-- des réponses JSON cohérentes ;
-- des codes HTTP corrects ;
-- une gestion des erreurs ;
-- des limites de requêtes si nécessaire ;
-- une isolation stricte des applications ;
-- des mécanismes d'idempotence pour les opérations financières appropriées ;
-- des références de transaction permettant de rapprocher les paiements ;
-- une documentation avec exemples de requêtes et de réponses.
+# PHASE 10 — ISOLATION STRICTE DES APPLICATIONS
 
-Les clés API publiques de Pitchflow doivent être distinctes des secrets API PayDunya.
+Un compte peut avoir plusieurs applications. Chacune possède son propre périmètre de données.
 
-Une clé d'intégration ne doit pouvoir accéder qu'aux applications et opérations autorisées pour son propriétaire.
+Toutes les requêtes de lecture et d'écriture doivent vérifier les autorisations côté serveur.
 
-Ne présente pas une route comme disponible dans la documentation tant qu'elle n'est pas réellement implémentée et testée.
+Pour chaque application, isole :
+- les liens de paiement ;
+- les clients et leurs transactions ;
+- les historiques ;
+- les statistiques ;
+- les soldes et portefeuilles ;
+- les rapports ;
+- les clés API et intégrations propres à l'application, si le modèle le prévoit.
 
-# PRIORITÉ 9 — CHOIX DU DOMAINE ET VERSIONNAGE
+Le frontend ne doit jamais pouvoir forcer l'accès à une application en envoyant simplement un identifiant différent.
 
-Pour le moment, privilégie le domaine existant avec un préfixe versionné, par exemple :
+Lors d'un changement d'application, recharge les données pertinentes et évite d'afficher momentanément le solde précédent comme s'il appartenait à la nouvelle application.
+
+Ajoute des tests avec deux applications distinctes et des données différentes.
+
+# PHASE 11 — AUTHENTIFICATION ET NAVIGATION DU DASHBOARD
+
+L'authentification doit rester sécurisée, mais la vérification de session ne doit pas créer inutilement une nouvelle opération coûteuse à chaque navigation.
+
+Audite le mécanisme actuel avant de le modifier.
+
+- Identifie les requêtes de vérification de session déclenchées à chaque changement de page.
+- Réutilise un état d'authentification partagé lorsque c'est compatible avec l'architecture existante.
+- Évite les vérifications identiques déclenchées en double.
+- Préserve la vérification côté serveur pour les opérations sensibles.
+- Ne conserve pas un état d'authentification périmé indéfiniment.
+- Gère correctement l'expiration de session et la déconnexion.
+- Empêche les appels aux endpoints privés avant que l'état d'authentification soit correctement déterminé.
+
+N'enlève pas les contrôles d'autorisation pour améliorer la vitesse.
+
+Mesure ou compare le nombre de requêtes avant et après les changements.
+
+# PHASE 12 — API PUBLIQUE PICHFLOW
+
+PichFlow doit permettre aux marchands d'intégrer les paiements à leurs propres sites.
+
+L'API publique doit appeler le backend PichFlow, qui appelle PayDunya côté serveur.
+
+Utilise une API versionnée, par exemple :
 
 `https://pichflow.vercel.app/api/v1/`
 
-Respecte le domaine officiel réellement utilisé par le projet. Ne crée pas un domaine fictif dans la configuration.
+Respecte le domaine réel configuré dans le projet.
 
-Prépare l'architecture pour permettre ultérieurement un domaine personnalisé comme :
+Examine les routes existantes avant de créer de nouvelles routes. Ne duplique pas les fonctionnalités.
 
-`https://api.pitchflow.com/v1/`
+Prévois, selon le périmètre effectivement implémenté :
+- la gestion des clés API PichFlow ;
+- la création de liens de paiement ;
+- la création de sessions de paiement ;
+- la consultation du statut d'une transaction ;
+- les notifications ou webhooks nécessaires ;
+- les erreurs et codes HTTP ;
+- la validation des données ;
+- l'isolation des applications ;
+- la révocation et la rotation des clés ;
+- des mécanismes d'idempotence adaptés aux opérations financières.
 
-Le futur sous-domaine doit pouvoir pointer vers le même backend sans réécrire la logique métier.
+Les clés API PichFlow doivent être distinctes des clés privées PayDunya.
 
-N'impose pas immédiatement un sous-domaine si sa configuration DNS n'est pas disponible.
+Ne publie jamais une clé secrète dans le frontend.
 
-Centralise l'URL de base dans la documentation et dans les configurations nécessaires. Évite de disperser des URL de production en dur dans le code.
+# PHASE 13 — DOCUMENTATION COMPLÈTE ET FONCTIONNELLE
 
-Si un domaine personnalisé est configuré plus tard, vérifie les domaines, le DNS, HTTPS, les éventuelles règles CORS et les paramètres d'authentification.
+Refais un audit de toute la documentation existante et corrige-la pour qu'elle représente exclusivement PichFlow et son intégration PayDunya.
 
-# PRIORITÉ 10 — DOCUMENTATION TECHNIQUE
+Inspire-toi seulement de principes généraux d'organisation et de lisibilité. Ne conserve pas le nom, les clés, les domaines, les exemples ou les endpoints propres à SaaSPay.
 
-Inspecte toute la documentation existante. Elle doit présenter uniquement Pitchflow et PayDunya, sans références actives à SaaSPay.
+La documentation doit inclure :
 
-La documentation doit expliquer :
+1. Présentation de PichFlow.
+2. Démarrage rapide.
+3. Environnements sandbox et production.
+4. Authentification API PichFlow.
+5. Gestion des clés API.
+6. Création d'un lien de paiement.
+7. Création d'une session de paiement.
+8. Intégration dans un site marchand.
+9. Moyens de paiement et pays pris en charge.
+10. Vérification d'une transaction.
+11. Statuts de paiement.
+12. Webhooks et notifications.
+13. Gestion des erreurs.
+14. Exemples cURL.
+15. Exemples JavaScript/TypeScript.
+16. Sécurité et idempotence.
+17. Isolation des applications.
+18. Exemples de requêtes et réponses JSON.
+19. Limites connues et fonctionnalités non disponibles.
+20. Guide de dépannage.
 
-1. Présentation de l'API Pitchflow.
-2. Authentification et gestion des clés API Pitchflow.
-3. Environnements de test et de production.
-4. Création d'un lien de paiement.
-5. Création d'une session de paiement.
-6. Parcours de paiement.
-7. Vérification du statut d'une transaction.
-8. Notifications et webhooks, s'ils sont implémentés.
-9. Gestion des erreurs.
-10. Codes HTTP.
-11. Exemples cURL.
-12. Exemples JavaScript/TypeScript.
-13. Exemples d'intégration dans un site marchand.
-14. Isolation par application.
-15. Sécurité et bonnes pratiques.
-16. Limites et fonctionnalités effectivement prises en charge.
-17. URL de base actuelle et procédure future pour le domaine API personnalisé.
+Les exemples doivent être exécutables avec les routes réelles de PichFlow et des placeholders pour les secrets.
 
-Les exemples doivent correspondre aux routes réellement présentes.
+Si une route documentée n'existe pas, implémente-la correctement si elle est dans le périmètre ou retire la promesse de la documentation. Ne documente pas une fonctionnalité fictive.
 
-Ne copie pas de clés PayDunya réelles ou de clés d'exemple provenant d'un tiers. Utilise des placeholders explicites pour les secrets.
+Vérifie les exemples par des tests automatisés ou des requêtes en environnement de test.
 
-Ne prétends pas qu'une fonctionnalité est disponible si elle n'existe pas dans le backend.
+Assure-toi que la navigation, les liens, les extraits de code et les exemples de requêtes fonctionnent réellement.
 
-Compare chaque endpoint documenté à son implémentation et à un test automatisé lorsque c'est possible.
+# PHASE 14 — TESTS ET LIVRAISON
 
-# PRIORITÉ 11 — TESTS ET VALIDATION
-
-Ajoute ou complète les tests nécessaires.
+Exécute les tests existants et ajoute les tests manquants pour les flux critiques.
 
 Teste au minimum :
+- la migration SQLite et la création de liens ;
+- la création et la consultation d'un lien ;
+- les champs obligatoires ;
+- le montant fixe et le montant libre ;
+- l'intégration PayDunya sandbox ;
+- les statuts de transaction ;
+- l'idempotence des notifications ;
+- l'isolation entre applications ;
+- les portefeuilles et les soldes ;
+- les clients et l'historique ;
+- les clés API et les autorisations ;
+- le parcours complet d'un paiement ;
+- la documentation et les exemples ;
+- le build Next.js.
 
-- l'isolation entre deux applications ;
-- l'accès non autorisé aux données ;
-- la création d'un lien fixe ;
-- la création d'un lien à montant libre ;
-- la validation des champs obligatoires ;
-- le rejet d'une devise non prise en charge ;
-- la création d'une facture PayDunya en mode test ;
-- la vérification du statut d'une transaction ;
-- les notifications et leur traitement idempotent ;
-- l'affichage des données correctes dans le dashboard ;
-- les clés API Pitchflow et les autorisations ;
-- les routes documentées ;
-- le build Next.js ;
-- le fonctionnement du parcours de paiement de bout en bout dans le sandbox.
+N'utilise pas les données de production pour tester. N'effectue aucun paiement live.
 
-Utilise des comptes et données de test isolés. Ne modifie pas la base de production. Ne déclenche aucun paiement réel.
+Si un test échoue, corrige la cause ou consigne précisément le blocage. Ne simule pas une réussite.
 
-Ne contourne jamais un échec en renvoyant systématiquement un succès fictif.
+# RAPPORT FINAL OBLIGATOIRE
 
-# PRIORITÉ 12 — RAPPORT FINAL
-
-À la fin, présente un rapport avec :
-
-- les références SaaSPay supprimées ou encore présentes et pourquoi ;
-- les variables d'environnement à retirer ou à conserver ;
+Fournis un rapport factuel indiquant :
+- les causes trouvées ;
+- les fichiers modifiés ;
+- les migrations appliquées ;
+- les références SaaSPay retirées et celles qui restent ;
 - l'état de l'intégration PayDunya sandbox ;
-- les routes API réellement fonctionnelles ;
-- les routes API restant à implémenter ;
-- les corrections d'isolation des applications ;
-- les changements du dashboard et du portefeuille ;
-- l'état du parcours de paiement ;
+- les routes API réellement testées ;
+- les résultats des tests ;
+- l'état du dashboard, des clients, des wallets et des historiques ;
 - l'état de la documentation ;
-- les tests exécutés et leurs résultats ;
-- les variables nécessaires à configurer dans l'environnement de production ;
-- les étapes manuelles encore nécessaires ;
-- les points non vérifiés.
+- les variables d'environnement nécessaires, sans afficher leurs valeurs ;
+- les problèmes restant à résoudre.
 
-Ne déclare pas la mission terminée tant que les tests essentiels n'ont pas été exécutés ou que leurs limites n'ont pas été clairement indiquées.
+Ne déclare pas que tout fonctionne si des tests essentiels n'ont pas été effectués.
 
-Commence par l'audit complet du dépôt existant, puis implémente les corrections par étapes cohérentes. Préserve les fonctionnalités existantes et le travail déjà réalisé.
+Commence maintenant par l'audit du dépôt réel et corrige les problèmes par étapes cohérentes, sans détruire le travail existant.,où06+
+--+ 

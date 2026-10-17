@@ -336,8 +336,8 @@ export const apiClient = {
 
   // Customers
   customers: {
-    async getAll(applicationId?: string): Promise<Customer[]> {
-      const query = applicationId ? `?applicationId=${encodeURIComponent(applicationId)}` : '';
+    async getAll(applicationId: string): Promise<Customer[]> {
+      const query = `?applicationId=${encodeURIComponent(applicationId)}`;
       const res = await apiClient.request<{ success: boolean; customers: Customer[] }>(`/customers${query}`);
       return res.customers;
     },
@@ -350,15 +350,17 @@ export const apiClient = {
       return res.customer;
     },
 
-    async update(id: string, data: Partial<Customer>): Promise<void> {
-      await apiClient.request<{ success: boolean; message: string }>(`/customers/${id}`, {
+    async update(id: string, applicationId: string, data: Partial<Customer>): Promise<void> {
+      const query = `?applicationId=${encodeURIComponent(applicationId)}`;
+      await apiClient.request<{ success: boolean; message: string }>(`/customers/${id}${query}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       });
     },
 
-    async delete(id: string): Promise<void> {
-      await apiClient.request<{ success: boolean; message: string }>(`/customers/${id}`, {
+    async delete(id: string, applicationId: string): Promise<void> {
+      const query = `?applicationId=${encodeURIComponent(applicationId)}`;
+      await apiClient.request<{ success: boolean; message: string }>(`/customers/${id}${query}`, {
         method: 'DELETE',
       });
     },
@@ -417,16 +419,17 @@ export const apiClient = {
       return res.apiKeys;
     },
 
-    async generateKey(data: { name: string; environment?: 'sandbox' | 'live'; scope?: 'payin' | 'payout' | 'both'; applicationId?: string }): Promise<{ apiKey: ApiKey; keys?: { sandbox: ApiKey; live: ApiKey } }> {
-      const res = await apiClient.request<{ success: boolean; apiKey: ApiKey; keys?: { sandbox: ApiKey; live: ApiKey } }>('/developer/keys', {
+    async generateKey(data: { name: string; environment?: 'sandbox' | 'live'; scope?: 'payin' | 'payout' | 'both'; applicationId?: string }): Promise<{ apiKey: ApiKey }> {
+      const res = await apiClient.request<{ success: boolean; apiKey: ApiKey }>('/developer/keys', {
         method: 'POST',
         body: JSON.stringify(data),
       });
       return res;
     },
 
-    async revokeKey(id: string) {
-      return apiClient.request<{ success: boolean; message: string }>(`/developer/keys/${id}`, {
+    async revokeKey(id: string, applicationId: string) {
+      const query = `?applicationId=${encodeURIComponent(applicationId)}`;
+      return apiClient.request<{ success: boolean; message: string }>(`/developer/keys/${id}${query}`, {
         method: 'DELETE',
       });
     },

@@ -1,11 +1,11 @@
 ---
-title: "API PitchFlow v1"
+title: "API PichFlow v1"
 description: "Contrat actuel des liens de paiement et sessions de checkout PayDunya."
 ---
 
-# API PitchFlow v1
+# API PichFlow v1
 
-Cette page décrit uniquement les opérations versionnées implémentées dans le dépôt. PitchFlow crée et vérifie les factures PayDunya côté serveur; les intégrateurs ne reçoivent jamais de secret PayDunya.
+Cette page décrit uniquement les opérations versionnées implémentées dans le dépôt. PichFlow crée et vérifie les factures PayDunya côté serveur; les intégrateurs ne reçoivent jamais de secret PayDunya.
 
 ## Origines et environnements
 
@@ -20,7 +20,7 @@ Le backend accepte XOF et utilise actuellement le pays BJ (Bénin) pour ces lien
 
 ## Authentification des intégrateurs
 
-Créez une clé depuis le centre développeur de l'application PitchFlow. Les secrets sont préfixés `pf_test_` ou `pf_live_`, rattachés à une application et stockés sous forme de hash. La valeur complète est montrée à la création; conservez-la côté serveur. Révoquez une clé compromise depuis le centre développeur.
+Créez une clé depuis le centre développeur de l'application PichFlow. Les secrets sont préfixés `pf_test_` ou `pf_live_`, rattachés à une application et stockés sous forme de hash. La valeur complète est montrée à la création; conservez-la côté serveur. Révoquez une clé compromise depuis le centre développeur.
 
 ```http
 Authorization: Bearer pf_test_<secret>
@@ -28,6 +28,8 @@ Content-Type: application/json
 ```
 
 Les clés ne doivent jamais être envoyées au navigateur. L'application propriétaire de la clé est déterminée par la base de données, et non par un `applicationId` fourni dans la requête. Un lien ou paiement d'une autre application renvoie une erreur introuvable.
+
+Chaque requête de création génère une seule clé. Demandez les clés Sandbox et Live séparément; une clé Live exige que `PAYDUNYA_MODE=live` soit explicitement configuré. Révoquez puis recréez une clé compromise.
 
 Le mode `PAYDUNYA_MODE` côté serveur doit correspondre à l'environnement de la clé. En développement, l'absence de cette variable choisit le sandbox; en production, la configuration doit être explicite et aucun basculement automatique vers le mode live n'est effectué.
 

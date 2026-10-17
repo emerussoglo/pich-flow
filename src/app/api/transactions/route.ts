@@ -30,15 +30,21 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50', 10)));
     const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
 
-    let sql = 'SELECT * FROM transactions WHERE user_id = ? AND application_id = ?';
+    let sql = `SELECT t.*, cs.payment_link_id
+               FROM transactions t
+               LEFT JOIN checkout_sessions cs
+                 ON cs.reference = t.reference
+                AND cs.user_id = t.user_id
+                AND cs.application_id = t.application_id
+               WHERE t.user_id = ? AND t.application_id = ?`;
     const args: any[] = [user.id, applicationId.trim()];
 
     if (status.trim()) {
-      sql += ' AND status = ?';
+      sql += ' AND t.status = ?';
       args.push(status.trim());
     }
 
-    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    sql += ' ORDER BY t.created_at DESC LIMIT ? OFFSET ?';
     args.push(limit, offset);
 
     const result = await db.execute({ sql, args });
@@ -59,6 +65,7 @@ export async function GET(request: NextRequest) {
       currency: String(row.currency || 'XOF'),
       status: String(row.status),
       paymentMethod: String(row.payment_method || 'Mobile Money'),
+      paymentLinkId: row.payment_link_id ? String(row.payment_link_id) : undefined,
       createdAt: String(row.created_at),
     }));
 

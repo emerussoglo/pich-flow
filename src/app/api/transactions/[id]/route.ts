@@ -31,7 +31,13 @@ export async function GET(
     }
 
     const result = await db.execute({
-      sql: 'SELECT * FROM transactions WHERE id = ? AND user_id = ? AND application_id = ?',
+      sql: `SELECT t.*, cs.payment_link_id
+            FROM transactions t
+            LEFT JOIN checkout_sessions cs
+              ON cs.reference = t.reference
+             AND cs.user_id = t.user_id
+             AND cs.application_id = t.application_id
+            WHERE t.id = ? AND t.user_id = ? AND t.application_id = ?`,
       args: [id, user.id, applicationId],
     });
 
@@ -56,6 +62,7 @@ export async function GET(
       currency: String(row.currency || 'XOF'),
       status: String(row.status),
       paymentMethod: String(row.payment_method || 'Mobile Money'),
+      paymentLinkId: row.payment_link_id ? String(row.payment_link_id) : undefined,
       createdAt: String(row.created_at),
     };
 

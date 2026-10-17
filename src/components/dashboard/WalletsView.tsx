@@ -211,7 +211,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
       >
         <div>
           <div style={{ fontSize: '0.8125rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Solde total disponible (XOF)
+            Solde disponible interne (XOF)
           </div>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>
             {totalBalance.toLocaleString('fr-FR')} FCFA
@@ -232,7 +232,12 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
         )}
       </div>
 
-      {/* Grid of Real Wallets */}
+      <p className="pf-ui-card" style={{ color: '#475569', fontSize: '0.875rem' }}>
+        Ces portefeuilles sont des registres internes PichFlow, pas des soldes consultés chez PayDunya.
+        Les paiements confirmés restent comptabilisés « en attente » dans PichFlow; les retraits ne sont pas activés.
+      </p>
+
+      {/* Grid of application-scoped internal wallets */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
         {wallets.map((w) => (
           <div
@@ -284,7 +289,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
               </div>
 
               <div style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Solde disponible</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Solde disponible interne</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A' }}>
                   {w.balance.toLocaleString('fr-FR')} {w.currency}
                 </div>
@@ -292,8 +297,8 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
             </div>
 
             <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748B' }}>
-              <span>En attente : {w.pendingBalance.toLocaleString('fr-FR')}</span>
-              <span>Réservé : {w.reservedBalance.toLocaleString('fr-FR')}</span>
+              <span>En attente : {w.pendingBalance.toLocaleString('fr-FR')} {w.currency}</span>
+              <span>Réservé : {w.reservedBalance.toLocaleString('fr-FR')} {w.currency}</span>
             </div>
           </div>
         ))}

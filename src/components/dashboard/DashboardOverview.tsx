@@ -111,7 +111,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           <div className="pf-card-head-between">
             <div className="pf-card-head-title">
               <FontAwesomeIcon icon={faWallet} style={{ color: '#2563EB' }} />
-              <span>Solde disponible par devise</span>
+              <span>Solde disponible interne par devise</span>
             </div>
             <span
               onClick={() => navigate('/dashboard/wallets')}

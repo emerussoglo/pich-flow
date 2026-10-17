@@ -40,11 +40,6 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
   const [methodModalOpen, setMethodModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // New withdrawal form
-  const [selectedMethodId, setSelectedMethodId] = useState<string>('');
-  const [withdrawAmount, setWithdrawAmount] = useState<string>('5000');
-  const [withdrawNote, setWithdrawNote] = useState<string>('');
-
   // New payout method form
   const [newMethodType, setNewMethodType] = useState<'mobile_money' | 'bank_transfer'>('mobile_money');
   const [label, setLabel] = useState('');
@@ -75,57 +70,16 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
       ]);
       setWithdrawals(wList);
       setPayoutMethods(mList);
-      if (mList.length > 0 && !selectedMethodId) {
-        const def = mList.find((m) => m.isDefault) || mList[0];
-        setSelectedMethodId(def.id);
-      }
     } catch {
       showToast('Impossible de charger les retraits et méthodes.', 'error');
     } finally {
       setIsLoading(false);
     }
-  }, [activeApp?.id, showToast, selectedMethodId]);
+  }, [activeApp?.id, showToast]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const handleWithdrawSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeApp?.id) {
-      showToast('Sélectionnez d’abord une application.', 'error');
-      return;
-    }
-    const parsedAmount = Number(withdrawAmount);
-    if (!parsedAmount || parsedAmount < 500) {
-      showToast('Le montant minimum de retrait est de 500 XOF.', 'error');
-      return;
-    }
-
-    const chosenMethod = payoutMethods.find((m) => m.id === selectedMethodId);
-
-    setIsSubmitting(true);
-    try {
-      const created = await apiClient.withdrawals.create({
-        applicationId: activeApp.id,
-        amount: parsedAmount,
-        currency: chosenMethod ? chosenMethod.currency : 'XOF',
-        methodType: chosenMethod ? chosenMethod.type : 'mobile_money',
-        recipientName: chosenMethod ? chosenMethod.recipientName : '',
-        recipientPhoneOrIban: chosenMethod ? (chosenMethod.accountNumber || chosenMethod.recipientPhoneOrIban) : '',
-        operatorOrBank: chosenMethod ? chosenMethod.operatorOrBank : 'Mobile Money',
-        country: chosenMethod ? chosenMethod.country : 'BJ',
-      });
-
-      setWithdrawals((prev) => [created, ...prev]);
-      setWithdrawalModalOpen(false);
-      showToast(`Demande de retrait de ${parsedAmount.toLocaleString('fr-FR')} XOF enregistrée avec succès.`, 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Solde insuffisant ou erreur lors du traitement du retrait.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleCreateMethodSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,7 +110,6 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
       });
 
       setPayoutMethods((prev) => [created, ...prev]);
-      if (!selectedMethodId) setSelectedMethodId(created.id);
       setMethodModalOpen(false);
       // Reset form
       setLabel('');
@@ -182,7 +135,6 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
     try {
       await apiClient.payoutMethods.delete(id);
       setPayoutMethods((prev) => prev.filter((m) => m.id !== id));
-      if (selectedMethodId === id) setSelectedMethodId('');
       showToast('Méthode de retrait supprimée.', 'success');
     } catch (err: any) {
       showToast(err.message || 'Impossible de supprimer cette méthode.', 'error');
@@ -199,7 +151,6 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
           isDefault: m.id === id,
         }))
       );
-      setSelectedMethodId(id);
       showToast('Méthode définie par défaut.', 'success');
     } catch (err: any) {
       showToast(err.message || 'Impossible de modifier la méthode par défaut.', 'error');
@@ -463,7 +414,7 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                 Aucune méthode de retrait enregistrée
               </h4>
               <p style={{ color: '#64748B', fontSize: '0.8125rem', maxWidth: '420px', margin: '0 auto 1.25rem' }}>
-                Ajoutez un compte Mobile Money (MTN, Moov, Orange, Wave) ou un compte bancaire pour débloquer les virements.
+                Les coordonnées enregistrées restent des informations internes; elles n’activent aucun paiement sortant.
               </p>
               <button
                 onClick={() => setMethodModalOpen(true)}
@@ -570,7 +521,7 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                   <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', color: '#16A34A' }}>
                     <span>
                       <FontAwesomeIcon icon={faShieldHalved} style={{ marginRight: '4px' }} />
-                      Vérifié & certifié
+                      Enregistré dans PichFlow
                     </span>
                     <span style={{ color: '#94A3B8' }}>{m.currency}</span>
                   </div>
@@ -586,87 +537,26 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
         <div className="pf-modal-overlay" onClick={() => setWithdrawalModalOpen(false)}>
           <div className="pf-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div className="pf-modal-header">
-              <h3 className="pf-card-title">Demander un reversement</h3>
+              <h3 className="pf-card-title">Retraits indisponibles</h3>
               <button onClick={() => setWithdrawalModalOpen(false)} className="pf-modal-close">
                 <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
 
-            <div style={{ padding: '0.75rem', background: '#EFF6FF', borderRadius: '8px', border: '1px solid #BFDBFE', fontSize: '0.75rem', color: '#1E40AF', marginBottom: '1.25rem' }}>
-              <strong>Environnement Sandbox :</strong> simulation d'ordre de virement bancaire ou mobile money sécurisé sans impact sur les réseaux bancaires réels.
+            <div style={{ padding: '0.75rem', background: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA', fontSize: '0.875rem', color: '#991B1B', marginBottom: '1.25rem' }}>
+              Les retraits PayDunya ne sont pas activés pour ce compte. PichFlow ne peut ni simuler ni initier un reversement, et aucun solde ne sera débité.
             </div>
-
-            <form onSubmit={handleWithdrawSubmit}>
-              <div className="pf-form-group">
-                <label className="pf-label">Méthode de réception</label>
-                {payoutMethods.length === 0 ? (
-                  <div style={{ padding: '0.75rem', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '0.8125rem' }}>
-                    Aucune méthode configurée. Veuillez d’abord enregistrer une méthode.
-                  </div>
-                ) : (
-                  <select
-                    className="pf-select"
-                    value={selectedMethodId}
-                    onChange={(e) => setSelectedMethodId(e.target.value)}
-                    required
-                  >
-                    {payoutMethods.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.label} ({m.operatorOrBank} - {m.accountNumber || m.recipientPhoneOrIban}) {m.isDefault ? '★ Défaut' : ''}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div className="pf-form-group">
-                <label className="pf-label">Montant à reverser (XOF)</label>
-                <input
-                  type="number"
-                  className="pf-input"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  min="500"
-                  step="500"
-                  placeholder="Ex: 25000"
-                  required
-                />
-                <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.25rem', display: 'block' }}>
-                  Frais de transaction : 0 XOF (pris en charge par la plateforme en mode test).
-                </span>
-              </div>
-
-              <div className="pf-form-group">
-                <label className="pf-label">Motif ou référence interne (facultatif)</label>
-                <input
-                  type="text"
-                  className="pf-input"
-                  value={withdrawNote}
-                  onChange={(e) => setWithdrawNote(e.target.value)}
-                  placeholder="Ex: Virement hebdomadaire trésorerie"
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setWithdrawalModalOpen(false)}
-                  className="pf-btn pf-btn-secondary pf-btn-md"
-                  style={{ flex: 1 }}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || payoutMethods.length === 0}
-                  className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
-                  style={{ flex: 1 }}
-                >
-                  <span>{isSubmitting ? 'Traitement...' : 'Valider le retrait'}</span>
-                  <FontAwesomeIcon icon={faCheck} />
-                </button>
-              </div>
-            </form>
+            <div style={{ padding: '0.75rem', background: '#F8FAFC', borderRadius: '8px', fontSize: '0.8125rem', color: '#475569', marginBottom: '1.25rem' }}>
+              Les portefeuilles PichFlow sont des registres internes; ils ne reflètent pas un solde PayDunya consultable ni retirable.
+            </div>
+            <button
+              type="button"
+              onClick={() => setWithdrawalModalOpen(false)}
+              className="pf-btn pf-btn-secondary pf-btn-md"
+              style={{ width: '100%' }}
+            >
+              Fermer
+            </button>
           </div>
         </div>
       )}
@@ -698,7 +588,7 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
               >
                 <FontAwesomeIcon icon={faMobileScreen} style={{ color: '#2563EB', fontSize: '1.25rem', marginBottom: '0.35rem' }} />
                 <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0F172A' }}>Mobile Money</div>
-                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>MTN, Moov, Orange, Wave</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Coordonnées de destination</div>
               </div>
 
               <div
@@ -715,7 +605,7 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
               >
                 <FontAwesomeIcon icon={faBuildingColumns} style={{ color: '#2563EB', fontSize: '1.25rem', marginBottom: '0.35rem' }} />
                 <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0F172A' }}>Virement Bancaire</div>
-                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>BOA, Ecobank, UBA, etc.</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Coordonnées bancaires</div>
               </div>
             </div>
 

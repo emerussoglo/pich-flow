@@ -74,7 +74,7 @@ function apiBaseUrl(mode: PayDunyaConfig['mode']): string {
   return mode === 'sandbox'
     ? 'https://app.paydunya.com/sandbox-api/v1'
     : 'https://app.paydunya.com/api/v1';
-}
+} 
 
 function isSuccessfulInvoiceUrl(value: unknown): value is string {
   if (typeof value !== 'string') return false;

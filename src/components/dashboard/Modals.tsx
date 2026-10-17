@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { Application, PaymentLink, Withdrawal, Wallet } from '../../types';
+import { Application, PaymentLink } from '../../types';
 import { apiClient } from '../../lib/api';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faXmark,
   faPlus,
-  faBuildingColumns,
-  faMobileScreen,
   faArrowRight,
   faArrowLeft,
   faCheck,
@@ -823,154 +821,35 @@ export const NewPaymentLinkModal: React.FC<NewPaymentLinkModalProps> = ({ isOpen
   );
 };
 
-// 3. MODAL: DEMANDE DE RETRAIT (PAYOUT)
+// 3. MODAL: RETRAITS NON DISPONIBLES
 interface NewWithdrawalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  wallets: Wallet[];
-  onCreate: (wdr: Withdrawal) => void;
 }
 
-export const NewWithdrawalModal: React.FC<NewWithdrawalModalProps> = ({
-  isOpen,
-  onClose,
-  wallets,
-  onCreate,
-}) => {
-  const [methodType, setMethodType] = useState<'mobile_money' | 'bank_transfer'>('mobile_money');
-  const [amount, setAmount] = useState('500000');
-  const [recipientName, setRecipientName] = useState('Alexandre Dossou (Cardix SARL)');
-  const [phoneOrIban, setPhoneOrIban] = useState('+229 97 00 22 11');
-  const [operatorOrBank, setOperatorOrBank] = useState('MTN MoMo Bénin');
-  const { showToast } = useToast();
-
+export const NewWithdrawalModal: React.FC<NewWithdrawalModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const numAmount = Number(amount);
-    const fee = Math.round(numAmount * 0.01) + 150; // 1% + 150 XOF
-    const netAmount = numAmount - fee;
-
-    const newWithdrawal: Withdrawal = {
-      id: `wdr_${Date.now()}`,
-      reference: `PF-WDR-2026-00${Math.floor(Math.random() * 90 + 10)}`,
-      amount: numAmount,
-      currency: 'XOF',
-      fee,
-      netAmount,
-      methodType,
-      recipientName,
-      recipientPhoneOrIban: phoneOrIban,
-      operatorOrBank,
-      country: 'Bénin',
-      status: 'processing',
-      createdAt: new Date().toISOString(),
-    };
-
-    onCreate(newWithdrawal);
-    onClose();
-    showToast(`Demande de retrait de ${new Intl.NumberFormat('fr-FR').format(numAmount)} XOF enregistrée !`, 'success');
-  };
 
   return (
     <div className="pf-modal-overlay" onClick={onClose}>
       <div className="pf-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="pf-modal-header">
-          <h3 className="pf-card-title">Demander un retrait de fonds</h3>
+          <h3 className="pf-card-title">Retraits indisponibles</h3>
           <button onClick={onClose} className="pf-modal-close" aria-label="Fermer">
             <FontAwesomeIcon icon={faXmark} />
           </button>
         </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="pf-form-group">
-            <label className="pf-label">Type de virement</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
-              <div
-                onClick={() => {
-                  setMethodType('mobile_money');
-                  setOperatorOrBank('MTN MoMo Bénin');
-                  setPhoneOrIban('+229 97 00 22 11');
-                }}
-                className={`pf-method-option ${methodType === 'mobile_money' ? 'selected' : ''}`}
-              >
-                <FontAwesomeIcon icon={faMobileScreen} style={{ color: '#2563EB' }} />
-                <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Mobile Money</span>
-              </div>
-
-              <div
-                onClick={() => {
-                  setMethodType('bank_transfer');
-                  setOperatorOrBank('Bank of Africa (BOA Bénin)');
-                  setPhoneOrIban('BJ061 01001 001234567890 12');
-                }}
-                className={`pf-method-option ${methodType === 'bank_transfer' ? 'selected' : ''}`}
-              >
-                <FontAwesomeIcon icon={faBuildingColumns} style={{ color: '#2563EB' }} />
-                <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>Compte Bancaire</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="pf-form-group">
-            <label className="pf-label">Montant à retirer (XOF)</label>
-            <input
-              type="number"
-              className="pf-input"
-              min="5000"
-              max="4850000"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-            />
-            <span className="pf-helper-text">Solde disponible : 4 850 000 XOF</span>
-          </div>
-
-          <div className="pf-form-group">
-            <label className="pf-label">Nom du titulaire ou raison sociale</label>
-            <input
-              type="text"
-              className="pf-input"
-              value={recipientName}
-              onChange={(e) => setRecipientName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="pf-form-group">
-            <label className="pf-label">
-              {methodType === 'mobile_money' ? 'Numéro de téléphone marchand' : 'RIB / Numéro de compte IBAN'}
-            </label>
-            <input
-              type="text"
-              className="pf-input"
-              value={phoneOrIban}
-              onChange={(e) => setPhoneOrIban(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="pf-form-group">
-            <label className="pf-label">Opérateur ou Banque</label>
-            <input
-              type="text"
-              className="pf-input"
-              value={operatorOrBank}
-              onChange={(e) => setOperatorOrBank(e.target.value)}
-              required
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
-            <button type="button" onClick={onClose} className="pf-btn pf-btn-secondary pf-btn-md" style={{ flex: 1 }}>
-              Annuler
-            </button>
-            <button type="submit" className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine" style={{ flex: 1 }}>
-              Confirmer le retrait
-            </button>
-          </div>
-        </form>
+        <p className="pf-helper-text">
+          Les retraits PayDunya ne sont pas activés pour ce compte. Aucun retrait ne peut être initié depuis PichFlow.
+        </p>
+        <p className="pf-helper-text">
+          Le portefeuille affiché est un registre interne PichFlow; il ne représente pas un solde PayDunya disponible au retrait.
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+          <button type="button" className="pf-btn pf-btn-secondary" onClick={onClose}>
+            Fermer
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -30,12 +30,12 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
   // New key form
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [keyName, setKeyName] = useState('');
+  const [keyEnvironment, setKeyEnvironment] = useState<'sandbox' | 'live'>('sandbox');
+  const [confirmLive, setConfirmLive] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Created secret keys reveal modal (Shown ONLY once on creation!)
-  const [createdKeysModal, setCreatedKeysModal] = useState<{ sandbox: ApiKey; live: ApiKey } | null>(null);
-  const [copiedTest, setCopiedTest] = useState(false);
-  const [copiedLive, setCopiedLive] = useState(false);
+  const [createdKey, setCreatedKey] = useState<ApiKey | null>(null);
+  const [copiedKey, setCopiedKey] = useState(false);
 
   const loadKeys = useCallback(async () => {
     setIsLoading(true);
@@ -59,20 +59,19 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
     try {
       const res = await apiClient.developer.generateKey({
         name: keyName.trim() || 'Intégration API',
+        environment: keyEnvironment,
         scope: 'payin',
         applicationId: activeApp?.id,
       });
 
-      if (res.keys) {
-        setCreatedKeysModal(res.keys);
-        setKeysList((prev) => [res.keys!.live, res.keys!.sandbox, ...prev]);
-      } else if (res.apiKey) {
-        setKeysList((prev) => [res.apiKey, ...prev]);
-      }
+      setCreatedKey(res.apiKey);
+      setKeysList((prev) => [res.apiKey, ...prev]);
 
       setIsModalOpen(false);
       setKeyName('');
-      showToast('Paire de clés Sandbox et Live générée avec succès !', 'success');
+      setKeyEnvironment('sandbox');
+      setConfirmLive(false);
+      showToast(`Clé ${keyEnvironment === 'sandbox' ? 'Sandbox' : 'Live'} générée.`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Erreur lors de la génération des clés.', 'error');
     } finally {
@@ -86,7 +85,8 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
       return;
     }
     try {
-      await apiClient.developer.revokeKey(id);
+      if (!activeApp?.id) throw new Error('Aucune application sélectionnée.');
+      await apiClient.developer.revokeKey(id, activeApp.id);
       setKeysList((prev) => prev.filter((k) => k.id !== id));
       showToast('Clé secrète révoquée.', 'info');
     } catch (err: any) {
@@ -371,12 +371,34 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
               </div>
 
               <div style={{ padding: '0.85rem 1rem', background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', color: '#1E40AF', fontSize: '0.8125rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                <strong>Génération automatique :</strong> PichFlow crée simultanément deux clés cryptographiquement distinctes :
-                <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.2rem' }}>
-                  <li>Une clé <strong>Sandbox</strong> (<code>sk_test_...</code>) pour vos tests</li>
-                  <li>Une clé <strong>Live</strong> (<code>sk_live_...</code>) pour vos encaissements réels</li>
-                </ul>
+                Une seule clé est créée pour l’environnement sélectionné. Le mode Live autorise des paiements réels et exige une configuration PayDunya Live explicite.
               </div>
+
+              <div className="pf-form-group">
+                <label className="pf-label" htmlFor="api-key-environment">Environnement</label>
+                <select
+                  id="api-key-environment"
+                  className="pf-select"
+                  value={keyEnvironment}
+                  onChange={(event) => {
+                    setKeyEnvironment(event.target.value as 'sandbox' | 'live');
+                    setConfirmLive(false);
+                  }}
+                >
+                  <option value="sandbox">Sandbox — tests sans paiement live</option>
+                  <option value="live">Live — production réelle</option>
+                </select>
+              </div>
+              {keyEnvironment === 'live' && (
+                <label className="pf-form-group">
+                  <input
+                    type="checkbox"
+                    checked={confirmLive}
+                    onChange={(event) => setConfirmLive(event.target.checked)}
+                  />
+                  Je confirme que cette clé pourra autoriser des paiements réels lorsque PichFlow est configuré en mode Live.
+                </label>
+              )}
 
               <div className="pf-form-group">
                 <label className="pf-label">Portée des droits</label>
@@ -394,11 +416,11 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
                 </button>
                 <button
                   type="submit"
-                  disabled={isGenerating}
+                  disabled={isGenerating || (keyEnvironment === 'live' && !confirmLive)}
                   className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
                   style={{ flex: 1 }}
                 >
-                  <span>{isGenerating ? 'Génération...' : 'Créer mes clés API'}</span>
+                  <span>{isGenerating ? 'Génération...' : `Créer une clé ${keyEnvironment === 'sandbox' ? 'Sandbox' : 'Live'}`}</span>
                   <FontAwesomeIcon icon={faCheck} />
                 </button>
               </div>
@@ -407,14 +429,14 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
         </div>
       )}
 
-      {/* MODAL 2: AFFICHER LA PAIRE DE CLES SECRETES (Unique fois !) */}
-      {createdKeysModal && (
+      {/* MODAL 2: AFFICHER LA CLE SECRETE (Unique fois !) */}
+      {createdKey && (
         <div className="pf-modal-overlay">
           <div className="pf-modal-content" style={{ maxWidth: '560px' }}>
             <div className="pf-modal-header">
               <h3 className="pf-card-title" style={{ color: '#16A34A', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <FontAwesomeIcon icon={faKey} />
-                <span>Paire de clés API générée</span>
+                <span>Clé API générée</span>
               </h3>
             </div>
 
@@ -422,72 +444,36 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
               <strong>Important :</strong> Copiez ces clés secrètes dès maintenant. Pour des raisons strictes de sécurité, <strong>elles ne seront plus jamais affichées dans leur intégralité</strong>.
             </div>
 
-            {/* Sandbox Key */}
             <div className="pf-form-group" style={{ marginBottom: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                 <label className="pf-label" style={{ margin: 0, fontWeight: 700, color: '#2563EB' }}>
-                  Clé Sandbox / Test (sk_test_...)
+                  Clé {createdKey.environment === 'sandbox' ? 'Sandbox / Test' : 'Live / Production'} ({createdKey.environment === 'sandbox' ? 'pf_test_...' : 'pf_live_...'})
                 </label>
-                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', background: '#EFF6FF', color: '#2563EB', borderRadius: '4px', fontWeight: 700 }}>
-                  TEST UNIQUEMENT
+                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', background: createdKey.environment === 'sandbox' ? '#EFF6FF' : '#ECFDF5', color: createdKey.environment === 'sandbox' ? '#2563EB' : '#059669', borderRadius: '4px', fontWeight: 700 }}>
+                  {createdKey.environment === 'sandbox' ? 'TEST' : 'PRODUCTION RÉELLE'}
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input
                   type="text"
                   readOnly
-                  value={createdKeysModal.sandbox.secretKey}
+                  value={createdKey.secretKey}
                   className="pf-input"
                   style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0F172A', background: '#F8FAFC', fontSize: '0.8125rem' }}
                 />
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText(createdKeysModal.sandbox.secretKey || '');
-                    setCopiedTest(true);
-                    showToast('Clé Sandbox copiée !', 'info');
-                    setTimeout(() => setCopiedTest(false), 2200);
+                    navigator.clipboard.writeText(createdKey.secretKey || '');
+                    setCopiedKey(true);
+                    showToast('Clé copiée !', 'info');
+                    setTimeout(() => setCopiedKey(false), 2200);
                   }}
-                  className="pf-btn pf-btn-secondary pf-btn-md"
+                  className={`pf-btn ${createdKey.environment === 'sandbox' ? 'pf-btn-secondary' : 'pf-btn-primary'} pf-btn-md`}
                   style={{ minWidth: '95px' }}
                 >
-                  <FontAwesomeIcon icon={copiedTest ? faCheck : faCopy} />
-                  <span>{copiedTest ? 'Copié' : 'Copier'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Live Key */}
-            <div className="pf-form-group" style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                <label className="pf-label" style={{ margin: 0, fontWeight: 700, color: '#059669' }}>
-                  Clé Live / Production (sk_live_...)
-                </label>
-                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', background: '#ECFDF5', color: '#059669', borderRadius: '4px', fontWeight: 700 }}>
-                  PRODUCTION RÉELLE
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input
-                  type="text"
-                  readOnly
-                  value={createdKeysModal.live.secretKey}
-                  className="pf-input"
-                  style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0F172A', background: '#F8FAFC', fontSize: '0.8125rem' }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(createdKeysModal.live.secretKey || '');
-                    setCopiedLive(true);
-                    showToast('Clé Live copiée !', 'success');
-                    setTimeout(() => setCopiedLive(false), 2200);
-                  }}
-                  className="pf-btn pf-btn-primary pf-btn-md"
-                  style={{ minWidth: '95px' }}
-                >
-                  <FontAwesomeIcon icon={copiedLive ? faCheck : faCopy} />
-                  <span>{copiedLive ? 'Copié' : 'Copier'}</span>
+                  <FontAwesomeIcon icon={copiedKey ? faCheck : faCopy} />
+                  <span>{copiedKey ? 'Copié' : 'Copier'}</span>
                 </button>
               </div>
             </div>
@@ -495,11 +481,11 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
             <div style={{ marginTop: '1.5rem' }}>
               <button
                 type="button"
-                onClick={() => setCreatedKeysModal(null)}
+                onClick={() => setCreatedKey(null)}
                 className="pf-btn pf-btn-secondary pf-btn-md"
                 style={{ width: '100%', fontWeight: 700 }}
               >
-                J'ai sauvegardé mes deux clés en lieu sûr
+                J’ai sauvegardé cette clé en lieu sûr
               </button>
             </div>
           </div>

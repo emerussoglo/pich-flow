@@ -34,9 +34,14 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   const [country, setCountry] = useState('BJ');
 
   const loadCustomers = useCallback(async () => {
+    setCustomers([]);
+    if (!activeApp?.id) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const data = await apiClient.customers.getAll(activeApp?.id);
+      const data = await apiClient.customers.getAll(activeApp.id);
       setCustomers(data || []);
     } catch {
       showToast('Impossible de charger les clients.', 'error');
@@ -84,7 +89,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
     setIsSubmitting(true);
     try {
-      await apiClient.customers.update(selectedCustomer.id, {
+      if (!activeApp?.id) throw new Error('Aucune application sélectionnée.');
+      await apiClient.customers.update(selectedCustomer.id, activeApp.id, {
         name: name.trim(),
         phone: phone.trim(),
         country,
@@ -113,7 +119,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       return;
     }
     try {
-      await apiClient.customers.delete(id);
+      if (!activeApp?.id) throw new Error('Aucune application sélectionnée.');
+      await apiClient.customers.delete(id, activeApp.id);
       setCustomers((prev) => prev.filter((c) => c.id !== id));
       if (selectedCustomer?.id === id) setSelectedCustomer(null);
       showToast('Client supprimé avec succès.', 'success');

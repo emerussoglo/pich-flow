@@ -62,11 +62,21 @@ export async function POST(request: NextRequest) {
     const applicationId = typeof values.applicationId === 'string' ? values.applicationId.trim() : '';
     const name = typeof values.name === 'string' ? values.name.trim() : '';
     const requestedScope = values.scope;
+    const environment = values.environment === undefined ? 'sandbox' : values.environment;
     if (!applicationId || !name || name.length > 100) {
       return NextResponse.json({ success: false, error: 'Nom et applicationId requis.' }, { status: 400 });
     }
+    if (environment !== 'sandbox' && environment !== 'live') {
+      return NextResponse.json({ success: false, error: 'environment doit valoir sandbox ou live.' }, { status: 400 });
+    }
     if (requestedScope !== undefined && requestedScope !== 'payin') {
       return NextResponse.json({ success: false, error: 'Seul le périmètre payin est actuellement disponible.' }, { status: 400 });
+    }
+    if (environment === 'live' && process.env.PAYDUNYA_MODE?.trim().toLowerCase() !== 'live') {
+      return NextResponse.json({
+        success: false,
+        error: 'Une clé Live ne peut être créée qu’après configuration explicite de PAYDUNYA_MODE=live.',
+      }, { status: 409 });
     }
 
     const db = getDb();
@@ -76,26 +86,14 @@ export async function POST(request: NextRequest) {
     }
     const scope = 'payin';
     const now = new Date().toISOString();
-    const sandboxSecret = `pf_test_${crypto.randomBytes(32).toString('base64url')}`;
-    const liveSecret = `pf_live_${crypto.randomBytes(32).toString('base64url')}`;
-    const sandboxKey = {
-      id: `key_test_${crypto.randomUUID()}`,
-      name: `${name} (Sandbox)`,
-      prefix: sandboxSecret.slice(0, 16),
-      secretKey: sandboxSecret,
-      secretMasked: `${sandboxSecret.slice(0, 16)}…`,
-      environment: 'sandbox' as const,
-      scope,
-      isActive: true,
-      createdAt: now,
-    };
-    const liveKey = {
-      id: `key_live_${crypto.randomUUID()}`,
-      name: `${name} (Live)`,
-      prefix: liveSecret.slice(0, 16),
-      secretKey: liveSecret,
-      secretMasked: `${liveSecret.slice(0, 16)}…`,
-      environment: 'live' as const,
+    const secret = `${environment === 'sandbox' ? 'pf_test' : 'pf_live'}_${crypto.randomBytes(32).toString('base64url')}`;
+    const apiKey = {
+      id: `key_${crypto.randomUUID()}`,
+      name,
+      prefix: secret.slice(0, 16),
+      secretKey: secret,
+      secretMasked: `${secret.slice(0, 16)}…`,
+      environment,
       scope,
       isActive: true,
       createdAt: now,
@@ -103,20 +101,17 @@ export async function POST(request: NextRequest) {
 
     const tx = await db.transaction('write');
     try {
-      for (const key of [sandboxKey, liveKey]) {
-        const secret = key.environment === 'sandbox' ? sandboxSecret : liveSecret;
-        await tx.execute({
-          sql: `INSERT INTO api_credentials
-            (id, user_id, application_id, name, environment, prefix, secret_key,
-             secret_masked, secret_hash, scope, is_active, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, 1, ?)`,
-          args: [
-            key.id, user.id, applicationId, key.name, key.environment,
-            key.prefix, `${key.prefix}…`, crypto.createHash('sha256').update(secret).digest('hex'),
-            scope, now,
-          ],
-        });
-      }
+      await tx.execute({
+        sql: `INSERT INTO api_credentials
+          (id, user_id, application_id, name, environment, prefix, secret_key,
+           secret_masked, secret_hash, scope, is_active, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, 1, ?)`,
+        args: [
+          apiKey.id, user.id, applicationId, apiKey.name, apiKey.environment,
+          apiKey.prefix, apiKey.secretMasked, crypto.createHash('sha256').update(secret).digest('hex'),
+          scope, now,
+        ],
+      });
       await tx.commit();
     } catch (error) {
       await tx.rollback();
@@ -125,8 +120,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      apiKey: sandboxKey,
-      keys: { sandbox: sandboxKey, live: liveKey },
+      apiKey,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Impossible de créer les clés API.';

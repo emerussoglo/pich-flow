@@ -30,7 +30,7 @@
   },
   "navigation": [
     {
-      "group": "API PitchFlow",
+      "group": "API PichFlow",
       "pages": [
         "index",
         "api-v1"

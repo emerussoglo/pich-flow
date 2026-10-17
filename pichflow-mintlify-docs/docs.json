@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "name": "PichFlow",
-  "description": "Documentation de l’API PitchFlow versionnée et de son intégration PayDunya.",
+  "description": "Documentation de l’API PichFlow versionnée et de son intégration PayDunya.",
   "theme": "mint",
   "logo": "/img/log.png",
   "favicon": "/img/log.png",
@@ -27,7 +27,7 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "API PitchFlow",
+            "group": "API PichFlow",
             "pages": [
               "index",
               "api-v1"

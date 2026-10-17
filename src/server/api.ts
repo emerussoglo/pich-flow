@@ -431,7 +431,7 @@ apiRouter.post('/auth/test-login-alert', requireAuth, async (req: AuthenticatedR
     res.json({
       success: true,
       sent,
-      message: `Alerte de connexion SaaSPay envoyée à ${req.user!.email} (IP: ${displayIp})`,
+      message: `Alerte de connexion PichFlow envoyée à ${req.user!.email} (IP: ${displayIp})`,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });

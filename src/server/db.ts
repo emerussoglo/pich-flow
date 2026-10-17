@@ -36,6 +36,20 @@ export function getDb(): Client {
   }
 }
 
+export async function migratePaymentLinksUsageLimit(db: Client = getDb()): Promise<void> {
+  const columns = await db.execute('PRAGMA table_info(payment_links)');
+  const columnNames = new Set(columns.rows.map((column) => String(column.name)));
+
+  if (!columnNames.has('usage_limit')) {
+    await db.execute('ALTER TABLE payment_links ADD COLUMN usage_limit INTEGER');
+  }
+  if (columnNames.has('max_payments')) {
+    await db.execute(`UPDATE payment_links
+                      SET usage_limit = max_payments
+                      WHERE usage_limit IS NULL AND max_payments IS NOT NULL`);
+  }
+}
+
 export async function initDatabase(): Promise<void> {
   const db = getDb();
   console.log('[DB] Initializing database tables...');
@@ -376,45 +390,45 @@ export async function initDatabase(): Promise<void> {
     )
   `);
 
-  // Migrations for existing tables (safe column additions)
-  const safeAlter = async (query: string) => {
-    try {
-      await db.execute(query);
-    } catch {
-      // Column likely already exists
-    }
+  // Additive migrations: inspect each table so real schema errors are not hidden.
+  const ensureColumn = async (table: string, column: string, definition: string) => {
+    const columns = await db.execute(`PRAGMA table_info("${table}")`);
+    if (columns.rows.some((row) => String(row.name) === column)) return;
+    await db.execute(`ALTER TABLE "${table}" ADD COLUMN "${column}" ${definition}`);
   };
 
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN first_name TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN last_name TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN birth_date TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN recto_url TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN verso_url TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN selfie_url TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN representative_name TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN rccm_doc_url TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN ifu_doc_url TEXT`);
-  await safeAlter(`ALTER TABLE payment_links ADD COLUMN client_fee_enabled INTEGER DEFAULT 0`);
-  await safeAlter(`ALTER TABLE payment_links ADD COLUMN fee_rate REAL DEFAULT 0`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN label TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN account_number TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN iban TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN swift_bic TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN bank_code TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN branch_code TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN currency TEXT DEFAULT 'XOF'`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN user_id TEXT`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN saspay_session_id TEXT`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN saspay_checkout_url TEXT`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN idempotency_key TEXT`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN provider TEXT DEFAULT 'paydunya'`);
-  await safeAlter(`ALTER TABLE transactions ADD COLUMN idempotency_key TEXT`);
-  await safeAlter(`ALTER TABLE transactions ADD COLUMN saspay_id TEXT`);
-  await safeAlter(`ALTER TABLE wallets ADD COLUMN application_id TEXT`);
-  await safeAlter(`ALTER TABLE payout_requests ADD COLUMN application_id TEXT`);
-  await safeAlter(`ALTER TABLE api_credentials ADD COLUMN secret_hash TEXT`);
-  await safeAlter(`ALTER TABLE webhook_logs ADD COLUMN external_event_id TEXT`);
-  await safeAlter(`ALTER TABLE webhook_logs ADD COLUMN signature TEXT`);
+  await ensureColumn('merchant_kyc', 'first_name', 'TEXT');
+  await ensureColumn('merchant_kyc', 'last_name', 'TEXT');
+  await ensureColumn('merchant_kyc', 'birth_date', 'TEXT');
+  await ensureColumn('merchant_kyc', 'recto_url', 'TEXT');
+  await ensureColumn('merchant_kyc', 'verso_url', 'TEXT');
+  await ensureColumn('merchant_kyc', 'selfie_url', 'TEXT');
+  await ensureColumn('merchant_kyc', 'representative_name', 'TEXT');
+  await ensureColumn('merchant_kyc', 'rccm_doc_url', 'TEXT');
+  await ensureColumn('merchant_kyc', 'ifu_doc_url', 'TEXT');
+  await ensureColumn('payment_links', 'client_fee_enabled', 'INTEGER DEFAULT 0');
+  await ensureColumn('payment_links', 'fee_rate', 'REAL DEFAULT 0');
+  await migratePaymentLinksUsageLimit(db);
+  await ensureColumn('payout_methods', 'label', 'TEXT');
+  await ensureColumn('payout_methods', 'account_number', 'TEXT');
+  await ensureColumn('payout_methods', 'iban', 'TEXT');
+  await ensureColumn('payout_methods', 'swift_bic', 'TEXT');
+  await ensureColumn('payout_methods', 'bank_code', 'TEXT');
+  await ensureColumn('payout_methods', 'branch_code', 'TEXT');
+  await ensureColumn('payout_methods', 'currency', "TEXT DEFAULT 'XOF'");
+  await ensureColumn('checkout_sessions', 'user_id', 'TEXT');
+  await ensureColumn('checkout_sessions', 'saspay_session_id', 'TEXT');
+  await ensureColumn('checkout_sessions', 'saspay_checkout_url', 'TEXT');
+  await ensureColumn('checkout_sessions', 'idempotency_key', 'TEXT');
+  await ensureColumn('checkout_sessions', 'provider', "TEXT DEFAULT 'paydunya'");
+  await ensureColumn('transactions', 'idempotency_key', 'TEXT');
+  await ensureColumn('transactions', 'saspay_id', 'TEXT');
+  await ensureColumn('wallets', 'application_id', 'TEXT');
+  await ensureColumn('payout_requests', 'application_id', 'TEXT');
+  await ensureColumn('api_credentials', 'secret_hash', 'TEXT');
+  await ensureColumn('webhook_logs', 'external_event_id', 'TEXT');
+  await ensureColumn('webhook_logs', 'signature', 'TEXT');
+  await ensureColumn('customers', 'updated_at', 'TEXT');
   await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS wallets_user_app_currency_unique
     ON wallets (user_id, application_id, currency) WHERE application_id IS NOT NULL`);
   await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS checkout_sessions_idempotency_unique

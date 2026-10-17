@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/src/server/db';
 import { getAuthUserFromRequest } from '@/src/server/auth';
@@ -13,18 +14,25 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId') || searchParams.get('appId') || '';
-
-    const db = getDb();
-    let sql = 'SELECT * FROM customers WHERE user_id = ?';
-    const args: any[] = [user.id];
-
-    if (applicationId.trim()) {
-      sql += ' AND application_id = ?';
-      args.push(applicationId.trim());
+    if (!applicationId.trim()) {
+      return NextResponse.json({ success: false, error: 'Application requise.' }, { status: 400 });
     }
 
-    sql += ' ORDER BY created_at DESC';
-    const result = await db.execute({ sql, args });
+    const db = getDb();
+    const application = await db.execute({
+      sql: 'SELECT id FROM applications WHERE id = ? AND user_id = ?',
+      args: [applicationId.trim(), user.id],
+    });
+    if (application.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
+
+    const result = await db.execute({
+      sql: `SELECT * FROM customers
+            WHERE user_id = ? AND application_id = ?
+            ORDER BY created_at DESC`,
+      args: [user.id, applicationId.trim()],
+    });
 
     const customers = result.rows.map((row) => ({
       id: String(row.id),
@@ -68,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     const cleanEmail = String(email).toLowerCase().trim();
     const cleanName = String(name).trim();
-    const id = `cust_${Date.now()}`;
+    const id = `cust_${randomUUID()}`;
     const now = new Date().toISOString();
 
     const db = getDb();

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { after, before, test } from 'node:test';
+import { createClient } from '@libsql/client';
 import { NextRequest } from 'next/server';
 
 process.env.TURSO_DATABASE_URL = 'file::memory:';
@@ -11,7 +12,7 @@ process.env.PAYDUNYA_PRIVATE_KEY = 'test-private-key';
 process.env.PAYDUNYA_TOKEN = 'test-token';
 process.env.APP_URL = 'http://localhost:3000';
 
-const { initDatabase, getDb } = await import('../src/server/db');
+const { initDatabase, getDb, migratePaymentLinksUsageLimit } = await import('../src/server/db');
 const {
   CheckoutError,
   createCheckout,
@@ -30,6 +31,36 @@ const linkFixed = `link_fixed_${crypto.randomUUID()}`;
 const linkVariable = `link_variable_${crypto.randomUUID()}`;
 const linkUnsupported = `link_unsupported_${crypto.randomUUID()}`;
 const createdInvoices = new Map<string, { amount: number; reference: string }>();
+
+test('payment link usage limit migration preserves legacy values and is repeatable', async () => {
+  const legacyDb = createClient({ url: 'file::memory:' });
+  await legacyDb.execute(`CREATE TABLE payment_links (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    max_payments INTEGER
+  )`);
+  await legacyDb.execute({
+    sql: 'INSERT INTO payment_links (id, title, max_payments) VALUES (?, ?, ?)',
+    args: ['legacy-link', 'Existing link', 12],
+  });
+
+  await migratePaymentLinksUsageLimit(legacyDb);
+  await migratePaymentLinksUsageLimit(legacyDb);
+
+  const migrated = await legacyDb.execute(
+    'SELECT id, title, max_payments, usage_limit FROM payment_links WHERE id = ?',
+    ['legacy-link'],
+  );
+  assert.equal(String(migrated.rows[0].title), 'Existing link');
+  assert.equal(Number(migrated.rows[0].max_payments), 12);
+  assert.equal(Number(migrated.rows[0].usage_limit), 12);
+
+  await legacyDb.execute('UPDATE payment_links SET usage_limit = 5 WHERE id = ?', ['legacy-link']);
+  await migratePaymentLinksUsageLimit(legacyDb);
+  const updated = await legacyDb.execute('SELECT usage_limit FROM payment_links WHERE id = ?', ['legacy-link']);
+  assert.equal(Number(updated.rows[0].usage_limit), 5);
+  legacyDb.close();
+});
 
 async function seedFixtures() {
   const db = getDb();
@@ -136,8 +167,24 @@ test('fixed and variable links stay isolated by application through PayDunya con
   assert.equal(String(fixedPending.rows[0].provider), 'paydunya');
   assert.equal(String(fixedPending.rows[0].status), 'pending');
 
+  const customerAttempt = await getDb().execute({
+    sql: `SELECT application_id, payment_count, total_spent FROM customers
+          WHERE user_id = ? AND application_id = ? AND email = ?`,
+    args: [userId, appA, 'fixed@example.test'],
+  });
+  assert.equal(String(customerAttempt.rows[0].application_id), appA);
+  assert.equal(Number(customerAttempt.rows[0].payment_count), 0);
+  assert.equal(Number(customerAttempt.rows[0].total_spent), 0);
+
   const confirmed = await getCheckoutStatus(fixed.reference);
   assert.equal(confirmed.status, 'success');
+  const confirmedCustomer = await getDb().execute({
+    sql: `SELECT payment_count, total_spent FROM customers
+          WHERE user_id = ? AND application_id = ? AND email = ?`,
+    args: [userId, appA, 'fixed@example.test'],
+  });
+  assert.equal(Number(confirmedCustomer.rows[0].payment_count), 1);
+  assert.equal(Number(confirmedCustomer.rows[0].total_spent), 5000);
 
   const variable = await createCheckout({
     paymentLinkSlug: `${linkVariable}-slug`,
@@ -168,6 +215,19 @@ test('fixed and variable links stay isolated by application through PayDunya con
     transactions.rows.map((row) => [String(row.application_id), Number(row.amount), String(row.status)]),
     [[appA, 5000, 'success'], [appB, 3200, 'success']],
   );
+  const customers = await getDb().execute({
+    sql: `SELECT application_id, payment_count, total_spent FROM customers
+          WHERE user_id = ? ORDER BY application_id`,
+    args: [userId],
+  });
+  assert.deepEqual(
+    customers.rows.map((row) => [
+      String(row.application_id),
+      Number(row.payment_count),
+      Number(row.total_spent),
+    ]),
+    [[appA, 1, 5000], [appB, 1, 3200]],
+  );
 });
 
 test('requires customer phone and rejects unsupported currency and inactive links', async () => {
@@ -185,6 +245,16 @@ test('requires customer phone and rejects unsupported currency and inactive link
       customerName: 'Buyer',
       customerEmail: 'buyer@example.test',
       customerPhone: '+221770000001',
+    }),
+    (error: unknown) => error instanceof CheckoutError && error.statusCode === 400,
+  );
+  await assert.rejects(
+    () => createCheckout({
+      paymentLinkId: linkFixed,
+      customerName: 'Buyer',
+      customerEmail: 'buyer@example.test',
+      customerPhone: '+22997000002',
+      country: 'SN',
     }),
     (error: unknown) => error instanceof CheckoutError && error.statusCode === 400,
   );
@@ -270,6 +340,13 @@ test('PayDunya callback and repeated status checks credit an application only on
     args: [userId, appA, 'XOF'],
   });
   assert.equal(Number(wallet.rows[0].pending_balance), 10000);
+  const customer = await getDb().execute({
+    sql: `SELECT payment_count, total_spent FROM customers
+          WHERE user_id = ? AND application_id = ? AND email = ?`,
+    args: [userId, appA, 'webhook@example.test'],
+  });
+  assert.equal(Number(customer.rows[0].payment_count), 1);
+  assert.equal(Number(customer.rows[0].total_spent), 5000);
 });
 
 test('pending provider status is never reported as a confirmed payment', async () => {
@@ -285,6 +362,13 @@ test('pending provider status is never reported as a confirmed payment', async (
   const status = await getCheckoutStatus(checkout.reference);
   assert.equal(status.status, 'pending');
   assert.equal(status.success, true);
+  const customer = await getDb().execute({
+    sql: `SELECT payment_count, total_spent FROM customers
+          WHERE user_id = ? AND application_id = ? AND email = ?`,
+    args: [userId, appB, 'pending@example.test'],
+  });
+  assert.equal(Number(customer.rows[0].payment_count), 0);
+  assert.equal(Number(customer.rows[0].total_spent), 0);
 });
 
 test('wallet reads require an owned application and exclude unassigned legacy balances', async () => {

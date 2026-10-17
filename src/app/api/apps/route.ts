@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/src/server/db';
 import { getAuthUserFromRequest } from '@/src/server/auth';
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Le nom de l’application est requis.' }, { status: 400 });
     }
 
-    const id = `app_${Date.now()}`;
+    const id = `app_${randomUUID()}`;
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const now = new Date().toISOString();
 
@@ -94,4 +95,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

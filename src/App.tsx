@@ -236,44 +236,27 @@ function AppContent() {
     }
   };
 
-  const handleCreateWithdrawal = async (newWdr: Withdrawal) => {
-    if (!activeApp?.id) return;
-    try {
-      const created = await apiClient.withdrawals.create({
-        ...newWdr,
-        applicationId: activeApp.id,
-      });
-      setWithdrawals((prev) => [created, ...prev]);
-      const updatedWallets = await apiClient.wallets.getAll(activeApp.id).catch(() => null);
-      if (updatedWallets) setWallets(updatedWallets);
-    } catch (err: any) {
-      console.error('Create withdrawal error:', err);
-    }
-  };
-
-  const handleGenerateApiKey = async (name: string, _env?: 'sandbox' | 'live', scope?: 'payin' | 'payout' | 'both') => {
+  const handleGenerateApiKey = async (name: string, environment: 'sandbox' | 'live' = 'sandbox', scope?: 'payin' | 'payout' | 'both') => {
     try {
       const res = await apiClient.developer.generateKey({
         name,
+        environment,
         scope,
         applicationId: activeApp?.id,
       });
-      if (res.keys) {
-        setApiKeys((prev) => [res.keys!.live, res.keys!.sandbox, ...prev]);
-      } else if (res.apiKey) {
-        setApiKeys((prev) => [res.apiKey, ...prev]);
-      }
+      setApiKeys((prev) => [res.apiKey, ...prev]);
     } catch (err: any) {
       console.error('Error creating API key:', err);
     }
   };
 
   const handleRevokeApiKey = async (id: string) => {
+    if (!activeApp?.id) return;
     try {
-      await apiClient.developer.revokeKey(id);
+      await apiClient.developer.revokeKey(id, activeApp.id);
       setApiKeys((prev) => prev.filter((k) => k.id !== id));
-    } catch {
-      setApiKeys((prev) => prev.filter((k) => k.id !== id));
+    } catch (error) {
+      console.error('Error revoking API key:', error);
     }
   };
 
@@ -382,13 +365,11 @@ function AppContent() {
             <DashboardLayout
               activeApp={activeApp || applications[0] || { id: 'app_default', name: 'Mon Application', slug: 'mon-application', category: 'E-commerce', environment: 'test', createdAt: new Date().toISOString(), currency: 'XOF' }}
               applications={applications}
-              wallets={wallets}
               onSelectApp={handleSelectApp}
               onCreateApp={handleCreateApp}
               envMode={envMode}
               onToggleEnv={setEnvMode}
               onCreatePaymentLink={handleCreatePaymentLink}
-              onCreateWithdrawal={handleCreateWithdrawal}
               isNewLinkModalOpen={isNewLinkModalOpen}
               setIsNewLinkModalOpen={setIsNewLinkModalOpen}
               isNewWithdrawalModalOpen={isNewWithdrawalModalOpen}

@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "PitchFlow API",
+    "title": "PichFlow API",
     "version": "1.0.0",
     "description": "API publique actuellement implémentée pour les liens et sessions de paiement PayDunya. Une clé est limitée à son application propriétaire."
   },
@@ -170,7 +170,7 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "Clé d'intégration PitchFlow pf_test_ ou pf_live_, jamais une clé PayDunya."
+        "description": "Clé d'intégration PichFlow pf_test_ ou pf_live_, jamais une clé PayDunya."
       }
     },
     "schemas": {

@@ -106,6 +106,7 @@ export async function PUT(
     const description = values.description;
     const amount = values.amount;
     const isFixedAmount = values.isFixedAmount;
+    const usageLimit = Object.hasOwn(values, 'usageLimit') ? values.usageLimit : values.maxPayments;
     const status = values.status;
     if (title !== undefined && (typeof title !== 'string' || !title.trim() || title.trim().length > 160)) {
       return NextResponse.json({ success: false, error: 'Titre invalide.' }, { status: 400 });
@@ -116,11 +117,19 @@ export async function PUT(
     if (isFixedAmount === true && (!Number.isSafeInteger(Number(amount)) || Number(amount) <= 0)) {
       return NextResponse.json({ success: false, error: 'Un montant fixe entier positif en XOF est requis.' }, { status: 400 });
     }
+    if (usageLimit !== undefined && usageLimit !== null &&
+        (!Number.isSafeInteger(Number(usageLimit)) || Number(usageLimit) <= 0)) {
+      return NextResponse.json({ success: false, error: 'La limite d’utilisation doit être un entier positif.' }, { status: 400 });
+    }
 
     const db = getDb();
     const owned = await getOwnedLink(id, user.id, applicationId);
     if (owned.rows.length === 0) {
       return NextResponse.json({ success: false, error: 'Lien de paiement introuvable.' }, { status: 404 });
+    }
+    if (usageLimit !== undefined && usageLimit !== null &&
+        Number(usageLimit) < Number(owned.rows[0].usage_count || 0)) {
+      return NextResponse.json({ success: false, error: 'La limite ne peut pas être inférieure aux utilisations déjà réservées.' }, { status: 409 });
     }
     const result = await db.execute({
       sql: `UPDATE payment_links SET
@@ -128,6 +137,7 @@ export async function PUT(
               description = COALESCE(?, description),
               amount = CASE WHEN ? = 0 THEN NULL ELSE COALESCE(?, amount) END,
               is_fixed_amount = COALESCE(?, is_fixed_amount),
+              usage_limit = CASE WHEN ? = 1 THEN ? ELSE usage_limit END,
               status = COALESCE(?, status),
               updated_at = ?
             WHERE id = ? AND user_id = ? AND application_id = ?`,
@@ -137,6 +147,8 @@ export async function PUT(
         isFixedAmount === false ? 0 : 1,
         amount === undefined ? null : Number(amount),
         isFixedAmount === undefined ? null : isFixedAmount ? 1 : 0,
+        usageLimit === undefined ? 0 : 1,
+        usageLimit === null ? null : usageLimit === undefined ? null : Number(usageLimit),
         status === undefined ? null : status,
         new Date().toISOString(),
         id,

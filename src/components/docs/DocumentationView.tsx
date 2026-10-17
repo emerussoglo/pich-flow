@@ -56,7 +56,7 @@ export const DocumentationView: React.FC = () => {
     <div className="pf-docs-container">
       <aside className="pf-docs-sidebar">
         <div className="pf-docs-menu-group">
-          <div className="pf-docs-menu-title">API PitchFlow</div>
+          <div className="pf-docs-menu-title">API PichFlow</div>
           {sections.map((section) => (
             <button
               key={section.id}
@@ -72,7 +72,7 @@ export const DocumentationView: React.FC = () => {
       </aside>
 
       <main className="pf-docs-content">
-        <div className="pf-section-badge">PitchFlow · PayDunya · XOF / BJ</div>
+        <div className="pf-section-badge">PichFlow · PayDunya · XOF / BJ</div>
         <h1 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--pf-text)' }}>
           {sections.find((section) => section.id === activeSection)?.label}
         </h1>
@@ -81,7 +81,7 @@ export const DocumentationView: React.FC = () => {
           <>
             <p>
               L'API publique actuelle permet de lister ou créer des liens, d'ouvrir une session de checkout et de vérifier son statut.
-              Le serveur PitchFlow appelle PayDunya; la clé PayDunya ne quitte jamais le serveur.
+              Le serveur PichFlow appelle PayDunya; la clé PayDunya ne quitte jamais le serveur.
             </p>
             <div className="pf-docs-code-box">
               <pre><code>{`Production : ${productionApiBase}\nLocal      : http://localhost:3000/api/v1`}</code></pre>
@@ -101,7 +101,7 @@ export const DocumentationView: React.FC = () => {
         {activeSection === 'auth' && (
           <>
             <p>
-              Créez une clé depuis le centre développeur pour l'application concernée. Les clés PitchFlow utilisent les préfixes
+              Créez une clé depuis le centre développeur pour l'application concernée. Les clés PichFlow utilisent les préfixes
               <code> pf_test_</code> et <code>pf_live_</code>; leur secret complet n'est renvoyé qu'à la création.
             </p>
             <div className="pf-docs-code-box">
@@ -123,7 +123,7 @@ export const DocumentationView: React.FC = () => {
             </p>
             <div className="pf-docs-code-container">
               <div className="pf-docs-code-header">
-                <span>Créer une session PayDunya via PitchFlow</span>
+                <span>Créer une session PayDunya via PichFlow</span>
                 <button onClick={copyCheckout} className="pf-docs-copy-btn" type="button">
                   <FontAwesomeIcon icon={faCopy} />
                   <span>Copier</span>
@@ -141,7 +141,7 @@ export const DocumentationView: React.FC = () => {
         {activeSection === 'webhooks' && (
           <>
             <p>
-              Le callback entrant PayDunya est <code>POST /api/webhooks/paydunya</code>. PitchFlow valide le hash SHA-512
+              Le callback entrant PayDunya est <code>POST /api/webhooks/paydunya</code>. PichFlow valide le hash SHA-512
               et confirme la facture auprès du fournisseur avant d'enregistrer le règlement.
             </p>
             <p>
@@ -163,7 +163,7 @@ export const DocumentationView: React.FC = () => {
             </div>
             <p>
               Une clé réutilisée avec d'autres données ou un autre lien est refusée. Le stockage de cette clé empêche de créer
-              plusieurs sessions PitchFlow pour la même intention, mais ne remplace pas le rapprochement du statut PayDunya.
+              plusieurs sessions PichFlow pour la même intention, mais ne remplace pas le rapprochement du statut PayDunya.
             </p>
           </>
         )}

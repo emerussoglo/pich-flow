@@ -21,6 +21,7 @@ interface HostedCheckoutPageProps {
 }
 
 type CheckoutStatus = 'idle' | 'loading' | 'pending' | 'success' | 'failed';
+type CheckoutStep = 'customer' | 'payment';
 
 const formatAmount = (amount: number) =>
   new Intl.NumberFormat('fr-FR').format(amount);
@@ -31,6 +32,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   paymentLinkSlug,
 }) => {
   const [status, setStatus] = useState<CheckoutStatus>('idle');
+  const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('customer');
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState('');
   const [merchantName, setMerchantName] = useState('Pitchflow');
@@ -128,7 +130,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
     };
   }, [status, transactionRef]);
 
-  const handlePay = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleContinueToPayment = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage('');
     const email = customerEmail.trim();
@@ -146,12 +148,27 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
       setErrorMessage('Veuillez renseigner un montant entier positif en XOF.');
       return;
     }
+    setCheckoutStep('payment');
+  };
 
+  const handlePay = async () => {
+    setErrorMessage('');
+    const email = customerEmail.trim();
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (!paymentLinkId || !activeSlug ||
+        !firstName.trim() || !lastName.trim() ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || phoneDigits.length !== 8 ||
+        !Number.isSafeInteger(amount) || amount <= 0) {
+      setCheckoutStep('customer');
+      setErrorMessage('Vérifiez les informations du client et le montant avant de continuer.');
+      return;
+    }
     setStatus('loading');
     try {
       const result = await apiClient.checkout.initiate({
         amount,
         currency: 'XOF',
+        country: 'BJ',
         customerName: `${firstName.trim()} ${lastName.trim()}`,
         customerEmail: email,
         customerPhone: `+229${phoneDigits}`,
@@ -193,6 +210,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
 
   const handleReset = () => {
     setStatus('idle');
+    setCheckoutStep('customer');
     setTransactionRef('');
     setErrorMessage('');
   };
@@ -206,7 +224,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
         </button>
 
         {status === 'idle' && (
-          <form onSubmit={handlePay}>
+          <>
             <div className="pf-ui-header-fixed">
               <div className="pf-ui-header-left">
                 <div className="pf-ui-avatar-badge">{merchantName.charAt(0).toUpperCase()}</div>
@@ -222,108 +240,147 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
 
             {description && <p className="pf-ui-pending-sub">{description}</p>}
 
-            {!isFixedAmount && (
-              <div className="pf-ui-form-group">
-                <label className="pf-ui-label" htmlFor="checkout-amount">Montant (XOF) *</label>
-                <input
-                  id="checkout-amount"
-                  type="number"
-                  className="pf-ui-input"
-                  min="1"
-                  step="1"
-                  value={amount || ''}
-                  onChange={(event) => setAmount(event.target.value === '' ? 0 : Number(event.target.value))}
-                  required
-                />
+            {checkoutStep === 'customer' ? (
+              <form onSubmit={handleContinueToPayment}>
+                {!isFixedAmount && (
+                  <div className="pf-ui-form-group">
+                    <label className="pf-ui-label" htmlFor="checkout-amount">Montant (XOF) *</label>
+                    <input
+                      id="checkout-amount"
+                      type="number"
+                      className="pf-ui-input"
+                      min="1"
+                      step="1"
+                      value={amount || ''}
+                      onChange={(event) => setAmount(event.target.value === '' ? 0 : Number(event.target.value))}
+                      required
+                    />
+                  </div>
+                )}
+
+                <div className="pf-ui-form-row">
+                  <div>
+                    <label className="pf-ui-label" htmlFor="checkout-first-name">Prénom *</label>
+                    <input
+                      id="checkout-first-name"
+                      type="text"
+                      className="pf-ui-input"
+                      value={firstName}
+                      onChange={(event) => setFirstName(event.target.value)}
+                      autoComplete="given-name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="pf-ui-label" htmlFor="checkout-last-name">Nom *</label>
+                    <input
+                      id="checkout-last-name"
+                      type="text"
+                      className="pf-ui-input"
+                      value={lastName}
+                      onChange={(event) => setLastName(event.target.value)}
+                      autoComplete="family-name"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="pf-ui-form-group">
+                  <label className="pf-ui-label" htmlFor="checkout-email">Adresse e-mail *</label>
+                  <input
+                    id="checkout-email"
+                    type="email"
+                    className="pf-ui-input"
+                    value={customerEmail}
+                    onChange={(event) => setCustomerEmail(event.target.value)}
+                    autoComplete="email"
+                    required
+                  />
+                </div>
+
+                <div className="pf-ui-form-group">
+                  <label className="pf-ui-label" htmlFor="checkout-phone">Téléphone *</label>
+                  <div className="pf-ui-phone-row">
+                    <span className="pf-ui-phone-icon"><FontAwesomeIcon icon={faMobileScreen} /></span>
+                    <span className="pf-ui-phone-code">+229</span>
+                    <div className="pf-ui-phone-divider" />
+                    <input
+                      id="checkout-phone"
+                      type="tel"
+                      className="pf-ui-phone-input"
+                      value={phone}
+                      onChange={(event) => setPhone(event.target.value)}
+                      placeholder="97 00 12 34"
+                      autoComplete="tel-national"
+                      inputMode="numeric"
+                      pattern="[0-9 ()-]{8,14}"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="pf-ui-summary-box">
+                  <div className="pf-ui-summary-row">
+                    <span>Montant</span>
+                    <span>{formatAmount(amount)} XOF</span>
+                  </div>
+                  <div className="pf-ui-summary-divider" />
+                  <div className="pf-ui-summary-total">
+                    <span>Total à payer</span>
+                    <span>{formatAmount(amount)} XOF</span>
+                  </div>
+                </div>
+
+                {errorMessage && <p role="alert" className="pf-ui-failed-sub">{errorMessage}</p>}
+                <button type="submit" className="pf-ui-submit-btn" disabled={isLoadingLink || !paymentLinkId}>
+                  <span>{isLoadingLink ? 'Chargement du lien...' : 'Continuer'}</span>
+                </button>
+              </form>
+            ) : (
+              <div>
+                <h2 className="pf-ui-label">Étape 2 — Pays et moyen de paiement</h2>
+                <div className="pf-ui-form-group">
+                  <label className="pf-ui-label">Pays pris en charge</label>
+                  <div className="pf-ui-input" aria-readonly="true">Bénin (+229) — XOF</div>
+                </div>
+                <div className="pf-ui-form-group">
+                  <label className="pf-ui-label">Moyen de paiement</label>
+                  <p className="pf-ui-notice-chip">
+                    PayDunya affiche les moyens activés pour ce compte. Vous pourrez en choisir un sur sa page sécurisée.
+                  </p>
+                </div>
+                <div className="pf-ui-summary-box">
+                  <div className="pf-ui-summary-row">
+                    <span>Client</span>
+                    <span>{firstName.trim()} {lastName.trim()}</span>
+                  </div>
+                  <div className="pf-ui-summary-row">
+                    <span>Téléphone</span>
+                    <span>+229 {phone}</span>
+                  </div>
+                  <div className="pf-ui-summary-divider" />
+                  <div className="pf-ui-summary-total">
+                    <span>Total à payer</span>
+                    <span>{formatAmount(amount)} XOF</span>
+                  </div>
+                </div>
+                {errorMessage && <p role="alert" className="pf-ui-failed-sub">{errorMessage}</p>}
+                <div className="pf-ui-form-row">
+                  <button type="button" className="pf-ui-retry-btn" onClick={() => setCheckoutStep('customer')}>
+                    Modifier les informations
+                  </button>
+                  <button
+                    type="button"
+                    className="pf-ui-submit-btn"
+                    disabled={isLoadingLink || !paymentLinkId}
+                    onClick={() => void handlePay()}
+                  >
+                    Continuer vers PayDunya
+                  </button>
+                </div>
               </div>
             )}
-
-            <div className="pf-ui-form-group">
-              <label className="pf-ui-label">Pays</label>
-              <div className="pf-ui-input" aria-readonly="true">Bénin (+229) — XOF</div>
-              <p className="pf-ui-notice-chip">
-                Choisissez votre moyen de paiement sur la page sécurisée de PayDunya.
-              </p>
-            </div>
-
-            <div className="pf-ui-form-row">
-              <div>
-                <label className="pf-ui-label" htmlFor="checkout-first-name">Prénom *</label>
-                <input
-                  id="checkout-first-name"
-                  type="text"
-                  className="pf-ui-input"
-                  value={firstName}
-                  onChange={(event) => setFirstName(event.target.value)}
-                  autoComplete="given-name"
-                  required
-                />
-              </div>
-              <div>
-                <label className="pf-ui-label" htmlFor="checkout-last-name">Nom *</label>
-                <input
-                  id="checkout-last-name"
-                  type="text"
-                  className="pf-ui-input"
-                  value={lastName}
-                  onChange={(event) => setLastName(event.target.value)}
-                  autoComplete="family-name"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="pf-ui-form-group">
-              <label className="pf-ui-label" htmlFor="checkout-email">Adresse e-mail *</label>
-              <input
-                id="checkout-email"
-                type="email"
-                className="pf-ui-input"
-                value={customerEmail}
-                onChange={(event) => setCustomerEmail(event.target.value)}
-                autoComplete="email"
-                required
-              />
-            </div>
-
-            <div className="pf-ui-form-group">
-              <label className="pf-ui-label" htmlFor="checkout-phone">Téléphone *</label>
-              <div className="pf-ui-phone-row">
-                <span className="pf-ui-phone-icon"><FontAwesomeIcon icon={faMobileScreen} /></span>
-                <span className="pf-ui-phone-code">+229</span>
-                <div className="pf-ui-phone-divider" />
-                <input
-                  id="checkout-phone"
-                  type="tel"
-                  className="pf-ui-phone-input"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  placeholder="97 00 12 34"
-                  autoComplete="tel-national"
-                  inputMode="numeric"
-                  pattern="[0-9 ()-]{8,14}"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="pf-ui-summary-box">
-              <div className="pf-ui-summary-row">
-                <span>Montant</span>
-                <span>{formatAmount(amount)} XOF</span>
-              </div>
-              <div className="pf-ui-summary-divider" />
-              <div className="pf-ui-summary-total">
-                <span>Total à payer</span>
-                <span>{formatAmount(amount)} XOF</span>
-              </div>
-            </div>
-
-            {errorMessage && <p role="alert" className="pf-ui-failed-sub">{errorMessage}</p>}
-            <button type="submit" className="pf-ui-submit-btn" disabled={isLoadingLink || !paymentLinkId}>
-              <span>{isLoadingLink ? 'Chargement du lien...' : `Payer ${formatAmount(amount)} XOF`}</span>
-            </button>
-          </form>
+          </>
         )}
 
         {status === 'loading' && (

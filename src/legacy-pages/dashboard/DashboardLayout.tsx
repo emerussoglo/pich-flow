@@ -6,7 +6,7 @@ import {
   NewPaymentLinkModal,
   NewWithdrawalModal,
 } from '../../components/dashboard/Modals';
-import { Application, EnvironmentMode, PaymentLink, Withdrawal } from '../../types';
+import { Application, EnvironmentMode, PaymentLink } from '../../types';
 import { useRouter } from '../../lib/router';
 import { apiClient } from '../../lib/api';
 
@@ -14,13 +14,11 @@ interface DashboardLayoutProps {
   children: ReactNode;
   activeApp: Application;
   applications: Application[];
-  wallets: any[];
   onSelectApp: (app: Application) => void;
   onCreateApp: (app: Application) => void;
   envMode: EnvironmentMode;
   onToggleEnv: (mode: EnvironmentMode) => void;
   onCreatePaymentLink: (link: PaymentLink) => void;
-  onCreateWithdrawal: (wdr: Withdrawal) => void;
   isNewLinkModalOpen: boolean;
   setIsNewLinkModalOpen: (open: boolean) => void;
   isNewWithdrawalModalOpen: boolean;
@@ -31,13 +29,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   activeApp,
   applications,
-  wallets,
   onSelectApp,
   onCreateApp,
   envMode,
   onToggleEnv,
   onCreatePaymentLink,
-  onCreateWithdrawal,
   isNewLinkModalOpen,
   setIsNewLinkModalOpen,
   isNewWithdrawalModalOpen,
@@ -137,8 +133,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <NewWithdrawalModal
         isOpen={isNewWithdrawalModalOpen}
         onClose={() => setIsNewWithdrawalModalOpen(false)}
-        onCreate={onCreateWithdrawal}
-        wallets={wallets}
       />
     </div>
   );
