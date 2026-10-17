@@ -24,7 +24,7 @@ import {
 import { useToast } from '../ui/ToastContext';
 import { apiClient } from '../../lib/api';
 import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../../config/payments';
-import { SUPPORTED_COUNTRIES, PaymentMethodOption } from '../../config/countries';
+import { SUPPORTED_COUNTRIES, type PaymentMethodOption } from '../../config/countries';
 
 interface PaymentLinksViewProps {
   appName?: string;
@@ -69,30 +69,16 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [maxUsage, setMaxUsage] = useState('');
   const [defaultCountry, setDefaultCountry] = useState('BJ');
   const [requirePhone, setRequirePhone] = useState(true);
-  const clientFeeEnabled = false;
   const [customSlug, setCustomSlug] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Studio Preview States
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const currentPreviewCountry = SUPPORTED_COUNTRIES.find((c) => c.code === defaultCountry) || SUPPORTED_COUNTRIES[0];
-  const [previewMethodId, setPreviewMethodId] = useState<string>(currentPreviewCountry.methods[0]?.id || 'celtiis_bj');
   const [previewPhone, setPreviewPhone] = useState('97 00 12 34');
 
-  // Sync preview method when country changes
-  useEffect(() => {
-    if (currentPreviewCountry.methods.length > 0) {
-      setPreviewMethodId(currentPreviewCountry.methods[0].id);
-    }
-  }, [defaultCountry]);
-
-  const selectedPreviewMethod =
-    currentPreviewCountry.methods.find((m) => m.id === previewMethodId) || currentPreviewCountry.methods[0];
-
-  const parsedFeeRate = 2.2;
   const numericAmount = amountType === 'fixed' ? Number(amountVal) || 0 : 5000;
-  const calculatedFee = clientFeeEnabled ? Math.round(numericAmount * (parsedFeeRate / 100)) : 0;
-  const previewTotal = numericAmount + calculatedFee;
+  const previewTotal = numericAmount;
 
   const loadLinks = useCallback(async () => {
     setIsLoading(true);
@@ -681,14 +667,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                       {new Intl.NumberFormat('fr-FR').format(numericAmount)} {currency}
                     </span>
                   </div>
-                  {clientFeeEnabled && calculatedFee > 0 && (
-                    <div className="pf-saspay-summary-row">
-                      <span>Frais de passerelle ({parsedFeeRate} %)</span>
-                      <span style={{ fontWeight: 600, color: '#5E30E8' }}>
-                        + {new Intl.NumberFormat('fr-FR').format(calculatedFee)} {currency}
-                      </span>
-                    </div>
-                  )}
                   <div className="pf-saspay-summary-divider" />
                   <div className="pf-saspay-summary-total">
                     <span>Total à payer</span>
