@@ -30,6 +30,13 @@ export interface InvoiceResult {
   error?: string;
 }
 
+interface PayDunyaApiResponse {
+  response_code?: string;
+  response_text?: string;
+  token?: string;
+  [key: string]: unknown;
+}
+
 export class PayDunyaService {
   private readonly masterKey: string;
   private readonly privateKey: string;
@@ -113,8 +120,9 @@ export class PayDunyaService {
       },
     });
 
+    let result: PayDunyaApiResponse | undefined;
     try {
-      const result = await this.callPayDunyaApi('/checkout-invoice/create', payload);
+      result = await this.callPayDunyaApi('/checkout-invoice/create', payload);
       if (
         result &&
         result.response_code === '00' &&
@@ -192,7 +200,7 @@ export class PayDunyaService {
     };
   }
 
-  private callPayDunyaApi(endpoint: string, data: string): Promise<any> {
+  private callPayDunyaApi(endpoint: string, data: string): Promise<PayDunyaApiResponse> {
     return new Promise((resolve, reject) => {
       const baseUrl = this.mode === 'sandbox'
         ? 'https://app.paydunya.com/sandbox-api/v1'
@@ -302,7 +310,8 @@ export class PayDunyaService {
 function isPayDunyaInvoiceUrl(value: string): boolean {
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && url.hostname === 'app.paydunya.com';
+    return url.protocol === 'https:'
+      && (url.hostname === 'app.paydunya.com' || url.hostname === 'paydunya.com');
   } catch {
     return false;
   }

@@ -201,6 +201,35 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   );
   assert.equal(linkAResponse.status, 200);
   const linkA = (await linkAResponse.json()).paymentLink;
+  const freeAmountLinkResponse = await createPaymentLink(
+    makeRequest('/api/payment-links', 'POST', {
+      title: 'Application A flexible payment',
+      isFixedAmount: false,
+      currency: 'XOF',
+      country: 'BJ',
+      applicationId: applicationA.id,
+    }, undefined, sessionCookie),
+  );
+  assert.equal(freeAmountLinkResponse.status, 200);
+  const freeAmountLink = (await freeAmountLinkResponse.json()).paymentLink;
+  const belowMinimumCheckout = await handleApiRequest(
+    new Request('http://localhost/api/checkout/initiate', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': `below-min-${randomUUID()}`,
+      },
+      body: JSON.stringify({
+        paymentLinkId: freeAmountLink.id,
+        amount: 199,
+        firstName: 'Checkout',
+        lastName: 'Test',
+        customerEmail: 'checkout-test@example.test',
+        customerPhone: '+22990000000',
+      }),
+    }),
+  );
+  assert.equal(belowMinimumCheckout.status, 400);
   const storedLinkA = await getDb().execute({
     sql: 'SELECT usage_limit, usage_count FROM payment_links WHERE id = ? AND application_id = ?',
     args: [linkA.id, applicationA.id],
