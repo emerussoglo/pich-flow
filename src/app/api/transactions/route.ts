@@ -13,18 +13,25 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId') || searchParams.get('appId') || '';
+    if (!applicationId.trim()) {
+      return NextResponse.json({ success: false, error: 'Application requise.' }, { status: 400 });
+    }
+
+    const db = getDb();
+    const application = await db.execute({
+      sql: 'SELECT id FROM applications WHERE id = ? AND user_id = ?',
+      args: [applicationId.trim(), user.id],
+    });
+    if (application.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
+
     const status = searchParams.get('status') || '';
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50', 10)));
     const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
 
-    const db = getDb();
-    let sql = 'SELECT * FROM transactions WHERE user_id = ?';
-    const args: any[] = [user.id];
-
-    if (applicationId.trim()) {
-      sql += ' AND application_id = ?';
-      args.push(applicationId.trim());
-    }
+    let sql = 'SELECT * FROM transactions WHERE user_id = ? AND application_id = ?';
+    const args: any[] = [user.id, applicationId.trim()];
 
     if (status.trim()) {
       sql += ' AND status = ?';
@@ -43,7 +50,7 @@ export async function GET(request: NextRequest) {
       customerEmail: String(row.customer_email),
       customerPhone: String(row.customer_phone || ''),
       country: String(row.country || 'BJ'),
-      provider: String(row.provider || 'saspay'),
+      provider: String(row.provider || '').toLowerCase() === 'paydunya' ? 'PayDunya' : 'Historique',
       amount: Number(row.amount),
       providerFee: Number(row.provider_fee || 0),
       platformFee: Number(row.platform_fee || 0),
@@ -60,4 +67,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

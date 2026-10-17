@@ -92,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      <aside className={`pf-saspay-sidebar ${isOpenMobile ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
+      <aside className={`pf-ui-sidebar ${isOpenMobile ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
         {/* Desktop Header with Collapse Button */}
         <div className="pf-sidebar-desktop-head">
           {!isCollapsed && <span className="pf-sidebar-menu-title">MENU</span>}
@@ -225,7 +225,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => handleNavClick(item.id)}
-                className={`pf-saspay-nav-link ${isActive ? 'active' : ''}`}
+                className={`pf-ui-nav-link ${isActive ? 'active' : ''}`}
                 title={item.label}
                 aria-label={item.label}
               >

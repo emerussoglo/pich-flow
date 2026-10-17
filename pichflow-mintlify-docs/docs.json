@@ -29,6 +29,7 @@
           {
             "group": "API PitchFlow",
             "pages": [
+              "index",
               "api-v1"
             ]
           }
@@ -36,7 +37,7 @@
       },
       {
         "tab": "Référence API",
-        "openapi": "openapi.json"
+        "openapi": "api-v1.openapi.json"
       }
     ]
   }

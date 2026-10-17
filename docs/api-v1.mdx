@@ -1,0 +1,85 @@
+---
+title: "API PitchFlow v1"
+description: "Liens de paiement et checkout PayDunya actuellement disponibles."
+---
+
+# API PitchFlow v1
+
+Cette référence est limitée aux opérations présentes dans les Route Handlers Next.js. Base actuelle : `https://pichflow.vercel.app/api/v1`; localement : `http://localhost:3000/api/v1`.
+
+## Sécurité et environnements
+
+Utilisez une clé API PitchFlow `pf_test_...` ou `pf_live_...` dans `Authorization: Bearer ...`. La clé est rattachée à une seule application, son hash est stocké côté serveur et sa valeur complète n'est affichée qu'à la création. Ne mettez jamais cette clé ou les secrets PayDunya dans le navigateur.
+
+`PAYDUNYA_MODE` doit correspondre à l'environnement de la clé; en production, il doit être défini explicitement. Les secrets `PAYDUNYA_MASTER_KEY`, `PAYDUNYA_PRIVATE_KEY` et `PAYDUNYA_TOKEN` restent côté serveur. Le mode test ne bascule pas automatiquement en production.
+
+La configuration actuelle est limitée à XOF et au Bénin (BJ). La disponibilité effective de ces services sur le compte PayDunya doit être confirmée par le propriétaire du compte avant mise en production.
+
+## Endpoints implémentés
+
+### `GET /payment-links`
+
+Liste uniquement les liens de l'application propriétaire de la clé.
+
+### `POST /payment-links`
+
+Crée un lien. Le JSON contient `name`, `description` facultatif, `type: "fixed" | "free"`, `amount` entier positif pour `fixed`, `currency: "XOF"` et éventuellement `usageLimit`. Le backend définit le pays BJ.
+
+### `POST /checkout-sessions`
+
+Fournissez exactement un `paymentLinkId` ou `paymentLinkSlug`, `customerName`, `customerEmail` et un `customerPhone` béninois au format `+229` suivi de 8 chiffres, ainsi qu'un en-tête `Idempotency-Key` stable (8 à 100 caractères) pour les retries. `amount` est requis seulement pour un lien libre; un prix fixe vient du lien en base et n'est pas remplaçable par le navigateur.
+
+```bash
+curl -X POST "https://pichflow.vercel.app/api/v1/checkout-sessions" \
+  -H "Authorization: Bearer pf_test_<secret>" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: order-123-checkout-1" \
+  -d '{
+    "paymentLinkSlug": "commande-abc123",
+    "customerName": "Awa Exemple",
+    "customerEmail": "awa@example.test",
+    "customerPhone": "+22997000000"
+  }'
+```
+
+HTTP 201 renvoie `data.reference`, `data.status`, `data.amount`, `data.currency` et `data.checkoutUrl`. Redirigez le client vers cette URL PayDunya. Le paiement est en attente jusqu'à vérification serveur.
+
+```ts
+const response = await fetch(
+  "https://pichflow.vercel.app/api/v1/checkout-sessions",
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.PICHFLOW_API_KEY}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": `order-${order.id}-checkout-1`,
+    },
+    body: JSON.stringify({
+      paymentLinkId: order.paymentLinkId,
+      customerName: `${customer.firstName} ${customer.lastName}`,
+      customerEmail: customer.email,
+      customerPhone: customer.phone,
+    }),
+  },
+);
+const result = await response.json();
+if (!response.ok) throw new Error(result.error);
+return result.data.checkoutUrl;
+```
+
+### `GET /payments/{reference}`
+
+Vérifie à nouveau auprès de PayDunya les factures en attente. Les statuts sont `pending`, `success`, `failed` ou `cancelled`; seul `success` représente un paiement confirmé. Une référence hors de l'application de la clé renvoie 404.
+
+```bash
+curl "https://pichflow.vercel.app/api/v1/payments/pf_<uuid>" \
+  -H "Authorization: Bearer pf_test_<secret>"
+```
+
+## Webhooks et limites
+
+Le callback entrant PayDunya est `POST /api/webhooks/paydunya` (hors `/api/v1`). Il contrôle le hash SHA-512, puis re-confirme la facture côté fournisseur. Les notifications répétées ne créditent pas deux fois le portefeuille. Après confirmation, un webhook marchand peut recevoir `payment.succeeded`; le corps est signé par HMAC-SHA-256 dans `X-PichFlow-Signature`. Une seule tentative est effectuée et aucun retry automatique n'est disponible.
+
+Les réponses d'erreur utilisent `{ "success": false, "error": "..." }`. Les codes courants sont 400 (validation), 401 (clé), 403 (environnement/portée), 404 (ressource absente ou autre application), 409 (conflit d'idempotence), 410 (lien inactif/épuisé), 502/503 (fournisseur/configuration).
+
+Les tests du dépôt simulent les réponses réseau PayDunya; ils ne prouvent pas un paiement réel en sandbox. Les pays, moyens de paiement, commissions et capacités live ne sont pas vérifiés dynamiquement. Payouts, transferts fournisseur, API de clients/transactions et SDK public ne sont pas disponibles dans cette API versionnée.

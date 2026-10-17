@@ -14,6 +14,7 @@ import {
 import { useToast } from '../ui/ToastContext';
 import { apiClient } from '../../lib/api';
 import { ApiKey, Application } from '../../types';
+import { APP_CONFIG } from '../../config/app';
 
 export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Application }> = ({
   appName = 'Mon Application',
@@ -175,7 +176,7 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
       {activeTab === 'keys' && (
         <>
           {/* Filters Bar */}
-          <div className="pf-saspay-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="pf-ui-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
             <input
               type="text"
               className="pf-search-filter-input"
@@ -209,7 +210,7 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
 
           {/* Real Keys List vs Empty State */}
           {filteredKeys.length === 0 ? (
-            <div className="pf-saspay-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+            <div className="pf-ui-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
               <div
                 style={{
                   width: '4rem',
@@ -241,9 +242,9 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
               </button>
             </div>
           ) : (
-            <div className="pf-saspay-table-wrapper">
+            <div className="pf-ui-table-wrapper">
               <div className="pf-table-scroll">
-                <table className="pf-saspay-table">
+                <table className="pf-ui-table">
                   <thead>
                     <tr>
                       <th>LIBELLÉ</th>
@@ -320,7 +321,7 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
 
       {/* TAB 2: DOCUMENTATION API */}
       {activeTab === 'docs' && (
-        <div className="pf-saspay-card" style={{ padding: '1.5rem' }}>
+        <div className="pf-ui-card" style={{ padding: '1.5rem' }}>
           <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0F172A', marginBottom: '0.75rem' }}>
             Documentation d'intégration API
           </h3>
@@ -329,16 +330,17 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
           </p>
 
           <div style={{ background: '#0F172A', color: '#F8FAFC', padding: '1rem', borderRadius: '10px', fontFamily: 'monospace', fontSize: '0.8125rem', marginBottom: '1.5rem' }}>
-            <div style={{ color: '#94A3B8', marginBottom: '0.5rem' }}># 1. Exemple : Initialiser un paiement client (PayDunya Sandbox)</div>
-            <div>curl -X POST https://api.pichflow.com/api/checkout/initiate \</div>
+            <div style={{ color: '#94A3B8', marginBottom: '0.5rem' }}># Créer une session de paiement pour un lien existant</div>
+            <div>curl -X POST {APP_CONFIG.apiBaseUrl}/checkout-sessions \</div>
             <div style={{ paddingLeft: '1.5rem' }}>-H "Authorization: Bearer sk_sandbox_..." \</div>
             <div style={{ paddingLeft: '1.5rem' }}>-H "Content-Type: application/json" \</div>
-            <div style={{ paddingLeft: '1.5rem' }}>-d '&#123; "amount": 15000, "currency": "XOF", "description": "Commande #482", "customerEmail": "client@example.com" &#125;'</div>
+            <div style={{ paddingLeft: '1.5rem' }}>-H "Idempotency-Key: order-482-checkout-1" \</div>
+            <div style={{ paddingLeft: '1.5rem' }}>-d '&#123; "paymentLinkId": "&lt;payment-link-id&gt;", "customerName": "Awa Exemple", "customerEmail": "client@example.test", "customerPhone": "+22997000000" &#125;'</div>
           </div>
 
           <div style={{ background: '#0F172A', color: '#F8FAFC', padding: '1rem', borderRadius: '10px', fontFamily: 'monospace', fontSize: '0.8125rem' }}>
-            <div style={{ color: '#94A3B8', marginBottom: '0.5rem' }}># 2. Exemple : Vérifier le statut d'une transaction</div>
-            <div>curl https://api.pichflow.com/api/checkout/status/TX-PF-10492 \</div>
+            <div style={{ color: '#94A3B8', marginBottom: '0.5rem' }}># Vérifier le statut confirmé côté serveur</div>
+            <div>curl {APP_CONFIG.apiBaseUrl}/payments/pf_&lt;uuid&gt; \</div>
             <div style={{ paddingLeft: '1.5rem' }}>-H "Authorization: Bearer sk_sandbox_..."</div>
           </div>
         </div>

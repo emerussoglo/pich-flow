@@ -107,7 +107,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       {/* 2-Column Grid (Solde disponible + Transactions récentes) */}
       <div className="pf-overview-2col-grid">
         {/* Left Card: Solde disponible */}
-        <div className="pf-saspay-card">
+        <div className="pf-ui-card">
           <div className="pf-card-head-between">
             <div className="pf-card-head-title">
               <FontAwesomeIcon icon={faWallet} style={{ color: '#2563EB' }} />
@@ -141,7 +141,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
 
         {/* Right Card: Transactions récentes */}
-        <div className="pf-saspay-card">
+        <div className="pf-ui-card">
           <div className="pf-card-head-between">
             <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A' }}>
               Transactions récentes ({transactions.length})

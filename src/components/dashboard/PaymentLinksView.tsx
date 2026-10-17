@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { PaymentLink, Transaction, Application } from '../../types';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -16,14 +16,12 @@ import {
   faXmark,
   faDesktop,
   faMobileScreen,
-  faCreditCard,
   faLock,
-  faCoins,
   faShieldHalved,
 } from '@fortawesome/free-solid-svg-icons';
 import { useToast } from '../ui/ToastContext';
 import { apiClient } from '../../lib/api';
-import { SUPPORTED_COUNTRIES, PaymentMethodOption } from '../../config/countries';
+import { SUPPORTED_COUNTRIES } from '../../config/countries';
 
 interface PaymentLinksViewProps {
   appName?: string;
@@ -46,6 +44,8 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const [links, setLinks] = useState<PaymentLink[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const linksRequestId = useRef(0);
+  const linkTransactionsRequestId = useRef(0);
 
   // Details Modal
   const [selectedLink, setSelectedLink] = useState<PaymentLink | null>(null);
@@ -57,7 +57,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editAmount, setEditAmount] = useState<number | undefined>(undefined);
-  const [editRequirePhone, setEditRequirePhone] = useState(false);
 
   // Form states for creation
   const [name, setName] = useState('Licence Pro PitchFlow');
@@ -67,38 +66,39 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [currency, setCurrency] = useState('XOF');
   const [maxUsage, setMaxUsage] = useState('');
   const [defaultCountry, setDefaultCountry] = useState('BJ');
-  const [requirePhone, setRequirePhone] = useState(true);
   const [customSlug, setCustomSlug] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Studio Preview States
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const currentPreviewCountry = SUPPORTED_COUNTRIES.find((c) => c.code === defaultCountry) || SUPPORTED_COUNTRIES[0];
-  const [previewMethodId, setPreviewMethodId] = useState<string>(currentPreviewCountry.methods[0]?.id || 'celtiis_bj');
   const [previewPhone, setPreviewPhone] = useState('97 00 12 34');
-
-  // Sync preview method when country changes
-  useEffect(() => {
-    if (currentPreviewCountry.methods.length > 0) {
-      setPreviewMethodId(currentPreviewCountry.methods[0].id);
-    }
-  }, [defaultCountry]);
-
-  const selectedPreviewMethod =
-    currentPreviewCountry.methods.find((m) => m.id === previewMethodId) || currentPreviewCountry.methods[0];
 
   const numericAmount = amountType === 'fixed' ? Number(amountVal) || 0 : 5000;
   const previewTotal = numericAmount;
 
   const loadLinks = useCallback(async () => {
+    const requestId = ++linksRequestId.current;
+    linkTransactionsRequestId.current += 1;
     setIsLoading(true);
+    setLinks([]);
+    setSelectedLink(null);
+    setLinkTransactions([]);
+    setEditLink(null);
+    if (!activeApp?.id) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const backendLinks = await apiClient.paymentLinks.getAll(activeApp?.id);
+      const backendLinks = await apiClient.paymentLinks.getAll(activeApp.id);
+      if (requestId !== linksRequestId.current) return;
       setLinks(backendLinks || []);
     } catch {
+      if (requestId !== linksRequestId.current) return;
       showToast('Impossible de charger les liens de paiement.', 'error');
     } finally {
-      setIsLoading(false);
+      if (requestId === linksRequestId.current) setIsLoading(false);
     }
   }, [activeApp?.id, showToast]);
 
@@ -116,16 +116,25 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   };
 
   const handleOpenDetails = async (link: PaymentLink) => {
+    if (!activeApp?.id) {
+      setSelectedLink(null);
+      setLinkTransactions([]);
+      setLoadingTx(false);
+      return;
+    }
+    const requestId = ++linkTransactionsRequestId.current;
     setSelectedLink(link);
     setLoadingTx(true);
     try {
-      const allTx = await apiClient.transactions.getAll();
+      const allTx = await apiClient.transactions.getAll(activeApp.id);
+      if (requestId !== linkTransactionsRequestId.current) return;
       const matched = allTx.filter((t) => t.paymentLinkId === link.id);
       setLinkTransactions(matched);
     } catch {
+      if (requestId !== linkTransactionsRequestId.current) return;
       setLinkTransactions([]);
     } finally {
-      setLoadingTx(false);
+      if (requestId === linkTransactionsRequestId.current) setLoadingTx(false);
     }
   };
 
@@ -170,7 +179,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
     setEditTitle(link.title);
     setEditDesc(link.description || '');
     setEditAmount(link.amount === null ? undefined : link.amount);
-    setEditRequirePhone(Boolean(link.requirePhone));
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
@@ -181,7 +189,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
         title: editTitle.trim(),
         description: editDesc.trim(),
         amount: editAmount,
-        requirePhone: editRequirePhone,
       });
 
       setLinks((prev) =>
@@ -192,7 +199,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 title: editTitle.trim(),
                 description: editDesc.trim(),
                 amount: editAmount === undefined ? null : editAmount,
-                requirePhone: editRequirePhone,
               }
             : l
         )
@@ -218,7 +224,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
         currency,
         country: defaultCountry,
         usageLimit: maxUsage ? Number(maxUsage) : undefined,
-        requirePhone,
+        requirePhone: true,
         applicationId: activeApp?.id,
       });
 
@@ -243,41 +249,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
       l.slug.toLowerCase().includes(term)
     );
   });
-
-  const getMethodBrandClass = (method: PaymentMethodOption) => {
-    const id = method.id.toLowerCase();
-    const mName = method.name.toLowerCase();
-    if (id.includes('celtiis') || mName.includes('celtiis')) return 'celtiis';
-    if (id.includes('mtn') || mName.includes('mtn')) return 'mtn';
-    if (id.includes('moov') || mName.includes('moov')) return 'moov';
-    if (id.includes('wave') || mName.includes('wave')) return 'wave';
-    if (id.includes('orange') || mName.includes('orange')) return 'orange';
-    if (id.includes('crypto') || method.type === 'crypto') return 'crypto';
-    if (id.includes('card') || method.type === 'card') return 'card';
-    if (id.includes('expresso')) return 'expresso';
-    if (id.includes('free')) return 'free';
-    return 'card';
-  };
-
-  const renderMethodLogo = (method: PaymentMethodOption) => {
-    const brand = getMethodBrandClass(method);
-    switch (brand) {
-      case 'celtiis':
-        return <span style={{ fontWeight: 800, fontSize: '0.8rem' }}>C</span>;
-      case 'mtn':
-        return <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '-0.02em' }}>MTN</span>;
-      case 'moov':
-        return <span style={{ fontWeight: 800, fontSize: '0.72rem' }}>Moov</span>;
-      case 'wave':
-        return <span style={{ fontWeight: 900, fontSize: '0.75rem' }}>Wave</span>;
-      case 'orange':
-        return <span style={{ fontWeight: 900, fontSize: '0.75rem' }}>OM</span>;
-      case 'crypto':
-        return <FontAwesomeIcon icon={faCoins} style={{ fontSize: '0.85rem' }} />;
-      default:
-        return <FontAwesomeIcon icon={faCreditCard} style={{ fontSize: '0.85rem' }} />;
-    }
-  };
 
   // If in create view -> SPLIT STUDIO WITH LIVE CHECKOUT PREVIEW
   if (viewMode === 'create') {
@@ -314,7 +285,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
         {/* 2-Column Split Studio */}
         <div className="pf-payment-link-studio">
           {/* LEFT COLUMN: Configuration Form */}
-          <div className="pf-saspay-card" style={{ padding: '1.75rem' }}>
+          <div className="pf-ui-card" style={{ padding: '1.75rem' }}>
             <form onSubmit={handleCreateSubmit}>
               {/* Section 1: Produit & Tarification */}
               <div style={{ marginBottom: '1.75rem' }}>
@@ -418,25 +389,21 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                       onChange={(e) => setCurrency(e.target.value)}
                     >
                       <option value="XOF">XOF (FCFA UEMOA)</option>
-                      <option value="XAF">XAF (FCFA CEMAC)</option>
-                      <option value="GNF">GNF (Franc Guinéen)</option>
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
                     </select>
                   </div>
                 </div>
               </div>
 
-              {/* Section 2: Personnalisation & Frais */}
+              {/* Section 2: Payment context */}
               <div style={{ marginBottom: '1.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.5rem' }}>
                   <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0F172A' }}>
-                    2. Frais & Expérience client
+                    2. Pays et expérience client
                   </span>
                 </div>
 
                 <div className="pf-form-group">
-                  <label className="pf-label">Pays par défaut</label>
+                  <label className="pf-label">Pays configuré</label>
                   <select
                     className="pf-select"
                     value={defaultCountry}
@@ -451,22 +418,12 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 </div>
 
                 <div className="pf-form-group" style={{ background: '#F8FAFC', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0F172A' }}>
-                        Numéro de téléphone requis
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>
-                        Indispensable pour envoyer le push de débit Mobile Money (MTN, Moov, Wave, Orange).
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={requirePhone}
-                      onChange={(e) => setRequirePhone(e.target.checked)}
-                      style={{ width: '1.25rem', height: '1.25rem', accentColor: '#5E30E8', cursor: 'pointer' }}
-                    />
-                  </label>
+                  <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0F172A' }}>
+                    Numéro de téléphone obligatoire
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>
+                    Le client sera redirigé vers le checkout sécurisé PayDunya. Les moyens disponibles dépendent de la configuration du compte.
+                  </div>
                 </div>
               </div>
 
@@ -549,34 +506,34 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
             <div className={previewDevice === 'mobile' ? 'pf-mobile-frame' : 'pf-desktop-preview-frame'}>
               {previewDevice === 'mobile' && <div className="pf-mobile-speaker" />}
 
-              <div className="pf-saspay-checkout-card" style={{ boxShadow: previewDevice === 'mobile' ? 'none' : undefined, borderRadius: previewDevice === 'mobile' ? '28px' : undefined }}>
+              <div className="pf-ui-checkout-card" style={{ boxShadow: previewDevice === 'mobile' ? 'none' : undefined, borderRadius: previewDevice === 'mobile' ? '28px' : undefined }}>
                 {/* Fixed vs Libre Header */}
                 {amountType === 'fixed' ? (
-                  <div className="pf-saspay-header-fixed">
-                    <div className="pf-saspay-header-left">
-                      <div className="pf-saspay-avatar-badge">
+                  <div className="pf-ui-header-fixed">
+                    <div className="pf-ui-header-left">
+                      <div className="pf-ui-avatar-badge">
                         {(activeApp?.name || appName || 'P').charAt(0).toUpperCase()}
                       </div>
-                      <div className="pf-saspay-header-titles">
-                        <div className="pf-saspay-header-title">
+                      <div className="pf-ui-header-titles">
+                        <div className="pf-ui-header-title">
                           {name.trim() || 'Titre du produit'}
                         </div>
-                        <div className="pf-saspay-header-sub">
+                        <div className="pf-ui-header-sub">
                           {activeApp?.name || appName || 'PitchFlow Store'}
                         </div>
                       </div>
                     </div>
-                    <div className="pf-saspay-header-price">
+                    <div className="pf-ui-header-price">
                       {new Intl.NumberFormat('fr-FR').format(previewTotal)} {currency}
                     </div>
                   </div>
                 ) : (
-                  <div className="pf-saspay-header-libre">
-                    <div className="pf-saspay-avatar-badge center">
+                  <div className="pf-ui-header-libre">
+                    <div className="pf-ui-avatar-badge center">
                       {(activeApp?.name || appName || 'P').charAt(0).toUpperCase()}
                     </div>
-                    <div className="pf-saspay-sub-libre">Faire un paiement à</div>
-                    <div className="pf-saspay-title-libre">
+                    <div className="pf-ui-sub-libre">Faire un paiement à</div>
+                    <div className="pf-ui-title-libre">
                       {activeApp?.name || appName || 'PitchFlow Store'}
                     </div>
                   </div>
@@ -584,11 +541,11 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
 
                 {/* If Libre amount, custom input */}
                 {amountType === 'libre' && (
-                  <div className="pf-saspay-form-group">
-                    <label className="pf-saspay-label">Montant à régler ({currency})</label>
+                  <div className="pf-ui-form-group">
+                    <label className="pf-ui-label">Montant à régler ({currency})</label>
                     <input
                       type="number"
-                      className="pf-saspay-input"
+                      className="pf-ui-input"
                       value={amountVal}
                       onChange={(e) => setAmountVal(e.target.value)}
                       placeholder="Ex: 5000"
@@ -597,11 +554,11 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 )}
 
                 {/* Country dropdown */}
-                <div className="pf-saspay-form-group">
-                  <label className="pf-saspay-label">Pays</label>
-                  <div className="pf-saspay-select-wrap">
+                <div className="pf-ui-form-group">
+                  <label className="pf-ui-label">Pays</label>
+                  <div className="pf-ui-select-wrap">
                     <select
-                      className="pf-saspay-select"
+                      className="pf-ui-select"
                       value={defaultCountry}
                       onChange={(e) => setDefaultCountry(e.target.value)}
                     >
@@ -611,49 +568,30 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                         </option>
                       ))}
                     </select>
-                    <div className="pf-saspay-select-chevron">▾</div>
+                    <div className="pf-ui-select-chevron">▾</div>
                   </div>
                 </div>
 
-                {/* 2-Column Payment Methods Grid */}
-                <div className="pf-saspay-methods-grid">
-                  {currentPreviewCountry.methods.map((method) => {
-                    const isSelected = previewMethodId === method.id;
-                    const brandClass = getMethodBrandClass(method);
-                    return (
-                      <div
-                        key={method.id}
-                        onClick={() => setPreviewMethodId(method.id)}
-                        className={`pf-saspay-method-card ${isSelected ? 'active' : ''}`}
-                      >
-                        <div className={`pf-saspay-method-logo ${brandClass}`}>
-                          {renderMethodLogo(method)}
-                        </div>
-                        <div className="pf-saspay-method-info">
-                          <div className="pf-saspay-method-name">{method.name}</div>
-                          <div className="pf-saspay-method-fee">{method.indicativeFee}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="pf-ui-notice-chip">
+                  Les moyens de paiement réellement disponibles seront présentés dans le checkout sécurisé PayDunya.
                 </div>
 
                 {/* Customer Info */}
-                <div className="pf-saspay-form-row">
+                <div className="pf-ui-form-row">
                   <div>
-                    <label className="pf-saspay-label">Nom complet</label>
+                    <label className="pf-ui-label">Nom complet</label>
                     <input
                       type="text"
-                      className="pf-saspay-input"
+                      className="pf-ui-input"
                       defaultValue="Paul Dossou"
                       readOnly
                     />
                   </div>
                   <div>
-                    <label className="pf-saspay-label">Email pour reçu</label>
+                    <label className="pf-ui-label">Email pour reçu</label>
                     <input
                       type="email"
-                      className="pf-saspay-input"
+                      className="pf-ui-input"
                       defaultValue="paul@email.com"
                       readOnly
                     />
@@ -661,19 +599,17 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 </div>
 
                 {/* Phone Input with Calling Code Divider */}
-                <div className="pf-saspay-form-group">
-                  <label className="pf-saspay-label">
-                    Numéro {selectedPreviewMethod?.name || 'Mobile Money'}
-                  </label>
-                  <div className="pf-saspay-phone-row">
-                    <span className="pf-saspay-phone-icon">
+                <div className="pf-ui-form-group">
+                  <label className="pf-ui-label">Numéro de téléphone</label>
+                  <div className="pf-ui-phone-row">
+                    <span className="pf-ui-phone-icon">
                       <FontAwesomeIcon icon={faMobileScreen} />
                     </span>
-                    <span className="pf-saspay-phone-code">{currentPreviewCountry.dialCode}</span>
-                    <div className="pf-saspay-phone-divider" />
+                    <span className="pf-ui-phone-code">{currentPreviewCountry.dialCode}</span>
+                    <div className="pf-ui-phone-divider" />
                     <input
                       type="tel"
-                      className="pf-saspay-phone-input"
+                      className="pf-ui-phone-input"
                       value={previewPhone}
                       onChange={(e) => setPreviewPhone(e.target.value)}
                     />
@@ -681,20 +617,20 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 </div>
 
                 {/* Notice Chip */}
-                <div className="pf-saspay-notice-chip">
-                  📲 Une invite USSD sera envoyée instantanément sur ce numéro pour valider le débit.
+                <div className="pf-ui-notice-chip">
+                  Le paiement se poursuit sur la page sécurisée PayDunya.
                 </div>
 
                 {/* Summary Breakdown Box */}
-                <div className="pf-saspay-summary-box">
-                  <div className="pf-saspay-summary-row">
+                <div className="pf-ui-summary-box">
+                  <div className="pf-ui-summary-row">
                     <span>Montant de la commande</span>
                     <span style={{ fontWeight: 600, color: '#374151' }}>
                       {new Intl.NumberFormat('fr-FR').format(numericAmount)} {currency}
                     </span>
                   </div>
-                  <div className="pf-saspay-summary-divider" />
-                  <div className="pf-saspay-summary-total">
+                  <div className="pf-ui-summary-divider" />
+                  <div className="pf-ui-summary-total">
                     <span>Total à payer</span>
                     <span>
                       {new Intl.NumberFormat('fr-FR').format(previewTotal)} {currency}
@@ -705,20 +641,20 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 {/* Submit button */}
                 <button
                   type="button"
-                  className="pf-saspay-submit-btn"
+                  className="pf-ui-submit-btn"
                   style={{ pointerEvents: 'none' }}
                 >
                   <span>Payer {new Intl.NumberFormat('fr-FR').format(previewTotal)} {currency}</span>
                 </button>
 
                 {/* PichFlow Watermark Footer */}
-                <div className="pf-saspay-watermark">
-                  <span className="pf-saspay-watermark-lock">
+                <div className="pf-ui-watermark">
+                  <span className="pf-ui-watermark-lock">
                     <FontAwesomeIcon icon={faLock} />
                   </span>
                   <span>Paiement sécurisé propulsé par</span>
-                  <span className="pf-saspay-watermark-brand">
-                    <span className="pf-saspay-watermark-icon">⚡</span>
+                  <span className="pf-ui-watermark-brand">
+                    <span className="pf-ui-watermark-icon">⚡</span>
                     PichFlow
                   </span>
                 </div>
@@ -764,7 +700,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
         </div>
       </div>
 
-      <div className="pf-saspay-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
+      <div className="pf-ui-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
         <input
           type="text"
           className="pf-search-filter-input"
@@ -776,7 +712,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
       </div>
 
       {filteredLinks.length === 0 ? (
-        <div className="pf-saspay-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+        <div className="pf-ui-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
           <div
             style={{
               width: '4rem',
@@ -808,9 +744,9 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
           </button>
         </div>
       ) : (
-        <div className="pf-saspay-table-wrapper" style={{ width: '100%', boxSizing: 'border-box' }}>
+        <div className="pf-ui-table-wrapper" style={{ width: '100%', boxSizing: 'border-box' }}>
           <div className="pf-table-scroll" style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-            <table className="pf-saspay-table" style={{ width: '100%', minWidth: '600px' }}>
+            <table className="pf-ui-table" style={{ width: '100%', minWidth: '600px' }}>
               <thead>
                 <tr>
                   <th>NOM & DESCRIPTION</th>
@@ -1087,18 +1023,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                   />
                 </div>
               )}
-
-              <div className="pf-form-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={editRequirePhone}
-                    onChange={(e) => setEditRequirePhone(e.target.checked)}
-                    style={{ width: '1.1rem', height: '1.1rem' }}
-                  />
-                  <span>Exiger le numéro de téléphone</span>
-                </label>
-              </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
                 <button

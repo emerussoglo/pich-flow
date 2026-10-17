@@ -155,5 +155,5 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   const legacyReference = await handleApiRequest(
     new Request('http://localhost/api/reference/countries'),
   );
-  assert.equal(legacyReference.status, 200);
+  assert.equal(legacyReference.status, 410);
 });

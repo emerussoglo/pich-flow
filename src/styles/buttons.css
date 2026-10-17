@@ -99,7 +99,7 @@
 /* Global Glass Sweep / Shimmer Effect for Blue Buttons */
 .pf-btn-primary,
 .pf-nav-cta-btn,
-.pf-saspay-btn-primary,
+.pf-ui-btn-primary,
 .pf-pricing-submit-btn,
 .pf-faq-bottom-btn,
 .pf-btn-cta-large,
@@ -110,7 +110,7 @@
 
 .pf-btn-primary::after,
 .pf-nav-cta-btn::after,
-.pf-saspay-btn-primary::after,
+.pf-ui-btn-primary::after,
 .pf-pricing-submit-btn::after,
 .pf-faq-bottom-btn::after,
 .pf-btn-cta-large::after,

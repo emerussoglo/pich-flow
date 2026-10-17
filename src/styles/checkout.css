@@ -1,9 +1,8 @@
 /* ==========================================================================
-   SASPAY / PICHFLOW HOSTED CHECKOUT & PAYMENT LINKS DESIGN SYSTEM
-   Inspiré directement des captures d'écran (Capture d'écran 2026-10-12 213855, 214008, 214119, 214024, 214135, 213954)
+   PICHFLOW HOSTED CHECKOUT & PAYMENT LINKS DESIGN SYSTEM
    ========================================================================== */
 
-.pf-saspay-checkout-page {
+.pf-ui-checkout-page {
   min-height: 100vh;
   background: radial-gradient(circle at 50% 0%, #F5F3FF 0%, #FAF5FF 35%, #F8FAFC 80%);
   display: flex;
@@ -16,7 +15,7 @@
   box-sizing: border-box;
 }
 
-.pf-saspay-checkout-card {
+.pf-ui-checkout-card {
   width: 100%;
   max-width: 440px;
   background: #FFFFFF;
@@ -30,7 +29,7 @@
 }
 
 /* Back button in top-left */
-.pf-saspay-back-link {
+.pf-ui-back-link {
   position: absolute;
   top: 1.25rem;
   left: 1.25rem;
@@ -47,7 +46,7 @@
   transition: all 120ms ease;
 }
 
-.pf-saspay-back-link:hover {
+.pf-ui-back-link:hover {
   color: #5E30E8;
   background: #F5F3FF;
 }
@@ -55,7 +54,7 @@
 /* ==========================================================================
    1. FIXED AMOUNT HEADER (Screenshots 214008 & 214119)
    ========================================================================== */
-.pf-saspay-header-fixed {
+.pf-ui-header-fixed {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -64,14 +63,14 @@
   border-bottom: 1px solid #F1F5F9;
 }
 
-.pf-saspay-header-left {
+.pf-ui-header-left {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   min-width: 0;
 }
 
-.pf-saspay-avatar-badge {
+.pf-ui-avatar-badge {
   width: 46px;
   height: 46px;
   border-radius: 14px;
@@ -87,11 +86,11 @@
   box-shadow: 0 4px 10px rgba(94, 48, 232, 0.25);
 }
 
-.pf-saspay-header-titles {
+.pf-ui-header-titles {
   min-width: 0;
 }
 
-.pf-saspay-header-title {
+.pf-ui-header-title {
   font-size: 1.05rem;
   font-weight: 800;
   color: #111827;
@@ -101,13 +100,13 @@
   text-overflow: ellipsis;
 }
 
-.pf-saspay-header-sub {
+.pf-ui-header-sub {
   font-size: 0.8125rem;
   color: #6B7280;
   margin-top: 2px;
 }
 
-.pf-saspay-header-price {
+.pf-ui-header-price {
   font-size: 1.35rem;
   font-weight: 800;
   color: #111827;
@@ -119,12 +118,12 @@
 /* ==========================================================================
    2. CUSTOM AMOUNT HEADER (Screenshot 213855)
    ========================================================================== */
-.pf-saspay-header-libre {
+.pf-ui-header-libre {
   text-align: center;
   margin-bottom: 1.5rem;
 }
 
-.pf-saspay-avatar-badge.center {
+.pf-ui-avatar-badge.center {
   margin: 0 auto 0.85rem;
   width: 52px;
   height: 52px;
@@ -132,13 +131,13 @@
   font-size: 1.25rem;
 }
 
-.pf-saspay-sub-libre {
+.pf-ui-sub-libre {
   font-size: 0.9375rem;
   color: #6B7280;
   font-weight: 500;
 }
 
-.pf-saspay-title-libre {
+.pf-ui-title-libre {
   font-size: 1rem;
   color: #374151;
   font-weight: 700;
@@ -148,11 +147,11 @@
 /* ==========================================================================
    FORM CONTROLS & INPUTS
    ========================================================================== */
-.pf-saspay-form-group {
+.pf-ui-form-group {
   margin-bottom: 1.15rem;
 }
 
-.pf-saspay-label {
+.pf-ui-label {
   display: block;
   font-size: 0.875rem;
   font-weight: 600;
@@ -160,7 +159,7 @@
   margin-bottom: 0.45rem;
 }
 
-.pf-saspay-input {
+.pf-ui-input {
   width: 100%;
   border: 1px solid #E5E7EB;
   border-radius: 14px;
@@ -172,19 +171,19 @@
   transition: all 140ms ease;
 }
 
-.pf-saspay-input:focus {
+.pf-ui-input:focus {
   border-color: #5E30E8;
   outline: none;
   box-shadow: 0 0 0 3px rgba(94, 48, 232, 0.12);
 }
 
-.pf-saspay-input::placeholder {
+.pf-ui-input::placeholder {
   color: #9CA3AF;
   font-weight: 400;
 }
 
 /* Custom Row with 2 Columns (Prénom / Nom) */
-.pf-saspay-form-row {
+.pf-ui-form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
@@ -192,12 +191,12 @@
 }
 
 /* Custom Select with country flag */
-.pf-saspay-select-wrap {
+.pf-ui-select-wrap {
   position: relative;
   width: 100%;
 }
 
-.pf-saspay-select {
+.pf-ui-select {
   appearance: none;
   width: 100%;
   border: 1px solid #E5E7EB;
@@ -212,13 +211,13 @@
   transition: all 140ms ease;
 }
 
-.pf-saspay-select:focus {
+.pf-ui-select:focus {
   border-color: #5E30E8;
   outline: none;
   box-shadow: 0 0 0 3px rgba(94, 48, 232, 0.12);
 }
 
-.pf-saspay-select-chevron {
+.pf-ui-select-chevron {
   position: absolute;
   right: 1rem;
   top: 50%;
@@ -231,14 +230,14 @@
 /* ==========================================================================
    PAYMENT METHODS 2-COLUMN GRID (Screenshots 214008, 214119, 214024)
    ========================================================================== */
-.pf-saspay-methods-grid {
+.pf-ui-methods-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 0.65rem;
   margin-bottom: 1.25rem;
 }
 
-.pf-saspay-method-card {
+.pf-ui-method-card {
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -254,18 +253,18 @@
   user-select: none;
 }
 
-.pf-saspay-method-card.active {
+.pf-ui-method-card.active {
   border: 2px solid #5E30E8;
   background: #FAF9FF;
   box-shadow: 0 0 0 1px #5E30E8;
 }
 
-.pf-saspay-method-card:hover:not(.active) {
+.pf-ui-method-card:hover:not(.active) {
   border-color: #CBD5E1;
   background: #F9FAFB;
 }
 
-.pf-saspay-method-logo {
+.pf-ui-method-logo {
   width: 32px;
   height: 32px;
   border-radius: 10px;
@@ -279,59 +278,59 @@
 }
 
 /* Brand specific operator chip colors */
-.pf-saspay-method-logo.celtiis {
+.pf-ui-method-logo.celtiis {
   background: #00458C;
   color: #FFFFFF;
 }
 
-.pf-saspay-method-logo.mtn {
+.pf-ui-method-logo.mtn {
   background: #002B49;
   color: #FFCC00;
 }
 
-.pf-saspay-method-logo.moov {
+.pf-ui-method-logo.moov {
   background: #F47920;
   color: #FFFFFF;
 }
 
-.pf-saspay-method-logo.wave {
+.pf-ui-method-logo.wave {
   background: #1DC3EC;
   color: #FFFFFF;
 }
 
-.pf-saspay-method-logo.orange {
+.pf-ui-method-logo.orange {
   background: #000000;
   color: #FF6600;
 }
 
-.pf-saspay-method-logo.expresso {
+.pf-ui-method-logo.expresso {
   background: #5E30E8;
   color: #FFFFFF;
   font-size: 0.75rem;
 }
 
-.pf-saspay-method-logo.free {
+.pf-ui-method-logo.free {
   background: #4338CA;
   color: #FFFFFF;
   font-size: 0.75rem;
 }
 
-.pf-saspay-method-logo.crypto {
+.pf-ui-method-logo.crypto {
   background: #EDE9FE;
   color: #5E30E8;
 }
 
-.pf-saspay-method-logo.card {
+.pf-ui-method-logo.card {
   background: #2563EB;
   color: #FFFFFF;
 }
 
-.pf-saspay-method-info {
+.pf-ui-method-info {
   min-width: 0;
   flex: 1;
 }
 
-.pf-saspay-method-name {
+.pf-ui-method-name {
   font-size: 0.8125rem;
   font-weight: 700;
   color: #1F2937;
@@ -341,7 +340,7 @@
   line-height: 1.25;
 }
 
-.pf-saspay-method-fee {
+.pf-ui-method-fee {
   font-size: 0.6875rem;
   color: #9CA3AF;
   margin-top: 2px;
@@ -351,7 +350,7 @@
 }
 
 /* Notice chip (e.g. Confirmation envoyée à ...) */
-.pf-saspay-notice-chip {
+.pf-ui-notice-chip {
   background: #F8FAFC;
   border: 1px solid #F1F5F9;
   border-radius: 10px;
@@ -364,7 +363,7 @@
 /* ==========================================================================
    PHONE INPUT WITH CALLING CODE (Screenshots 214008 & 214119)
    ========================================================================== */
-.pf-saspay-phone-row {
+.pf-ui-phone-row {
   display: flex;
   align-items: center;
   border: 1px solid #E5E7EB;
@@ -376,31 +375,31 @@
   box-sizing: border-box;
 }
 
-.pf-saspay-phone-row:focus-within {
+.pf-ui-phone-row:focus-within {
   border-color: #5E30E8;
   box-shadow: 0 0 0 3px rgba(94, 48, 232, 0.12);
 }
 
-.pf-saspay-phone-icon {
+.pf-ui-phone-icon {
   color: #9CA3AF;
   font-size: 0.875rem;
   margin-right: 0.5rem;
 }
 
-.pf-saspay-phone-code {
+.pf-ui-phone-code {
   font-size: 0.9375rem;
   font-weight: 600;
   color: #374151;
 }
 
-.pf-saspay-phone-divider {
+.pf-ui-phone-divider {
   width: 1px;
   height: 22px;
   background: #E5E7EB;
   margin: 0 0.65rem;
 }
 
-.pf-saspay-phone-input {
+.pf-ui-phone-input {
   border: none;
   outline: none;
   flex: 1;
@@ -414,7 +413,7 @@
 /* ==========================================================================
    SUMMARY BREAKDOWN BOX (Montant, Frais, Total à payer)
    ========================================================================== */
-.pf-saspay-summary-box {
+.pf-ui-summary-box {
   background: #F9FAFB;
   border-radius: 16px;
   padding: 0.95rem 1.15rem;
@@ -423,7 +422,7 @@
   box-sizing: border-box;
 }
 
-.pf-saspay-summary-row {
+.pf-ui-summary-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -432,13 +431,13 @@
   margin-bottom: 0.45rem;
 }
 
-.pf-saspay-summary-divider {
+.pf-ui-summary-divider {
   height: 1px;
   background: #E5E7EB;
   margin: 0.55rem 0;
 }
 
-.pf-saspay-summary-total {
+.pf-ui-summary-total {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -450,7 +449,7 @@
 /* ==========================================================================
    CTA BUTTON
    ========================================================================== */
-.pf-saspay-submit-btn {
+.pf-ui-submit-btn {
   width: 100%;
   background: #5E30E8;
   color: #FFFFFF;
@@ -468,21 +467,21 @@
   box-shadow: 0 4px 14px rgba(94, 48, 232, 0.25);
 }
 
-.pf-saspay-submit-btn:hover:not(:disabled) {
+.pf-ui-submit-btn:hover:not(:disabled) {
   background: #5025D1;
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(94, 48, 232, 0.32);
 }
 
-.pf-saspay-submit-btn:disabled {
+.pf-ui-submit-btn:disabled {
   opacity: 0.65;
   cursor: not-allowed;
 }
 
 /* ==========================================================================
-   WATERMARK & FOOTER (Paiement sécurisé propulsé par SasPay)
+   WATERMARK & FOOTER
    ========================================================================== */
-.pf-saspay-watermark {
+.pf-ui-watermark {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -494,12 +493,12 @@
   user-select: none;
 }
 
-.pf-saspay-watermark-lock {
+.pf-ui-watermark-lock {
   color: #9CA3AF;
   font-size: 0.725rem;
 }
 
-.pf-saspay-watermark-brand {
+.pf-ui-watermark-brand {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -508,7 +507,7 @@
   font-size: 0.85rem;
 }
 
-.pf-saspay-watermark-icon {
+.pf-ui-watermark-icon {
   width: 18px;
   height: 14px;
   border-radius: 4px;
@@ -524,12 +523,12 @@
 /* ==========================================================================
    3. PENDING STATE (Screenshot 214135: Confirme le paiement sur ton téléphone)
    ========================================================================== */
-.pf-saspay-pending-view {
+.pf-ui-pending-view {
   text-align: center;
   padding: 1rem 0;
 }
 
-.pf-saspay-pending-icon-wrap {
+.pf-ui-pending-icon-wrap {
   position: relative;
   width: 72px;
   height: 72px;
@@ -543,7 +542,7 @@
   font-size: 1.85rem;
 }
 
-.pf-saspay-spinner-arc {
+.pf-ui-spinner-arc {
   position: absolute;
   inset: -3px;
   border-radius: 50%;
@@ -562,14 +561,14 @@
   }
 }
 
-.pf-saspay-pending-title {
+.pf-ui-pending-title {
   font-size: 1.35rem;
   font-weight: 800;
   color: #111827;
   margin-bottom: 0.5rem;
 }
 
-.pf-saspay-pending-sub {
+.pf-ui-pending-sub {
   font-size: 0.9rem;
   color: #6B7280;
   max-width: 320px;
@@ -577,7 +576,7 @@
   line-height: 1.45;
 }
 
-.pf-saspay-step-box {
+.pf-ui-step-box {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
@@ -589,7 +588,7 @@
   margin-bottom: 1.5rem;
 }
 
-.pf-saspay-step-num {
+.pf-ui-step-num {
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -604,14 +603,14 @@
   margin-top: 2px;
 }
 
-.pf-saspay-step-text {
+.pf-ui-step-text {
   font-size: 0.875rem;
   color: #374151;
   line-height: 1.45;
 }
 
 /* PayDunya Sandbox Direct Action Box */
-.pf-saspay-sandbox-action-box {
+.pf-ui-sandbox-action-box {
   background: #F9FAFB;
   border: 1px solid #E5E7EB;
   border-radius: 14px;
@@ -620,7 +619,7 @@
   text-align: center;
 }
 
-.pf-saspay-sandbox-action-btn {
+.pf-ui-sandbox-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -637,26 +636,26 @@
   box-sizing: border-box;
 }
 
-.pf-saspay-sandbox-action-btn:hover {
+.pf-ui-sandbox-action-btn:hover {
   background: #5025D1;
 }
 
 /* ==========================================================================
    4. FAILED STATE (Screenshot 213954: Paiement échoué)
    ========================================================================== */
-.pf-saspay-failed-view {
+.pf-ui-failed-view {
   text-align: center;
   padding: 2rem 0 1rem;
 }
 
-.pf-saspay-failed-title {
+.pf-ui-failed-title {
   font-size: 1.45rem;
   font-weight: 800;
   color: #111827;
   margin-bottom: 0.5rem;
 }
 
-.pf-saspay-failed-sub {
+.pf-ui-failed-sub {
   font-size: 0.9375rem;
   color: #6B7280;
   max-width: 320px;
@@ -664,7 +663,7 @@
   line-height: 1.45;
 }
 
-.pf-saspay-retry-btn {
+.pf-ui-retry-btn {
   background: #5E30E8;
   color: #FFFFFF;
   font-weight: 700;
@@ -681,7 +680,7 @@
   box-shadow: 0 4px 14px rgba(94, 48, 232, 0.25);
 }
 
-.pf-saspay-retry-btn:hover {
+.pf-ui-retry-btn:hover {
   background: #5025D1;
   transform: translateY(-1px);
 }
@@ -689,12 +688,12 @@
 /* ==========================================================================
    5. SUCCESS STATE
    ========================================================================== */
-.pf-saspay-success-view {
+.pf-ui-success-view {
   text-align: center;
   padding: 1.5rem 0 0.5rem;
 }
 
-.pf-saspay-success-icon-wrap {
+.pf-ui-success-icon-wrap {
   width: 68px;
   height: 68px;
   border-radius: 50%;
@@ -707,20 +706,20 @@
   font-size: 2rem;
 }
 
-.pf-saspay-success-title {
+.pf-ui-success-title {
   font-size: 1.45rem;
   font-weight: 800;
   color: #111827;
   margin-bottom: 0.5rem;
 }
 
-.pf-saspay-success-sub {
+.pf-ui-success-sub {
   font-size: 0.9rem;
   color: #4B5563;
   margin-bottom: 1.5rem;
 }
 
-.pf-saspay-receipt-box {
+.pf-ui-receipt-box {
   background: #F9FAFB;
   border: 1px solid #E5E7EB;
   border-radius: 14px;
@@ -733,17 +732,17 @@
   margin-bottom: 1.5rem;
 }
 
-.pf-saspay-receipt-row {
+.pf-ui-receipt-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.pf-saspay-receipt-lbl {
+.pf-ui-receipt-lbl {
   color: #6B7280;
 }
 
-.pf-saspay-receipt-val {
+.pf-ui-receipt-val {
   font-weight: 700;
   color: #111827;
   font-family: monospace;
@@ -852,4 +851,3 @@
   width: 100%;
   max-width: 440px;
 }
-

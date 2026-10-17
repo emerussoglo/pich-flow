@@ -145,7 +145,7 @@ test('fixed and variable links stay isolated by application through PayDunya con
     currency: 'XOF',
     customerName: 'Variable Buyer',
     customerEmail: 'variable@example.test',
-    customerPhone: '+221770000001',
+    customerPhone: '+22997000001',
   }, 'variable-link-attempt-01');
   assert.equal(variable.totalAmount, 3200);
   const variableConfirmed = await getCheckoutStatus(variable.reference);
@@ -181,6 +181,15 @@ test('requires customer phone and rejects unsupported currency and inactive link
   );
   await assert.rejects(
     () => createCheckout({
+      paymentLinkId: linkFixed,
+      customerName: 'Buyer',
+      customerEmail: 'buyer@example.test',
+      customerPhone: '+221770000001',
+    }),
+    (error: unknown) => error instanceof CheckoutError && error.statusCode === 400,
+  );
+  await assert.rejects(
+    () => createCheckout({
       paymentLinkId: linkUnsupported,
       amount: 3000,
       customerName: 'Buyer',
@@ -202,6 +211,34 @@ test('requires customer phone and rejects unsupported currency and inactive link
     }),
     (error: unknown) => error instanceof CheckoutError && error.statusCode === 410,
   );
+});
+
+test('checkout idempotency is scoped to an application and stable within that application', async () => {
+  mockPayDunyaFetch();
+  await getDb().execute({
+    sql: `UPDATE payment_links SET status = 'active' WHERE id = ?`,
+    args: [linkFixed],
+  });
+  const sharedKey = 'same-order-key-across-apps';
+  const inputA = {
+    paymentLinkId: linkFixed,
+    customerName: 'Idempotent Buyer',
+    customerEmail: 'idempotent@example.test',
+    customerPhone: '+22997000003',
+  };
+  const firstA = await createCheckout(inputA, sharedKey);
+  const retryA = await createCheckout(inputA, sharedKey);
+  assert.equal(retryA.reference, firstA.reference);
+
+  const createdB = await createCheckout({
+    paymentLinkId: linkVariable,
+    amount: 2500,
+    customerName: 'Idempotent Buyer',
+    customerEmail: 'idempotent@example.test',
+    customerPhone: '+22997000003',
+  }, sharedKey);
+  assert.notEqual(createdB.reference, firstA.reference);
+  assert.equal(createdB.totalAmount, 2500);
 });
 
 test('PayDunya callback and repeated status checks credit an application only once', async () => {
@@ -242,7 +279,7 @@ test('pending provider status is never reported as a confirmed payment', async (
     amount: 4200,
     customerName: 'Pending Buyer',
     customerEmail: 'pending@example.test',
-    customerPhone: '+221770000002',
+    customerPhone: '+22997000002',
   }, 'pending-link-attempt-01');
 
   const status = await getCheckoutStatus(checkout.reference);
@@ -267,7 +304,7 @@ test('wallet reads require an owned application and exclude unassigned legacy ba
     args: [`wal_legacy_${crypto.randomUUID()}`, userId, now, now],
   });
 
-  const { GET } = await import('../src/app/api/wallets/route');
+  const { GET, POST } = await import('../src/app/api/wallets/route');
   const ownRequest = new NextRequest(`http://localhost/api/wallets?applicationId=${appA}`, {
     headers: { cookie: `pf_auth_token=${sessionToken}` },
   });
@@ -281,6 +318,204 @@ test('wallet reads require an owned application and exclude unassigned legacy ba
   });
   const foreignResponse = await GET(foreignRequest);
   assert.equal(foreignResponse.status, 404);
+
+  const unsupportedCountryResponse = await POST(new NextRequest('http://localhost/api/wallets', {
+    method: 'POST',
+    headers: { cookie: `pf_auth_token=${sessionToken}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      applicationId: appA,
+      countryCode: 'CI',
+      currency: 'XOF',
+    }),
+  }));
+  assert.equal(unsupportedCountryResponse.status, 400);
+});
+
+test('checkout session history requires an owned application and returns only its sessions', async () => {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const sessionToken = crypto.randomUUID();
+  await db.execute({
+    sql: `INSERT INTO sessions (id, user_id, token, expires_at, created_at)
+          VALUES (?, ?, ?, ?, ?)`,
+    args: [`ses_${crypto.randomUUID()}`, userId, sessionToken, new Date(Date.now() + 3600000).toISOString(), now],
+  });
+
+  const { GET } = await import('../src/app/api/checkout-sessions/route');
+  const headers = { cookie: `pf_auth_token=${sessionToken}` };
+  const missingApplication = await GET(
+    new NextRequest('http://localhost/api/checkout-sessions', { headers }),
+  );
+  assert.equal(missingApplication.status, 400);
+
+  const ownApplication = await GET(
+    new NextRequest(`http://localhost/api/checkout-sessions?applicationId=${appA}`, { headers }),
+  );
+  assert.equal(ownApplication.status, 200);
+  const ownBody = await ownApplication.json() as {
+    checkoutSessions: Array<{ applicationId?: string; amount: number; paydunyaUrl?: string }>;
+  };
+  assert.ok(ownBody.checkoutSessions.length > 0);
+  assert.ok(ownBody.checkoutSessions.every((session) => session.amount === 5000));
+
+  const foreignApplication = await GET(
+    new NextRequest(`http://localhost/api/checkout-sessions?applicationId=${otherApp}`, { headers }),
+  );
+  assert.equal(foreignApplication.status, 404);
+});
+
+test('transactions and statistics require an owned application and stay isolated', async () => {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const sessionToken = crypto.randomUUID();
+  await db.execute({
+    sql: `INSERT INTO sessions (id, user_id, token, expires_at, created_at)
+          VALUES (?, ?, ?, ?, ?)`,
+    args: [`ses_${crypto.randomUUID()}`, userId, sessionToken, new Date(Date.now() + 3600000).toISOString(), now],
+  });
+
+  const { GET: getTransactions } = await import('../src/app/api/transactions/route');
+  const headers = { cookie: `pf_auth_token=${sessionToken}` };
+  const missingApplication = await getTransactions(
+    new NextRequest('http://localhost/api/transactions', { headers }),
+  );
+  assert.equal(missingApplication.status, 400);
+
+  const ownTransactionsResponse = await getTransactions(
+    new NextRequest(`http://localhost/api/transactions?applicationId=${appA}`, { headers }),
+  );
+  assert.equal(ownTransactionsResponse.status, 200);
+  const ownTransactions = await ownTransactionsResponse.json() as {
+    transactions: Array<{ id: string; reference: string }>;
+  };
+  assert.ok(ownTransactions.transactions.length > 0);
+  const expectedTransactions = await db.execute({
+    sql: `SELECT reference FROM transactions
+          WHERE user_id = ? AND application_id = ? ORDER BY created_at DESC LIMIT 50 OFFSET 0`,
+    args: [userId, appA],
+  });
+  assert.deepEqual(
+    ownTransactions.transactions.map((transaction) => transaction.reference),
+    expectedTransactions.rows.map((transaction) => String(transaction.reference)),
+  );
+
+  const foreignApplicationResponse = await getTransactions(
+    new NextRequest(`http://localhost/api/transactions?applicationId=${otherApp}`, { headers }),
+  );
+  assert.equal(foreignApplicationResponse.status, 404);
+
+  const transactionId = ownTransactions.transactions[0].id;
+  const { GET: getTransaction } = await import('../src/app/api/transactions/[id]/route');
+  const ownTransactionResponse = await getTransaction(
+    new NextRequest(`http://localhost/api/transactions/${transactionId}?applicationId=${appA}`, { headers }),
+    { params: Promise.resolve({ id: transactionId }) },
+  );
+  assert.equal(ownTransactionResponse.status, 200);
+
+  const crossApplicationTransactionResponse = await getTransaction(
+    new NextRequest(`http://localhost/api/transactions/${transactionId}?applicationId=${appB}`, { headers }),
+    { params: Promise.resolve({ id: transactionId }) },
+  );
+  assert.equal(crossApplicationTransactionResponse.status, 404);
+
+  const { GET: getStats } = await import('../src/app/api/stats/overview/route');
+  const missingStatsApplication = await getStats(
+    new NextRequest('http://localhost/api/stats/overview', { headers }),
+  );
+  assert.equal(missingStatsApplication.status, 400);
+  const ownStatsResponse = await getStats(
+    new NextRequest(`http://localhost/api/stats/overview?applicationId=${appA}`, { headers }),
+  );
+  assert.equal(ownStatsResponse.status, 200);
+  const ownStats = await ownStatsResponse.json() as { stats: { totalTransactions: number } };
+  const expectedCount = await db.execute({
+    sql: `SELECT COUNT(*) AS total FROM transactions
+          WHERE user_id = ? AND application_id = ? AND created_at >= ?`,
+    args: [userId, appA, new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()],
+  });
+  assert.equal(ownStats.stats.totalTransactions, Number(expectedCount.rows[0].total));
+
+  const foreignStatsResponse = await getStats(
+    new NextRequest(`http://localhost/api/stats/overview?applicationId=${otherApp}`, { headers }),
+  );
+  assert.equal(foreignStatsResponse.status, 404);
+});
+
+test('payment-link creation is application-scoped and limited to the configured checkout', async () => {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const sessionToken = crypto.randomUUID();
+  await db.execute({
+    sql: `INSERT INTO sessions (id, user_id, token, expires_at, created_at)
+          VALUES (?, ?, ?, ?, ?)`,
+    args: [`ses_${crypto.randomUUID()}`, userId, sessionToken, new Date(Date.now() + 3600000).toISOString(), now],
+  });
+
+  const { POST } = await import('../src/app/api/payment-links/route');
+  const createLink = (body: Record<string, unknown>) => POST(
+    new NextRequest('http://localhost/api/payment-links', {
+      method: 'POST',
+      headers: { cookie: `pf_auth_token=${sessionToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  );
+  const common = {
+    description: 'Payment-link API test',
+    currency: 'XOF',
+    country: 'BJ',
+    applicationId: appA,
+  };
+
+  const fixedResponse = await createLink({
+    ...common,
+    title: 'Fixed API link',
+    amount: 6400,
+    isFixedAmount: true,
+  });
+  assert.equal(fixedResponse.status, 200);
+  const fixedBody = await fixedResponse.json() as {
+    paymentLink: { id: string; amount: number; isFixedAmount: boolean };
+  };
+  assert.equal(fixedBody.paymentLink.amount, 6400);
+  assert.equal(fixedBody.paymentLink.isFixedAmount, true);
+
+  const variableResponse = await createLink({
+    ...common,
+    title: 'Variable API link',
+    isFixedAmount: false,
+  });
+  assert.equal(variableResponse.status, 200);
+  const variableBody = await variableResponse.json() as {
+    paymentLink: { id: string; amount?: number; isFixedAmount: boolean };
+  };
+  assert.equal(variableBody.paymentLink.amount, undefined);
+  assert.equal(variableBody.paymentLink.isFixedAmount, false);
+
+  const persisted = await db.execute({
+    sql: 'SELECT id, amount, is_fixed_amount, require_phone FROM payment_links WHERE id IN (?, ?)',
+    args: [fixedBody.paymentLink.id, variableBody.paymentLink.id],
+  });
+  assert.equal(persisted.rows.length, 2);
+  assert.ok(persisted.rows.every((row) => Number(row.require_phone) === 1));
+
+  assert.equal((await createLink({
+    ...common,
+    title: 'Unsupported currency',
+    amount: 1000,
+    currency: 'XAF',
+  })).status, 400);
+  assert.equal((await createLink({
+    ...common,
+    title: 'Unsupported country',
+    amount: 1000,
+    country: 'CI',
+  })).status, 400);
+  assert.equal((await createLink({
+    ...common,
+    title: 'Foreign application',
+    amount: 1000,
+    applicationId: otherApp,
+  })).status, 404);
 });
 
 test('PayDunya invoice confirmation rejects invalid tokens before any request', async () => {
@@ -367,4 +602,31 @@ test('versioned Pitchflow API keys cannot create or inspect payments across appl
     amount: 5000,
     currency: 'XOF',
   });
+});
+
+test('legacy direct confirmation, retry, and provider-reference routes are disabled', async () => {
+  const { POST: confirm } = await import('../src/app/api/checkout/confirm/route');
+  const { POST: retry } = await import('../src/app/api/checkout/retry/route');
+  const { GET: reference } = await import('../src/app/api/reference/[...segments]/route');
+  const { POST: retiredWebhook } = await import('../src/app/api/webhooks/saspay/route');
+  const { GET: unavailableV1Route } = await import('../src/app/api/v1/[...segments]/route');
+
+  assert.equal((await confirm()).status, 410);
+  assert.equal((await retry()).status, 410);
+  assert.equal((await retiredWebhook()).status, 410);
+  assert.equal(
+    (await reference(new NextRequest('http://localhost/api/reference/networks'))).status,
+    410,
+  );
+  assert.equal((await unavailableV1Route()).status, 404);
+
+  const { handleApiRequest } = await import('../src/server/adapter');
+  const legacyFallback = await handleApiRequest(
+    new Request('http://localhost/api/checkout/initiate', { method: 'POST' }),
+  );
+  assert.equal(legacyFallback.status, 410);
+  const unavailableFallback = await handleApiRequest(
+    new Request('http://localhost/api/v1/payments/create'),
+  );
+  assert.equal(unavailableFallback.status, 404);
 });

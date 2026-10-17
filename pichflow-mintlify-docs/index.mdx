@@ -1,39 +1,16 @@
 ---
 title: "Documentation développeur PichFlow"
-description: "Guides d'intégration et référence partielle de l'API PichFlow, établis à partir du serveur du dépôt."
+description: "Guide vérifié des liens de paiement et de l'API PayDunya actuellement disponibles."
 ---
 
 # Intégrer PichFlow
 
-Cette documentation décrit les routes réellement présentes dans le serveur Express de ce dépôt. Elle distingue les endpoints authentifiés par clé API, les routes de référence publiques et les routes du tableau de bord protégées par session.
+PitchFlow fournit une API marchande limitée à la création de liens de paiement, à l'ouverture de sessions checkout et à la vérification de leur statut. Le serveur communique avec PayDunya; vos intégrations ne reçoivent aucune clé PayDunya.
 
-<Warning>
-  Le code monte l'API sous le préfixe `/api`. Les opérations marchandes sont sous `/api/v1`. Le domaine public de l'API n'est pas configuré explicitement dans le dépôt : l'adresse de production et son routage doivent être confirmés avant toute requête réelle. Les exemples utilisent `http://localhost:3000`.
-</Warning>
+<Card title="API PitchFlow v1" icon="code" href="/api-v1">
+  Authentification, environnements, contrats, exemples et limites actuellement vérifiés.
+</Card>
 
-<CardGroup cols={2}>
-  <Card title="Démarrage rapide" icon="bolt" href="/quickstart">
-    Vérifiez le serveur local, obtenez une clé dans le tableau de bord et envoyez une requête d'exemple.
-  </Card>
-  <Card title="Authentification" icon="key" href="/authentication">
-    Utilisez une clé Sandbox ou Live dans l'en-tête Bearer.
-  </Card>
-  <Card title="Créer un paiement" icon="credit-card" href="/payments-overview">
-    Choisissez le paiement Softpay ou une session de checkout hébergé.
-  </Card>
-  <Card title="Référence API" icon="code" href="/api-reference">
-    Consultez les opérations décrites dans la spécification OpenAPI.
-  </Card>
-</CardGroup>
+La base de production configurée est `https://pichflow.vercel.app/api/v1`; en local, utilisez `http://localhost:3000/api/v1`. Le checkout est actuellement limité à XOF/BJ; confirmez l'activation effective du compte PayDunya avant la mise en production.
 
-## Points établis par le code
-
-- Le serveur Express monte le routeur sous `/api`; les opérations marchand sont déclarées sous `/v1`.
-- L'authentification de l'API marchand attend `Authorization: Bearer <clé_API>`.
-- Les clés créées par le centre développeur comprennent une paire Sandbox (`sk_test_`) et Live (`sk_live_`).
-- Les routes et les formats renvoyés par un fournisseur peuvent dépendre de l'environnement et du résultat SasPay.
-- Les liens de paiement et les clients ont des routes de tableau de bord utilisant la session du compte; aucune route API marchand `/v1/payment-links` ou `/v1/customers` n'est déclarée.
-
-## Limites connues
-
-Le déploiement public de l'API, la disponibilité par pays, les tarifs appliqués et l'exécution effective des webhooks marchands ne peuvent pas être déduits du seul code. Les pages concernées signalent ces limites au lieu de présenter des comportements non confirmés comme garantis.
+Les tests automatisés utilisent des réponses PayDunya simulées localement. Ils ne prouvent pas que les identifiants sandbox du compte sont valides et ne déclenchent aucun paiement réel.

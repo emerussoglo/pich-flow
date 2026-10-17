@@ -34,7 +34,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   };
 
   return (
-    <header className="pf-saspay-topbar">
+    <header className="pf-ui-topbar">
       <div className="pf-topbar-left-zone">
         {/* Mobile menu toggle */}
         <button

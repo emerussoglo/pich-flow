@@ -23,14 +23,6 @@ interface WalletsViewProps {
 
 const SUPPORTED_COUNTRIES = [
   { countryCode: 'BJ', countryName: 'Bénin', currency: 'XOF', symbol: 'FCFA' },
-  { countryCode: 'CI', countryName: "Côte d'Ivoire", currency: 'XOF', symbol: 'FCFA' },
-  { countryCode: 'SN', countryName: 'Sénégal', currency: 'XOF', symbol: 'FCFA' },
-  { countryCode: 'TG', countryName: 'Togo', currency: 'XOF', symbol: 'FCFA' },
-  { countryCode: 'BF', countryName: 'Burkina Faso', currency: 'XOF', symbol: 'FCFA' },
-  { countryCode: 'CM', countryName: 'Cameroun', currency: 'XAF', symbol: 'FCFA' },
-  { countryCode: 'NG', countryName: 'Nigeria', currency: 'NGN', symbol: '₦' },
-  { countryCode: 'GH', countryName: 'Ghana', currency: 'GHS', symbol: 'GH₵' },
-  { countryCode: 'US', countryName: 'International (USD)', currency: 'USD', symbol: '$' },
 ];
 
 export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Application', activeApp, onOpenWithdrawalModal }) => {
@@ -48,7 +40,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
 
   // Add wallet modal
   const [addWalletModalOpen, setAddWalletModalOpen] = useState(false);
-  const [selectedCountryCode, setSelectedCountryCode] = useState('CI');
+  const [selectedCountryCode, setSelectedCountryCode] = useState('BJ');
   const [isAdding, setIsAdding] = useState(false);
 
   const loadWallets = useCallback(async () => {
@@ -204,7 +196,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
 
       {/* Overview Banner */}
       <div
-        className="pf-saspay-card"
+        className="pf-ui-card"
         style={{
           padding: '1.25rem 1.5rem',
           marginBottom: '1.5rem',
@@ -245,7 +237,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
         {wallets.map((w) => (
           <div
             key={w.id}
-            className="pf-saspay-card"
+            className="pf-ui-card"
             style={{
               padding: '1.25rem',
               display: 'flex',

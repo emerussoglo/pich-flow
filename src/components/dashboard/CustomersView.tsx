@@ -177,7 +177,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       </div>
 
       {/* Search Filter */}
-      <div className="pf-saspay-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
+      <div className="pf-ui-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
         <input
           type="text"
           className="pf-search-filter-input"
@@ -190,7 +190,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
       {/* Empty State vs Real Table */}
       {filteredCustomers.length === 0 ? (
-        <div className="pf-saspay-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+        <div className="pf-ui-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
           <div
             style={{
               width: '4rem',
@@ -227,9 +227,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           </button>
         </div>
       ) : (
-        <div className="pf-saspay-table-wrapper">
+        <div className="pf-ui-table-wrapper">
           <div className="pf-table-scroll">
-            <table className="pf-saspay-table">
+            <table className="pf-ui-table">
               <thead>
                 <tr>
                   <th>CLIENT</th>

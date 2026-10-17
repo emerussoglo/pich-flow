@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faDownload,
@@ -34,16 +34,26 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
   const [isLoading, setIsLoading] = useState(!initialTransactions);
+  const transactionsRequestId = useRef(0);
 
   const loadTransactions = useCallback(async () => {
+    const requestId = ++transactionsRequestId.current;
     setIsLoading(true);
+    setTransactions([]);
+    if (!activeApp?.id) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const data = await apiClient.transactions.getAll(activeApp?.id);
+      const data = await apiClient.transactions.getAll(activeApp.id);
+      if (requestId !== transactionsRequestId.current) return;
       setTransactions(data || []);
     } catch {
+      if (requestId !== transactionsRequestId.current) return;
       showToast('Impossible de charger les transactions.', 'error');
     } finally {
-      setIsLoading(false);
+      if (requestId === transactionsRequestId.current) setIsLoading(false);
     }
   }, [activeApp?.id, showToast]);
 
@@ -168,7 +178,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       </div>
 
       {/* Filter Toolbar */}
-      <div className="pf-saspay-card" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
+      <div className="pf-ui-card" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
           {/* Search */}
           <div>
@@ -256,7 +266,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
       {/* Real Data vs Empty State */}
       {filtered.length === 0 ? (
-        <div className="pf-saspay-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+        <div className="pf-ui-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
           <div
             style={{
               width: '4rem',
@@ -281,9 +291,9 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           </p>
         </div>
       ) : (
-        <div className="pf-saspay-table-wrapper">
+        <div className="pf-ui-table-wrapper">
           <div className="pf-table-scroll">
-            <table className="pf-saspay-table">
+            <table className="pf-ui-table">
               <thead>
                 <tr>
                   <th>RÉFÉRENCE & DATE</th>

@@ -34,14 +34,25 @@ export function createApiApp() {
     });
   });
 
+  app.use('/api', (req, res, next) => {
+    const requestPath = req.path.replace(/\/+$/, '').toLowerCase() || '/';
+    const path = requestPath.startsWith('/api/') ? requestPath.slice(4) : requestPath;
+    if (path === '/v1' || path.startsWith('/v1/')) {
+      res.status(404).json({ success: false, error: 'Route API Pitchflow v1 introuvable.' });
+      return;
+    }
+    if (path === '/reference' || path.startsWith('/reference/') ||
+        path === '/webhooks/saspay' || path === '/checkout-sessions' ||
+        path === '/checkout' || path.startsWith('/checkout/')) {
+      res.status(410).json({ success: false, error: 'Cette route de paiement n’est plus disponible.' });
+      return;
+    }
+    next();
+  });
+
   app.use('/api', apiRouter);
   app.use('/api', (_req, res) => {
     res.status(404).json({ success: false, error: 'Route API introuvable.' });
-  });
-
-  app.post('/webhooks/saspay', (req, res, next) => {
-    req.url = '/webhooks/saspay';
-    apiRouter(req, res, next);
   });
 
   app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {

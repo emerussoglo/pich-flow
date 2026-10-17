@@ -407,7 +407,7 @@ export async function initDatabase(): Promise<void> {
   await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN saspay_session_id TEXT`);
   await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN saspay_checkout_url TEXT`);
   await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN idempotency_key TEXT`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN provider TEXT DEFAULT 'saspay'`);
+  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN provider TEXT DEFAULT 'paydunya'`);
   await safeAlter(`ALTER TABLE transactions ADD COLUMN idempotency_key TEXT`);
   await safeAlter(`ALTER TABLE transactions ADD COLUMN saspay_id TEXT`);
   await safeAlter(`ALTER TABLE wallets ADD COLUMN application_id TEXT`);

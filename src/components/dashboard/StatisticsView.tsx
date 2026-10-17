@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChartPie, faCalendarDays, faRotate, faGlobe, faCreditCard } from '@fortawesome/free-solid-svg-icons';
 import { apiClient } from '../../lib/api';
 import { Application, Transaction } from '../../types';
+import { useToast } from '../ui/ToastContext';
 
 interface StatisticsViewProps {
   appName?: string;
@@ -13,21 +14,33 @@ export const StatisticsView: React.FC<StatisticsViewProps> = ({
   appName = 'Mon Application',
   activeApp,
 }) => {
+  const { showToast } = useToast();
   const [period, setPeriod] = useState<'7j' | '30j' | '90j'>('30j');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const transactionsRequestId = useRef(0);
 
   const loadData = useCallback(async () => {
+    const requestId = ++transactionsRequestId.current;
     setIsLoading(true);
+    setTransactions([]);
+    if (!activeApp?.id) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const data = await apiClient.transactions.getAll(activeApp?.id);
+      const data = await apiClient.transactions.getAll(activeApp.id);
+      if (requestId !== transactionsRequestId.current) return;
       setTransactions(data || []);
     } catch {
+      if (requestId !== transactionsRequestId.current) return;
       setTransactions([]);
+      showToast('Impossible de charger les statistiques.', 'error');
     } finally {
-      setIsLoading(false);
+      if (requestId === transactionsRequestId.current) setIsLoading(false);
     }
-  }, [activeApp?.id]);
+  }, [activeApp?.id, showToast]);
 
   useEffect(() => {
     loadData();
@@ -110,7 +123,7 @@ export const StatisticsView: React.FC<StatisticsViewProps> = ({
       </div>
 
       {/* Period Filter Card */}
-      <div className="pf-saspay-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="pf-ui-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '0.8125rem', fontWeight: 700, color: '#1E293B' }}>
             <FontAwesomeIcon icon={faCalendarDays} style={{ color: '#64748B' }} />
@@ -189,7 +202,7 @@ export const StatisticsView: React.FC<StatisticsViewProps> = ({
       {/* Graphs & Breakdowns */}
       <div className="pf-responsive-grid-2" style={{ marginTop: '1.5rem', gap: '1.25rem' }}>
         {/* Breakdown by Country */}
-        <div className="pf-saspay-card" style={{ padding: '1.25rem' }}>
+        <div className="pf-ui-card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 700, color: '#0F172A', marginBottom: '1.25rem' }}>
             <FontAwesomeIcon icon={faGlobe} style={{ color: '#2563EB' }} />
             <span>Répartition des encaissements par pays</span>
@@ -220,7 +233,7 @@ export const StatisticsView: React.FC<StatisticsViewProps> = ({
         </div>
 
         {/* Breakdown by Payment Method */}
-        <div className="pf-saspay-card" style={{ padding: '1.25rem' }}>
+        <div className="pf-ui-card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', fontWeight: 700, color: '#0F172A', marginBottom: '1.25rem' }}>
             <FontAwesomeIcon icon={faCreditCard} style={{ color: '#16A34A' }} />
             <span>Répartition par moyen de paiement</span>

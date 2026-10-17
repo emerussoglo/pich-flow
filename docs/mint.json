@@ -14,7 +14,7 @@
   "topbarLinks": [
     {
       "name": "Dashboard",
-      "url": "https://dashboard.pichflow.com"
+      "url": "https://pichflow.vercel.app/dashboard"
     },
     {
       "name": "Support",
@@ -23,55 +23,18 @@
   ],
   "topbarCtaButton": {
     "name": "Obtenir mes clés API",
-    "url": "https://dashboard.pichflow.com/developer"
+    "url": "https://pichflow.vercel.app/dashboard"
   },
   "api": {
-    "baseUrl": "https://api.pichflow.com/v1"
+    "baseUrl": "https://pichflow.vercel.app/api/v1"
   },
   "navigation": [
     {
-      "group": "Guide de démarrage",
+      "group": "API PitchFlow",
       "pages": [
         "index",
-        "quickstart",
-        "authentication",
-        "concepts"
-      ]
-    },
-    {
-      "group": "Intégration Paiements",
-      "pages": [
-        "payments-overview",
-        "hosted-checkout",
-        "payment-links",
-        "softpay-otp",
-        "payment-verification"
-      ]
-    },
-    {
-      "group": "Gestion & Opérations",
-      "pages": [
-        "customers-transactions",
-        "payouts",
-        "wallets",
-        "countries-networks"
-      ]
-    },
-    {
-      "group": "Sécurité & Webhooks",
-      "pages": [
-        "webhooks",
-        "errors"
-      ]
-    },
-    {
-      "group": "Développeurs & Références",
-      "pages": [
-        "code-samples",
-        "real-payloads",
-        "faq"
+        "api-v1"
       ]
     }
   ]
 }
-

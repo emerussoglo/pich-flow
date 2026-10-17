@@ -71,6 +71,11 @@ export async function handleApiRequest(webRequest: Request): Promise<Response> {
       headers?: any
     ): any {
       statusCode = code;
+      this.statusCode = code;
+      if (typeof reasonPhraseOrHeaders === 'string') {
+        statusMessage = reasonPhraseOrHeaders;
+        this.statusMessage = reasonPhraseOrHeaders;
+      }
       const h = typeof reasonPhraseOrHeaders === 'object' ? reasonPhraseOrHeaders : headers;
       if (h) {
         Object.entries(h).forEach(([k, v]) => {
@@ -124,8 +129,8 @@ export async function handleApiRequest(webRequest: Request): Promise<Response> {
 
       resolve(
         new Response(responseBody, {
-          status: statusCode,
-          statusText: statusMessage,
+          status: this.statusCode || statusCode,
+          statusText: this.statusMessage || statusMessage,
           headers: finalHeaders,
         })
       );

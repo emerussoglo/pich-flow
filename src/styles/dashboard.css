@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SASPAY / PICHFLOW DASHBOARD DESIGN SYSTEM (Identique aux captures d'écran)
+   PICHFLOW DASHBOARD DESIGN SYSTEM
    Couleur de marque : #2563EB (Bleu moderne)
    ========================================================================== */
 
@@ -28,7 +28,7 @@
 /* ==========================================================================
    TOPBAR
    ========================================================================== */
-.pf-saspay-topbar {
+.pf-ui-topbar {
   height: 4rem;
   background: #FFFFFF;
   border-bottom: 1px solid #E5E7EB;
@@ -308,7 +308,7 @@
 }
 
 /* Common Card */
-.pf-saspay-card {
+.pf-ui-card {
   background: #FFFFFF;
   border: 1px solid #E5E7EB;
   border-radius: 16px;
@@ -522,7 +522,7 @@
 /* ==========================================================================
    3. TABLES & FILTERS (Transactions, Liens, Clients, Retraits, etc.)
    ========================================================================== */
-.pf-saspay-filter-bar {
+.pf-ui-filter-bar {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -588,7 +588,7 @@
   outline: none;
 }
 
-.pf-saspay-table-wrapper {
+.pf-ui-table-wrapper {
   background: #FFFFFF;
   border: 1px solid #E5E7EB;
   border-radius: 16px;
@@ -601,7 +601,7 @@
   width: 100%;
 }
 
-.pf-saspay-table {
+.pf-ui-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
@@ -609,7 +609,7 @@
   text-align: left;
 }
 
-.pf-saspay-table th {
+.pf-ui-table th {
   padding: 0.85rem 1rem;
   background: #FAFAFA;
   border-bottom: 1px solid #F1F5F9;
@@ -621,18 +621,18 @@
   white-space: nowrap;
 }
 
-.pf-saspay-table td {
+.pf-ui-table td {
   padding: 1rem;
   border-bottom: 1px solid #F1F5F9;
   color: #1E293B;
   vertical-align: middle;
 }
 
-.pf-saspay-table tr:last-child td {
+.pf-ui-table tr:last-child td {
   border-bottom: none;
 }
 
-.pf-saspay-table tr:hover td {
+.pf-ui-table tr:hover td {
   background: #F8FAFC;
 }
 
@@ -890,7 +890,7 @@
     margin-top: 0.35rem !important;
   }
 
-  .pf-saspay-card {
+  .pf-ui-card {
     padding: 1.15rem 1rem !important;
     border-radius: 14px !important;
   }
@@ -933,7 +933,7 @@
     display: none;
   }
 
-  .pf-saspay-topbar {
+  .pf-ui-topbar {
     padding: 0 1rem;
   }
 

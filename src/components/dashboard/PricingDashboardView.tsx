@@ -43,7 +43,7 @@ export const PricingDashboardView: React.FC<{ appName?: string }> = ({ appName =
       {/* Grid of rails */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {/* Mobile Money */}
-        <div className="pf-saspay-card" style={{ padding: '1.25rem' }}>
+        <div className="pf-ui-card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
             <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '8px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <FontAwesomeIcon icon={faMobileScreen} />
@@ -62,7 +62,7 @@ export const PricingDashboardView: React.FC<{ appName?: string }> = ({ appName =
         </div>
 
         {/* Cartes bancaires */}
-        <div className="pf-saspay-card" style={{ padding: '1.25rem' }}>
+        <div className="pf-ui-card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
             <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '8px', background: '#F0FDF4', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <FontAwesomeIcon icon={faCreditCard} />
@@ -81,7 +81,7 @@ export const PricingDashboardView: React.FC<{ appName?: string }> = ({ appName =
         </div>
 
         {/* Décaissements */}
-        <div className="pf-saspay-card" style={{ padding: '1.25rem' }}>
+        <div className="pf-ui-card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
             <div style={{ width: '2.25rem', height: '2.25rem', borderRadius: '8px', background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <FontAwesomeIcon icon={faBuildingColumns} />
@@ -101,7 +101,7 @@ export const PricingDashboardView: React.FC<{ appName?: string }> = ({ appName =
       </div>
 
       {/* Simulator Card */}
-      <div className="pf-saspay-card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+      <div className="pf-ui-card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
           <FontAwesomeIcon icon={faCalculator} style={{ color: '#2563EB', fontSize: '1.1rem' }} />
           <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', margin: 0 }}>

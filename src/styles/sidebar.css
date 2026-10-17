@@ -1,8 +1,8 @@
 /* ==========================================================================
-   SASPAY / PICHFLOW SIDEBAR (Identique aux captures d'écran)
+   PICHFLOW SIDEBAR
    ========================================================================== */
 
-.pf-saspay-sidebar {
+.pf-ui-sidebar {
   width: 250px;
   background: #FFFFFF;
   border-right: 1px solid #E5E7EB;
@@ -259,7 +259,7 @@
   background: #E2E8F0;
 }
 
-.pf-saspay-nav-link {
+.pf-ui-nav-link {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -277,19 +277,19 @@
   box-sizing: border-box;
 }
 
-.pf-saspay-nav-link:hover {
+.pf-ui-nav-link:hover {
   background: #F1F5F9;
   color: #0F172A;
 }
 
-.pf-saspay-nav-link.active {
+.pf-ui-nav-link.active {
   background: #2563EB !important;
   color: #FFFFFF !important;
   font-weight: 600;
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
 }
 
-.pf-saspay-nav-link.active .pf-nav-icon {
+.pf-ui-nav-link.active .pf-nav-icon {
   color: #FFFFFF !important;
 }
 
@@ -458,13 +458,13 @@
 
 /* Responsive Drawer on Tablets & Mobile */
 @media (max-width: 1024px) {
-  .pf-saspay-sidebar {
+  .pf-ui-sidebar {
     transform: translateX(-100%);
     box-shadow: none;
     z-index: 1000;
   }
 
-  .pf-saspay-sidebar.open {
+  .pf-ui-sidebar.open {
     transform: translateX(0);
     box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
   }
@@ -481,67 +481,67 @@
    COLLAPSED SIDEBAR RULES (Desktop)
    ========================================================================== */
 @media (min-width: 1025px) {
-  .pf-saspay-sidebar.collapsed {
+  .pf-ui-sidebar.collapsed {
     width: 76px;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-sidebar-desktop-head {
+  .pf-ui-sidebar.collapsed .pf-sidebar-desktop-head {
     justify-content: center;
     padding: 0.875rem 0.5rem 0.25rem;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-sidebar-menu-title {
+  .pf-ui-sidebar.collapsed .pf-sidebar-menu-title {
     display: none;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-sidebar-app-box {
+  .pf-ui-sidebar.collapsed .pf-sidebar-app-box {
     padding: 0.75rem 0.5rem 0.5rem;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-app-card-btn {
+  .pf-ui-sidebar.collapsed .pf-app-card-btn {
     padding: 0.5rem;
     justify-content: center;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-app-card-left {
+  .pf-ui-sidebar.collapsed .pf-app-card-left {
     justify-content: center;
     width: 100%;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-app-card-info,
-  .pf-saspay-sidebar.collapsed .pf-app-card-chevron {
+  .pf-ui-sidebar.collapsed .pf-app-card-info,
+  .pf-ui-sidebar.collapsed .pf-app-card-chevron {
     display: none !important;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-sidebar-nav-scroll {
+  .pf-ui-sidebar.collapsed .pf-sidebar-nav-scroll {
     padding: 0.25rem 0.45rem 1rem;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-saspay-nav-link {
+  .pf-ui-sidebar.collapsed .pf-ui-nav-link {
     justify-content: center;
     padding: 0.75rem 0;
     gap: 0;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-nav-label {
+  .pf-ui-sidebar.collapsed .pf-nav-label {
     display: none !important;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-nav-icon {
+  .pf-ui-sidebar.collapsed .pf-nav-icon {
     font-size: 1.15rem;
     margin: 0;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-sidebar-user-box {
+  .pf-ui-sidebar.collapsed .pf-sidebar-user-box {
     padding: 0.75rem 0.5rem;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-user-card-btn {
+  .pf-ui-sidebar.collapsed .pf-user-card-btn {
     padding: 0.5rem;
     justify-content: center;
   }
 
-  .pf-saspay-sidebar.collapsed .pf-user-card-info {
+  .pf-ui-sidebar.collapsed .pf-user-card-info {
     display: none !important;
   }
 }

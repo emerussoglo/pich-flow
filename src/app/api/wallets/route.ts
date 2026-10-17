@@ -11,7 +11,7 @@ async function ownedApplication(applicationId: string, userId: string) {
   });
 }
 
-async function ensureAppWallet(applicationId: string, userId: string, countryCode: string) {
+async function ensureAppWallet(applicationId: string, userId: string) {
   const db = getDb();
   const now = new Date().toISOString();
   await db.execute({
@@ -19,7 +19,7 @@ async function ensureAppWallet(applicationId: string, userId: string, countryCod
       (id, user_id, application_id, currency, symbol, balance, pending_balance,
        reserved_balance, country_code, is_default, created_at, updated_at)
       VALUES (?, ?, ?, 'XOF', 'FCFA', 0, 0, 0, ?, 1, ?, ?)`,
-    args: [`wal_${applicationId}_xof`, userId, applicationId, countryCode, now, now],
+    args: [`wal_${applicationId}_xof`, userId, applicationId, 'BJ', now, now],
   });
 }
 
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
     }
 
-    await ensureAppWallet(applicationId, user.id, user.country || 'BJ');
+    await ensureAppWallet(applicationId, user.id);
     const result = await getDb().execute({
       sql: `SELECT id, currency, symbol, balance, pending_balance, reserved_balance,
                    country_code, is_default
@@ -73,11 +73,11 @@ export async function POST(request: NextRequest) {
     }
     const { applicationId, countryCode, currency } = body as Record<string, unknown>;
     if (typeof applicationId !== 'string' || !applicationId.trim() ||
-        typeof countryCode !== 'string' || !/^[A-Z]{2}$/.test(countryCode) ||
+        countryCode !== 'BJ' ||
         currency !== 'XOF') {
       return NextResponse.json({
         success: false,
-        error: 'applicationId, pays valide et devise XOF requis.',
+        error: 'applicationId, pays BJ et devise XOF requis.',
       }, { status: 400 });
     }
 

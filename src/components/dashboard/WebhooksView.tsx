@@ -171,7 +171,7 @@ export const WebhooksView: React.FC<{ appName?: string; activeApp?: Application 
 
       {/* List vs Empty State */}
       {webhooks.length === 0 ? (
-        <div className="pf-saspay-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+        <div className="pf-ui-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
           <div
             style={{
               width: '4rem',
@@ -207,7 +207,7 @@ export const WebhooksView: React.FC<{ appName?: string; activeApp?: Application 
           {webhooks.map((wh) => (
             <div
               key={wh.id}
-              className="pf-saspay-card"
+              className="pf-ui-card"
               style={{
                 padding: '1.25rem',
                 borderLeft: wh.isActive ? '4px solid #2563EB' : '4px solid #CBD5E1',

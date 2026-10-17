@@ -65,7 +65,7 @@ Le serveur fixe le pays à BJ et refuse toute devise autre que XOF. Un montant f
 
 ## Créer une session de paiement
 
-`POST /checkout-sessions` nécessite une clé API `payin` et un en-tête `Idempotency-Key` stable pour les retries de la même intention. Fournissez exactement un `paymentLinkId` ou un `paymentLinkSlug`. Le prénom/nom peuvent être transmis dans `customerName`; l'e-mail et le téléphone sont obligatoires.
+`POST /checkout-sessions` nécessite une clé API `payin` et un en-tête `Idempotency-Key` stable pour les retries de la même intention. Fournissez exactement un `paymentLinkId` ou un `paymentLinkSlug`. Le prénom/nom peuvent être transmis dans `customerName`; l'e-mail et un téléphone béninois `+229` suivi de 8 chiffres sont obligatoires.
 
 ```bash
 curl -X POST "https://pichflow.vercel.app/api/v1/checkout-sessions" \

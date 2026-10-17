@@ -29,16 +29,16 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
   };
 
   return (
-    <section className="pf-hero-saspay">
+    <section className="pf-hero-section">
       {/* Soft Ambient Radial Lights (Clean White Theme with soft purple glow) */}
-      <div className="pf-saspay-glow" aria-hidden="true" />
+      <div className="pf-ui-glow" aria-hidden="true" />
 
       <div className="pf-container">
-        {/* CENTERED EDITORIAL HEADER (Exact SasPay composition with staggered Reveal) */}
-        <div className="pf-saspay-header">
+        {/* Centered editorial header */}
+        <div className="pf-ui-header">
           {/* Eyebrow Pill */}
           <ScrollReveal delay={0} duration={750} direction="up" distance="20px">
-            <div className="pf-saspay-pill">
+            <div className="pf-ui-pill">
               {/* Stack d'avatars de clients / utilisateurs */}
               <div className="pf-avatar-group">
                 <img
@@ -75,26 +75,26 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
 
           {/* Centered H1 */}
           <ScrollReveal delay={140} duration={800} direction="up" distance="24px">
-            <h1 className="pf-saspay-title">
+            <h1 className="pf-ui-title">
               L'infrastructure de <br />
-              <span className="pf-saspay-title-italic">paiement</span> moderne pour l'Afrique
+              <span className="pf-ui-title-italic">paiement</span> moderne pour l'Afrique
             </h1>
           </ScrollReveal>
 
           {/* Concise, punchy subtitle */}
           <ScrollReveal delay={280} duration={800} direction="up" distance="24px">
-            <p className="pf-saspay-subtitle">
+            <p className="pf-ui-subtitle">
               Encaissez partout, automatisez vos abonnements et recevez vos paiements en toute simplicité, par Mobile Money et carte bancaire.
             </p>
           </ScrollReveal>
 
           {/* Centered CTA Buttons with Simulated Clicking Cursor */}
           <ScrollReveal delay={420} duration={800} direction="up" distance="20px">
-            <div className="pf-saspay-actions">
+            <div className="pf-ui-actions">
               <div className="pf-btn-click-simulator-wrap">
                 <button
                   onClick={() => onNavigate('/register')}
-                  className="pf-saspay-btn-primary pf-btn-simulated-click"
+                  className="pf-ui-btn-primary pf-btn-simulated-click"
                   aria-label="Commencer sur PichFlow"
                 >
                   <span>Commencer</span>
@@ -125,7 +125,7 @@ export const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
 
               <button
                 onClick={() => onNavigate('/pricing')}
-                className="pf-saspay-btn-secondary"
+                className="pf-ui-btn-secondary"
                 aria-label="Voir la tarification"
               >
                 <span>Voir nos tarifs</span>

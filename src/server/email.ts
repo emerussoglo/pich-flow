@@ -7,7 +7,7 @@ let lastSmtpCheck = 0;
 
 /**
  * Parses user-agent header into a clean human-readable device/browser label
- * exactly matching SaaSPay / modern fintech notifications.
+ * for user-facing security notifications.
  */
 export function parseUserAgent(ua: string): string {
   if (!ua || ua === 'Unknown') return 'Appareil inconnu';
@@ -32,7 +32,7 @@ export function parseUserAgent(ua: string): string {
 }
 
 /**
- * Formats a Date object into both UTC and Local representation (SaaSPay style)
+ * Formats a Date object into both UTC and local representations.
  */
 export function formatLoginDate(date: Date = new Date()): { utcString: string; localString: string } {
   const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
@@ -219,7 +219,7 @@ export async function sendVerificationCodeEmail(to: string, code: string, fullNa
 }
 
 /**
- * 2. Alerte de sécurité de connexion (Inspirée de SaaSPay)
+ * 2. Alerte de sécurité de connexion
  * Affiche la date UTC/Locale, l'adresse IP, le nom de l'appareil et le bouton d'action.
  */
 export async function sendLoginNotificationEmail(

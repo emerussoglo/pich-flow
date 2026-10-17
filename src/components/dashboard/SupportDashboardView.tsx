@@ -106,7 +106,7 @@ export const SupportDashboardView: React.FC<{ appName?: string }> = ({ appName =
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {/* WhatsApp */}
-            <div className="pf-saspay-card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="pf-ui-card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '50%', background: '#DCFCE7', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
                   <FontAwesomeIcon icon={faCommentDots} />
@@ -125,7 +125,7 @@ export const SupportDashboardView: React.FC<{ appName?: string }> = ({ appName =
             </div>
 
             {/* Email */}
-            <div className="pf-saspay-card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="pf-ui-card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '50%', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
                   <FontAwesomeIcon icon={faEnvelope} />
@@ -144,7 +144,7 @@ export const SupportDashboardView: React.FC<{ appName?: string }> = ({ appName =
             </div>
 
             {/* Phone */}
-            <div className="pf-saspay-card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="pf-ui-card" style={{ padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ width: '2.5rem', height: '2.5rem', borderRadius: '50%', background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
                   <FontAwesomeIcon icon={faPhone} />
@@ -165,7 +165,7 @@ export const SupportDashboardView: React.FC<{ appName?: string }> = ({ appName =
         </div>
 
         {/* Create Ticket Form */}
-        <div className="pf-saspay-card" style={{ padding: '1.25rem' }}>
+        <div className="pf-ui-card" style={{ padding: '1.25rem' }}>
           <h2 style={{ fontSize: '1rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.75rem' }}>
             Ouvrir un ticket d’assistance
           </h2>
@@ -228,9 +228,9 @@ export const SupportDashboardView: React.FC<{ appName?: string }> = ({ appName =
           Historique de vos tickets
         </h2>
 
-        <div className="pf-saspay-table-wrapper">
+        <div className="pf-ui-table-wrapper">
           <div className="pf-table-scroll">
-            <table className="pf-saspay-table">
+            <table className="pf-ui-table">
               <thead>
                 <tr>
                   <th>RÉFÉRENCE</th>

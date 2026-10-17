@@ -14,6 +14,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || '30j';
     const targetAppId = (searchParams.get('appId') || searchParams.get('applicationId') || '').trim();
+    if (!targetAppId) {
+      return NextResponse.json({ success: false, error: 'Application requise.' }, { status: 400 });
+    }
 
     let days = 30;
     if (period === '7j') days = 7;
@@ -21,16 +24,18 @@ export async function GET(request: NextRequest) {
 
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
     const db = getDb();
-
-    let sql = 'SELECT * FROM transactions WHERE user_id = ? AND created_at >= ?';
-    const args: any[] = [user.id, startDate];
-
-    if (targetAppId) {
-      sql += ' AND application_id = ?';
-      args.push(targetAppId);
+    const application = await db.execute({
+      sql: 'SELECT id FROM applications WHERE id = ? AND user_id = ?',
+      args: [targetAppId, user.id],
+    });
+    if (application.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
     }
 
-    const result = await db.execute({ sql, args });
+    const result = await db.execute({
+      sql: 'SELECT * FROM transactions WHERE user_id = ? AND application_id = ? AND created_at >= ?',
+      args: [user.id, targetAppId, startDate],
+    });
     const txs = result.rows;
 
     const totalCount = txs.length;
@@ -76,4 +81,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

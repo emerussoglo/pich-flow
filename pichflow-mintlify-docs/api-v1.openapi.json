@@ -307,7 +307,7 @@
           },
           "customerPhone": {
             "type": "string",
-            "pattern": "^\\+?[1-9][0-9]{7,14}$"
+            "pattern": "^\\+229[0-9]{8}$"
           }
         },
         "oneOf": [

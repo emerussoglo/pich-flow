@@ -132,7 +132,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ onNavigate
               <div className="pf-btn-click-simulator-wrap">
               <button
                 onClick={() => onNavigate?.('/register')}
-                className="pf-saspay-btn-primary pf-btn-simulated-click"
+                className="pf-ui-btn-primary pf-btn-simulated-click"
                 aria-label="Commencer sur PichFlow"
               >
                 <span>Commencer</span>

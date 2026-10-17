@@ -1,437 +1,177 @@
-import React, { useState } from 'react';
+'use client';
+
+import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faBook,
-  faCode,
-  faKey,
   faCopy,
-  faCheck,
-  faShieldHalved,
+  faKey,
   faReceipt,
-  faMobileScreen,
   faRotateRight,
+  faShieldHalved,
 } from '@fortawesome/free-solid-svg-icons';
+import { APP_CONFIG } from '../../config/app';
 import { useToast } from '../ui/ToastContext';
 import { useRouter } from '../../lib/router';
 
-export const DocumentationView: React.FC = () => {
-  const { docsTab, navigate } = useRouter();
-  const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
-  const [langTab, setLangTab] = useState<'curl' | 'node' | 'python' | 'php'>('curl');
-  const { showToast } = useToast();
+const productionApiBase = APP_CONFIG.apiBaseUrl;
+const apiBase = process.env.NODE_ENV === 'production'
+  ? productionApiBase
+  : 'http://localhost:3000/api/v1';
 
-  const handleCopy = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedSnippet(id);
-    showToast('Code copié dans le presse-papier !', 'success');
-    setTimeout(() => setCopiedSnippet(null), 2500);
-  };
-
-  const handleSelectSection = (section: string) => {
-    navigate(`/documentation/${section}`);
-  };
-
-  const cUrlCreatePayment = `curl -X POST https://api.pichflow.com/v1/payments \\
-  -H "Authorization: Bearer sk_test_pichflow_89f7a1e0b" \\
+const checkoutSnippet = `curl -X POST "${apiBase}/checkout-sessions" \\
+  -H "Authorization: Bearer pf_test_<secret>" \\
   -H "Content-Type: application/json" \\
-  -H "Idempotency-Key: ord_1024_uuid" \\
+  -H "Idempotency-Key: order-123-checkout-1" \\
   -d '{
-    "amount": 15000,
-    "currency": "XOF",
-    "payment_method": "momo",
-    "customer": {
-      "name": "Koffi Mensah",
-      "email": "koffi@example.com",
-      "phone": "+22997123456"
-    },
-    "description": "Commande Pro #1024",
-    "callback_url": "https://monsite.com/api/pichflow-webhook",
-    "return_url": "https://monsite.com/commande/succes"
+    "paymentLinkId": "<payment-link-id>",
+    "customerName": "Awa Exemple",
+    "customerEmail": "awa@example.test",
+    "customerPhone": "+22997000000"
   }'`;
 
-  const nodeCreatePayment = `import { PichFlow } from '@pichflow/sdk';
+const sections = [
+  { id: 'quickstart', label: 'API disponible', icon: faBook },
+  { id: 'auth', label: 'Clés API', icon: faKey },
+  { id: 'payments', label: 'Créer un checkout', icon: faReceipt },
+  { id: 'webhooks', label: 'Notifications', icon: faShieldHalved },
+  { id: 'idempotency', label: 'Idempotence', icon: faRotateRight },
+] as const;
 
-const pichflow = new PichFlow({
-  apiKey: process.env.PICHFLOW_SECRET_KEY,
-  environment: 'sandbox' // ou 'live'
-});
+export const DocumentationView: React.FC = () => {
+  const { docsTab, navigate } = useRouter();
+  const { showToast } = useToast();
+  const activeSection = sections.find((section) => section.id === docsTab)?.id || 'quickstart';
 
-const payment = await pichflow.payments.create({
-  amount: 15000,
-  currency: 'XOF',
-  paymentMethod: 'momo',
-  customer: {
-    name: 'Koffi Mensah',
-    email: 'koffi@example.com',
-    phone: '+22997123456'
-  },
-  callbackUrl: 'https://monsite.com/api/webhooks',
-  returnUrl: 'https://monsite.com/succes'
-});
-
-console.log('Paiement initié:', payment.checkoutUrl);`;
-
-  const pythonCreatePayment = `import pichflow
-
-client = pichflow.Client(
-    api_key="sk_test_pichflow_89f7a1e0b",
-    environment="sandbox"
-)
-
-payment = client.payments.create(
-    amount=15000,
-    currency="XOF",
-    payment_method="momo",
-    customer={
-        "name": "Koffi Mensah",
-        "email": "koffi@example.com",
-        "phone": "+22997123456"
-    },
-    callback_url="https://monsite.com/api/webhooks"
-)
-
-print(payment.checkout_url)`;
-
-  const phpCreatePayment = `<?php
-require_once 'vendor/autoload.php';
-
-$pichflow = new \\PichFlow\\Client([
-    'api_key' => 'sk_test_pichflow_89f7a1e0b',
-    'environment' => 'sandbox'
-]);
-
-$payment = $pichflow->payments->create([
-    'amount' => 15000,
-    'currency' => 'XOF',
-    'payment_method' => 'momo',
-    'customer' => [
-        'name' => 'Koffi Mensah',
-        'email' => 'koffi@example.com',
-        'phone' => '+22997123456'
-    ],
-    'callback_url' => 'https://monsite.com/api/webhooks'
-]);
-
-header('Location: ' . $payment->checkout_url);
-exit;`;
-
-  const webhookVerifyNode = `import crypto from 'crypto';
-
-export function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
-  const hmac = crypto.createHmac('sha256', secret);
-  const calculated = hmac.update(payload).digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(calculated));
-}`;
+  const copyCheckout = async () => {
+    try {
+      await navigator.clipboard.writeText(checkoutSnippet);
+      showToast('Exemple copié.', 'success');
+    } catch {
+      showToast('Impossible de copier le code.', 'error');
+    }
+  };
 
   return (
     <div className="pf-docs-container">
-      {/* Docs Sidebar */}
       <aside className="pf-docs-sidebar">
         <div className="pf-docs-menu-group">
-          <div className="pf-docs-menu-title">Démarrage</div>
-          <button
-            onClick={() => handleSelectSection('quickstart')}
-            className={`pf-docs-menu-item ${docsTab === 'quickstart' ? 'active' : ''}`}
-          >
-            <FontAwesomeIcon icon={faBook} style={{ marginRight: '0.5rem', fontSize: '0.8rem' }} />
-            Guide rapide
-          </button>
-          <button
-            onClick={() => handleSelectSection('auth')}
-            className={`pf-docs-menu-item ${docsTab === 'auth' ? 'active' : ''}`}
-          >
-            <FontAwesomeIcon icon={faKey} style={{ marginRight: '0.5rem', fontSize: '0.8rem' }} />
-            Authentification & Clés
-          </button>
-        </div>
-
-        <div className="pf-docs-menu-group">
-          <div className="pf-docs-menu-title">Référence API</div>
-          <button
-            onClick={() => handleSelectSection('payments')}
-            className={`pf-docs-menu-item ${docsTab === 'payments' ? 'active' : ''}`}
-          >
-            <FontAwesomeIcon icon={faReceipt} style={{ marginRight: '0.5rem', fontSize: '0.8rem' }} />
-            Paiements (POST /payments)
-          </button>
-          <button
-            onClick={() => handleSelectSection('mobile-money')}
-            className={`pf-docs-menu-item ${docsTab === 'mobile-money' ? 'active' : ''}`}
-          >
-            <FontAwesomeIcon icon={faMobileScreen} style={{ marginRight: '0.5rem', fontSize: '0.8rem' }} />
-            Mobile Money (USSD Push)
-          </button>
-          <button
-            onClick={() => handleSelectSection('webhooks')}
-            className={`pf-docs-menu-item ${docsTab === 'webhooks' ? 'active' : ''}`}
-          >
-            <FontAwesomeIcon icon={faCode} style={{ marginRight: '0.5rem', fontSize: '0.8rem' }} />
-            Webhooks & HMAC-SHA256
-          </button>
-          <button
-            onClick={() => handleSelectSection('idempotency')}
-            className={`pf-docs-menu-item ${docsTab === 'idempotency' ? 'active' : ''}`}
-          >
-            <FontAwesomeIcon icon={faShieldHalved} style={{ marginRight: '0.5rem', fontSize: '0.8rem' }} />
-            Idempotence & Sécurité
-          </button>
+          <div className="pf-docs-menu-title">API PitchFlow</div>
+          {sections.map((section) => (
+            <button
+              key={section.id}
+              onClick={() => navigate(`/documentation/${section.id}`)}
+              className={`pf-docs-menu-item ${activeSection === section.id ? 'active' : ''}`}
+              type="button"
+            >
+              <FontAwesomeIcon icon={section.icon} style={{ marginRight: '0.5rem', fontSize: '0.8rem' }} />
+              {section.label}
+            </button>
+          ))}
         </div>
       </aside>
 
-      {/* Docs Main Content */}
       <main className="pf-docs-content">
-        {/* 1. QUICKSTART */}
-        {docsTab === 'quickstart' && (
-          <div>
-            <div className="pf-section-badge">Démarrage rapide</div>
-            <h1 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--pf-text)' }}>
-              Intégrer PichFlow en 5 minutes
-            </h1>
-            <p style={{ fontSize: '1.05rem', color: 'var(--pf-muted)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-              Bienvenue sur la documentation technique de <strong>PichFlow</strong>. L'API RESTful vous permet d'encaisser des paiements par Mobile Money et cartes bancaires via des requêtes HTTP simples et prévisibles.
-            </p>
+        <div className="pf-section-badge">PitchFlow · PayDunya · XOF / BJ</div>
+        <h1 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--pf-text)' }}>
+          {sections.find((section) => section.id === activeSection)?.label}
+        </h1>
 
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '1.75rem 0 0.75rem 0' }}>
-              1. Obtenir vos clés Sandbox
-            </h3>
-            <p style={{ color: 'var(--pf-muted)', fontSize: '0.9375rem', lineHeight: 1.6 }}>
-              Dans votre tableau de bord PichFlow, rendez-vous dans l'onglet <strong>Développeurs &gt; Clés d'API</strong>. Vous disposez immédiatement d'une clé publique <code>pk_test_...</code> et d'une clé secrète <code>sk_test_...</code>.
+        {activeSection === 'quickstart' && (
+          <>
+            <p>
+              L'API publique actuelle permet de lister ou créer des liens, d'ouvrir une session de checkout et de vérifier son statut.
+              Le serveur PitchFlow appelle PayDunya; la clé PayDunya ne quitte jamais le serveur.
             </p>
-
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '1.75rem 0 0.75rem 0' }}>
-              2. URL de base de l'API
-            </h3>
             <div className="pf-docs-code-box">
-              <pre>
-                <code>{`Environnement Sandbox : https://api.pichflow.com/v1
-Environnement Live    : https://api.pichflow.com/v1`}</code>
-              </pre>
+              <pre><code>{`Production : ${productionApiBase}\nLocal      : http://localhost:3000/api/v1`}</code></pre>
             </div>
+            <ul>
+              <li><code>GET /payment-links</code> et <code>POST /payment-links</code></li>
+              <li><code>POST /checkout-sessions</code></li>
+              <li><code>GET /payments/&#123;reference&#125;</code></li>
+            </ul>
+            <p>
+              XOF et le pays BJ sont configurés actuellement. Vérifiez l'activation de ces services auprès de PayDunya avant la production.
+              Les autres devises, pays et moyens ne sont pas promis par cette API.
+            </p>
+          </>
+        )}
 
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '2rem 0 0.75rem 0' }}>
-              3. Exemple de création de paiement
-            </h3>
+        {activeSection === 'auth' && (
+          <>
+            <p>
+              Créez une clé depuis le centre développeur pour l'application concernée. Les clés PitchFlow utilisent les préfixes
+              <code> pf_test_</code> et <code>pf_live_</code>; leur secret complet n'est renvoyé qu'à la création.
+            </p>
+            <div className="pf-docs-code-box">
+              <pre><code>{`Authorization: Bearer pf_test_<secret>\nContent-Type: application/json`}</code></pre>
+            </div>
+            <p>
+              La clé est liée à une application côté serveur. Ne transmettez pas une clé d'intégration au navigateur.
+              Les variables PayDunya doivent être configurées uniquement côté serveur et <code>PAYDUNYA_MODE</code> doit
+              correspondre à l'environnement de la clé. La production échoue de façon explicite si le mode n'est pas défini.
+            </p>
+          </>
+        )}
+
+        {activeSection === 'payments' && (
+          <>
+            <p>
+              Créez d'abord un lien fixe ou à montant libre. Pour une session, fournissez son ID ou son slug, le nom, l'e-mail
+              et le téléphone du client. Les prix fixes sont toujours lus en base; le montant transmis par un navigateur ne les remplace pas.
+            </p>
             <div className="pf-docs-code-container">
               <div className="pf-docs-code-header">
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
-                    onClick={() => setLangTab('curl')}
-                    className={`pf-code-lang-btn ${langTab === 'curl' ? 'active' : ''}`}
-                  >
-                    cURL
-                  </button>
-                  <button
-                    onClick={() => setLangTab('node')}
-                    className={`pf-code-lang-btn ${langTab === 'node' ? 'active' : ''}`}
-                  >
-                    Node.js
-                  </button>
-                  <button
-                    onClick={() => setLangTab('python')}
-                    className={`pf-code-lang-btn ${langTab === 'python' ? 'active' : ''}`}
-                  >
-                    Python
-                  </button>
-                  <button
-                    onClick={() => setLangTab('php')}
-                    className={`pf-code-lang-btn ${langTab === 'php' ? 'active' : ''}`}
-                  >
-                    PHP
-                  </button>
-                </div>
-                <button
-                  onClick={() => handleCopy('quick', langTab === 'curl' ? cUrlCreatePayment : langTab === 'node' ? nodeCreatePayment : langTab === 'python' ? pythonCreatePayment : phpCreatePayment)}
-                  className="pf-docs-copy-btn"
-                >
-                  <FontAwesomeIcon icon={copiedSnippet === 'quick' ? faCheck : faCopy} />
-                  <span>{copiedSnippet === 'quick' ? 'Copié' : 'Copier'}</span>
+                <span>Créer une session PayDunya via PitchFlow</span>
+                <button onClick={copyCheckout} className="pf-docs-copy-btn" type="button">
+                  <FontAwesomeIcon icon={faCopy} />
+                  <span>Copier</span>
                 </button>
               </div>
-              <div className="pf-docs-code-box">
-                <pre>
-                  <code>
-                    {langTab === 'curl' && cUrlCreatePayment}
-                    {langTab === 'node' && nodeCreatePayment}
-                    {langTab === 'python' && pythonCreatePayment}
-                    {langTab === 'php' && phpCreatePayment}
-                  </code>
-                </pre>
-              </div>
+              <div className="pf-docs-code-box"><pre><code>{checkoutSnippet}</code></pre></div>
             </div>
-          </div>
+            <p>
+              Une session créée est <code>pending</code>. Redirigez le client vers <code>data.checkoutUrl</code> et vérifiez
+              le paiement avec <code>GET /payments/&#123;reference&#125;</code>; seul le statut confirmé côté serveur vaut paiement réussi.
+            </p>
+          </>
         )}
 
-        {/* 2. AUTHENTICATION */}
-        {docsTab === 'auth' && (
-          <div>
-            <div className="pf-section-badge">Sécurité</div>
-            <h1 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--pf-text)' }}>
-              Authentification des requêtes
-            </h1>
-            <p style={{ fontSize: '1.05rem', color: 'var(--pf-muted)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-              Toutes les requêtes vers l'API PichFlow doivent inclure votre clé secrète dans l'en-tête HTTP <code>Authorization</code> sous forme de Bearer Token.
+        {activeSection === 'webhooks' && (
+          <>
+            <p>
+              Le callback entrant PayDunya est <code>POST /api/webhooks/paydunya</code>. PitchFlow valide le hash SHA-512
+              et confirme la facture auprès du fournisseur avant d'enregistrer le règlement.
             </p>
+            <p>
+              Les notifications marchandes peuvent recevoir <code>payment.succeeded</code>, avec les en-têtes
+              <code> X-PichFlow-Event</code> et <code>X-PichFlow-Signature</code>. La signature est HMAC-SHA-256 du corps.
+              Une seule tentative est effectuée; aucun retry automatique n'est implémenté.
+            </p>
+          </>
+        )}
 
+        {activeSection === 'idempotency' && (
+          <>
+            <p>
+              Chaque création de session doit fournir un en-tête <code>Idempotency-Key</code> de 8 à 100 caractères.
+              Réutilisez la même valeur uniquement pour le retry de la même commande; une autre commande doit avoir une clé distincte.
+            </p>
             <div className="pf-docs-code-box">
-              <pre>
-                <code>{`Authorization: Bearer sk_test_pichflow_89f7a1e0b`}</code>
-              </pre>
+              <pre><code>{`Idempotency-Key: order-123-checkout-1`}</code></pre>
             </div>
-
-            <div style={{ padding: '1.25rem', background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 'var(--pf-radius-md)', color: '#92400E', fontSize: '0.875rem', marginTop: '1.5rem' }}>
-              <strong>Recommandation de sécurité :</strong> Ne publiez jamais votre clé secrète côté client (React, application mobile Android/iOS, code GitHub public). Utilisez votre serveur backend comme intermédiaire.
-            </div>
-          </div>
-        )}
-
-        {/* 3. PAYMENTS */}
-        {docsTab === 'payments' && (
-          <div>
-            <div className="pf-section-badge">Encaissement</div>
-            <h1 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--pf-text)' }}>
-              Créer un paiement (POST /v1/payments)
-            </h1>
-            <p style={{ fontSize: '1.05rem', color: 'var(--pf-muted)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-              Cet endpoint initialise une transaction et renvoie une URL de checkout ou déclenche directement une notification de paiement sur le téléphone de l'utilisateur.
+            <p>
+              Une clé réutilisée avec d'autres données ou un autre lien est refusée. Le stockage de cette clé empêche de créer
+              plusieurs sessions PitchFlow pour la même intention, mais ne remplace pas le rapprochement du statut PayDunya.
             </p>
-
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: '1.5rem 0 0.75rem 0' }}>
-              Corps de la requête (JSON)
-            </h3>
-            <div className="pf-table-container">
-              <table className="pf-table">
-                <thead>
-                  <tr>
-                    <th>Champ</th>
-                    <th>Type</th>
-                    <th>Requis</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><code>amount</code></td>
-                    <td>Nombre entier</td>
-                    <td>Oui</td>
-                    <td>Montant du paiement (ex: <code>15000</code> pour 15 000 XOF).</td>
-                  </tr>
-                  <tr>
-                    <td><code>currency</code></td>
-                    <td>Chaîne</td>
-                    <td>Oui</td>
-                    <td>Code devise ISO : <code>XOF</code>, <code>XAF</code>, <code>EUR</code>, <code>USD</code>.</td>
-                  </tr>
-                  <tr>
-                    <td><code>payment_method</code></td>
-                    <td>Chaîne</td>
-                    <td>Non</td>
-                    <td><code>momo</code> (Mobile Money) ou <code>card</code> (Carte bancaire).</td>
-                  </tr>
-                  <tr>
-                    <td><code>customer.phone</code></td>
-                    <td>Chaîne</td>
-                    <td>Conditionnel</td>
-                    <td>Numéro au format international (ex: <code>+22997123456</code>). Requis pour push Mobile Money.</td>
-                  </tr>
-                  <tr>
-                    <td><code>callback_url</code></td>
-                    <td>Chaîne (URL)</td>
-                    <td>Oui</td>
-                    <td>URL de votre webhook serveur recevant l'événement <code>payment.success</code>.</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+          </>
         )}
 
-        {/* 4. MOBILE MONEY */}
-        {docsTab === 'mobile-money' && (
-          <div>
-            <div className="pf-section-badge">Mobile Money</div>
-            <h1 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--pf-text)' }}>
-              Paiement direct USSD Push
-            </h1>
-            <p style={{ fontSize: '1.05rem', color: 'var(--pf-muted)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-              Pour les opérateurs Mobile Money (MTN MoMo, Moov Money, Wave, Orange Money), vous pouvez déclencher un push direct sur le terminal du client sans le rediriger vers une page de paiement externe.
-            </p>
-
-            <div className="pf-docs-code-box">
-              <pre>
-                <code>{`POST /v1/payments
-{
-  "amount": 25000,
-  "currency": "XOF",
-  "payment_method": "momo",
-  "operator": "mtn_bj",
-  "customer": {
-    "phone": "+22997123456"
-  }
-}
-
-// Réponse immédiate :
-{
-  "id": "pay_98234710",
-  "status": "pending_customer_approval",
-  "message": "Invite USSD envoyée sur le mobile +22997123456"
-}`}</code>
-              </pre>
-            </div>
-          </div>
-        )}
-
-        {/* 5. WEBHOOKS */}
-        {docsTab === 'webhooks' && (
-          <div>
-            <div className="pf-section-badge">Temps réel</div>
-            <h1 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--pf-text)' }}>
-              Webhooks & Signature HMAC-SHA256
-            </h1>
-            <p style={{ fontSize: '1.05rem', color: 'var(--pf-muted)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-              Les webhooks vous informent en temps réel de chaque événement de paiement (succès, échec, expiration). Chaque webhook est signé cryptographiquement dans l'en-tête <code>X-PichFlow-Signature</code>.
-            </p>
-
-            <div className="pf-docs-code-container">
-              <div className="pf-docs-code-header">
-                <span>Vérification de signature en Node.js</span>
-                <button
-                  onClick={() => handleCopy('wh', webhookVerifyNode)}
-                  className="pf-docs-copy-btn"
-                >
-                  <FontAwesomeIcon icon={copiedSnippet === 'wh' ? faCheck : faCopy} />
-                  <span>{copiedSnippet === 'wh' ? 'Copié' : 'Copier'}</span>
-                </button>
-              </div>
-              <div className="pf-docs-code-box">
-                <pre>
-                  <code>{webhookVerifyNode}</code>
-                </pre>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 6. IDEMPOTENCY */}
-        {docsTab === 'idempotency' && (
-          <div>
-            <div className="pf-section-badge">Fiabilité</div>
-            <h1 style={{ fontSize: '2.25rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--pf-text)' }}>
-              Idempotence & Prévention des doubles débits
-            </h1>
-            <p style={{ fontSize: '1.05rem', color: 'var(--pf-muted)', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-              En Afrique où les connexions mobiles peuvent fluctuer, PichFlow prend en charge l'en-tête standard <code>Idempotency-Key</code> pour garantir qu'une commande ne soit jamais débitée deux fois en cas de coupure réseau ou de retry intempestif.
-            </p>
-
-            <div className="pf-docs-code-box">
-              <pre>
-                <code>{`POST /v1/payments
-Idempotency-Key: ord_2026_unique_uuid_9831
-
-// Si le même appel est rejoué, PichFlow renvoie le même résultat sans créer de nouvelle transaction.`}</code>
-              </pre>
-            </div>
-          </div>
-        )}
+        <p style={{ marginTop: '2rem', color: 'var(--pf-muted)' }}>
+          Les tests automatisés utilisent un réseau PayDunya simulé localement; aucune transaction sandbox réelle n'a été vérifiée ici.
+          Les détails complets des schémas et exemples sont disponibles dans la documentation API publiée.
+        </p>
       </main>
     </div>
   );

@@ -198,37 +198,37 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   };
 
   return (
-    <div className="pf-saspay-checkout-page">
-      <div className="pf-saspay-checkout-card">
-        <button onClick={onBack} className="pf-saspay-back-link" type="button">
+    <div className="pf-ui-checkout-page">
+      <div className="pf-ui-checkout-card">
+        <button onClick={onBack} className="pf-ui-back-link" type="button">
           <FontAwesomeIcon icon={faArrowLeft} />
           <span>Retour</span>
         </button>
 
         {status === 'idle' && (
           <form onSubmit={handlePay}>
-            <div className="pf-saspay-header-fixed">
-              <div className="pf-saspay-header-left">
-                <div className="pf-saspay-avatar-badge">{merchantName.charAt(0).toUpperCase()}</div>
-                <div className="pf-saspay-header-titles">
-                  <div className="pf-saspay-header-title">{title}</div>
-                  <div className="pf-saspay-header-sub">{merchantName}</div>
+            <div className="pf-ui-header-fixed">
+              <div className="pf-ui-header-left">
+                <div className="pf-ui-avatar-badge">{merchantName.charAt(0).toUpperCase()}</div>
+                <div className="pf-ui-header-titles">
+                  <div className="pf-ui-header-title">{title}</div>
+                  <div className="pf-ui-header-sub">{merchantName}</div>
                 </div>
               </div>
               {isFixedAmount && (
-                <div className="pf-saspay-header-price">{formatAmount(amount)} XOF</div>
+                <div className="pf-ui-header-price">{formatAmount(amount)} XOF</div>
               )}
             </div>
 
-            {description && <p className="pf-saspay-pending-sub">{description}</p>}
+            {description && <p className="pf-ui-pending-sub">{description}</p>}
 
             {!isFixedAmount && (
-              <div className="pf-saspay-form-group">
-                <label className="pf-saspay-label" htmlFor="checkout-amount">Montant (XOF) *</label>
+              <div className="pf-ui-form-group">
+                <label className="pf-ui-label" htmlFor="checkout-amount">Montant (XOF) *</label>
                 <input
                   id="checkout-amount"
                   type="number"
-                  className="pf-saspay-input"
+                  className="pf-ui-input"
                   min="1"
                   step="1"
                   value={amount || ''}
@@ -238,21 +238,21 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
               </div>
             )}
 
-            <div className="pf-saspay-form-group">
-              <label className="pf-saspay-label">Pays</label>
-              <div className="pf-saspay-input" aria-readonly="true">Bénin (+229) — XOF</div>
-              <p className="pf-saspay-notice-chip">
+            <div className="pf-ui-form-group">
+              <label className="pf-ui-label">Pays</label>
+              <div className="pf-ui-input" aria-readonly="true">Bénin (+229) — XOF</div>
+              <p className="pf-ui-notice-chip">
                 Choisissez votre moyen de paiement sur la page sécurisée de PayDunya.
               </p>
             </div>
 
-            <div className="pf-saspay-form-row">
+            <div className="pf-ui-form-row">
               <div>
-                <label className="pf-saspay-label" htmlFor="checkout-first-name">Prénom *</label>
+                <label className="pf-ui-label" htmlFor="checkout-first-name">Prénom *</label>
                 <input
                   id="checkout-first-name"
                   type="text"
-                  className="pf-saspay-input"
+                  className="pf-ui-input"
                   value={firstName}
                   onChange={(event) => setFirstName(event.target.value)}
                   autoComplete="given-name"
@@ -260,11 +260,11 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                 />
               </div>
               <div>
-                <label className="pf-saspay-label" htmlFor="checkout-last-name">Nom *</label>
+                <label className="pf-ui-label" htmlFor="checkout-last-name">Nom *</label>
                 <input
                   id="checkout-last-name"
                   type="text"
-                  className="pf-saspay-input"
+                  className="pf-ui-input"
                   value={lastName}
                   onChange={(event) => setLastName(event.target.value)}
                   autoComplete="family-name"
@@ -273,12 +273,12 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
               </div>
             </div>
 
-            <div className="pf-saspay-form-group">
-              <label className="pf-saspay-label" htmlFor="checkout-email">Adresse e-mail *</label>
+            <div className="pf-ui-form-group">
+              <label className="pf-ui-label" htmlFor="checkout-email">Adresse e-mail *</label>
               <input
                 id="checkout-email"
                 type="email"
-                className="pf-saspay-input"
+                className="pf-ui-input"
                 value={customerEmail}
                 onChange={(event) => setCustomerEmail(event.target.value)}
                 autoComplete="email"
@@ -286,16 +286,16 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
               />
             </div>
 
-            <div className="pf-saspay-form-group">
-              <label className="pf-saspay-label" htmlFor="checkout-phone">Téléphone *</label>
-              <div className="pf-saspay-phone-row">
-                <span className="pf-saspay-phone-icon"><FontAwesomeIcon icon={faMobileScreen} /></span>
-                <span className="pf-saspay-phone-code">+229</span>
-                <div className="pf-saspay-phone-divider" />
+            <div className="pf-ui-form-group">
+              <label className="pf-ui-label" htmlFor="checkout-phone">Téléphone *</label>
+              <div className="pf-ui-phone-row">
+                <span className="pf-ui-phone-icon"><FontAwesomeIcon icon={faMobileScreen} /></span>
+                <span className="pf-ui-phone-code">+229</span>
+                <div className="pf-ui-phone-divider" />
                 <input
                   id="checkout-phone"
                   type="tel"
-                  className="pf-saspay-phone-input"
+                  className="pf-ui-phone-input"
                   value={phone}
                   onChange={(event) => setPhone(event.target.value)}
                   placeholder="97 00 12 34"
@@ -307,20 +307,20 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
               </div>
             </div>
 
-            <div className="pf-saspay-summary-box">
-              <div className="pf-saspay-summary-row">
+            <div className="pf-ui-summary-box">
+              <div className="pf-ui-summary-row">
                 <span>Montant</span>
                 <span>{formatAmount(amount)} XOF</span>
               </div>
-              <div className="pf-saspay-summary-divider" />
-              <div className="pf-saspay-summary-total">
+              <div className="pf-ui-summary-divider" />
+              <div className="pf-ui-summary-total">
                 <span>Total à payer</span>
                 <span>{formatAmount(amount)} XOF</span>
               </div>
             </div>
 
-            {errorMessage && <p role="alert" className="pf-saspay-failed-sub">{errorMessage}</p>}
-            <button type="submit" className="pf-saspay-submit-btn" disabled={isLoadingLink || !paymentLinkId}>
+            {errorMessage && <p role="alert" className="pf-ui-failed-sub">{errorMessage}</p>}
+            <button type="submit" className="pf-ui-submit-btn" disabled={isLoadingLink || !paymentLinkId}>
               <span>{isLoadingLink ? 'Chargement du lien...' : `Payer ${formatAmount(amount)} XOF`}</span>
             </button>
           </form>
@@ -328,32 +328,32 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
 
         {status === 'loading' && (
           <div style={{ textAlign: 'center', padding: '3.5rem 1rem' }}>
-            <div className="pf-saspay-pending-icon-wrap">
-              <div className="pf-saspay-spinner-arc" />
+            <div className="pf-ui-pending-icon-wrap">
+              <div className="pf-ui-spinner-arc" />
               <FontAwesomeIcon icon={faSpinner} spin />
             </div>
-            <div className="pf-saspay-pending-title">Préparation sécurisée du paiement</div>
-            <div className="pf-saspay-pending-sub">Connexion à PayDunya...</div>
+            <div className="pf-ui-pending-title">Préparation sécurisée du paiement</div>
+            <div className="pf-ui-pending-sub">Connexion à PayDunya...</div>
           </div>
         )}
 
         {status === 'pending' && (
-          <div className="pf-saspay-pending-view">
-            <div className="pf-saspay-pending-icon-wrap">
-              <div className="pf-saspay-spinner-arc" />
+          <div className="pf-ui-pending-view">
+            <div className="pf-ui-pending-icon-wrap">
+              <div className="pf-ui-spinner-arc" />
               <FontAwesomeIcon icon={faSpinner} spin />
             </div>
-            <div className="pf-saspay-pending-title">Confirmation PayDunya en cours</div>
-            <div className="pf-saspay-pending-sub">
+            <div className="pf-ui-pending-title">Confirmation PayDunya en cours</div>
+            <div className="pf-ui-pending-sub">
               Le statut affiché sera mis à jour après confirmation côté serveur. Référence : {transactionRef}
             </div>
             <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.65rem', alignItems: 'center' }}>
-              {errorMessage && <p role="alert" className="pf-saspay-failed-sub">{errorMessage}</p>}
+              {errorMessage && <p role="alert" className="pf-ui-failed-sub">{errorMessage}</p>}
               <button
                 type="button"
                 onClick={handleManualCheckStatus}
                 disabled={isCheckingStatus}
-                className="pf-saspay-retry-btn"
+                className="pf-ui-retry-btn"
               >
                 <FontAwesomeIcon icon={faRotate} spin={isCheckingStatus} style={{ marginRight: '0.4rem' }} />
                 <span>{isCheckingStatus ? 'Vérification...' : 'Actualiser le statut'}</span>
@@ -363,45 +363,45 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
         )}
 
         {status === 'failed' && (
-          <div className="pf-saspay-failed-view">
+          <div className="pf-ui-failed-view">
             <div style={{ fontSize: '1.85rem', color: '#EF4444' }}>
               <FontAwesomeIcon icon={faCircleXmark} />
             </div>
-            <div className="pf-saspay-failed-title">Paiement non confirmé</div>
-            <div className="pf-saspay-failed-sub">
+            <div className="pf-ui-failed-title">Paiement non confirmé</div>
+            <div className="pf-ui-failed-sub">
               {errorMessage || 'PayDunya n’a pas confirmé le paiement.'}
             </div>
-            <button type="button" onClick={handleReset} className="pf-saspay-retry-btn">
+            <button type="button" onClick={handleReset} className="pf-ui-retry-btn">
               Réessayer
             </button>
           </div>
         )}
 
         {status === 'success' && (
-          <div className="pf-saspay-success-view">
-            <div className="pf-saspay-success-icon-wrap"><FontAwesomeIcon icon={faCheck} /></div>
-            <div className="pf-saspay-success-title">Paiement confirmé</div>
-            <div className="pf-saspay-success-sub">
+          <div className="pf-ui-success-view">
+            <div className="pf-ui-success-icon-wrap"><FontAwesomeIcon icon={faCheck} /></div>
+            <div className="pf-ui-success-title">Paiement confirmé</div>
+            <div className="pf-ui-success-sub">
               PayDunya a confirmé le paiement de {formatAmount(amount)} XOF.
             </div>
-            <div className="pf-saspay-receipt-box">
-              <div className="pf-saspay-receipt-row">
-                <span className="pf-saspay-receipt-lbl">Référence</span>
-                <span className="pf-saspay-receipt-val">{transactionRef}</span>
+            <div className="pf-ui-receipt-box">
+              <div className="pf-ui-receipt-row">
+                <span className="pf-ui-receipt-lbl">Référence</span>
+                <span className="pf-ui-receipt-val">{transactionRef}</span>
               </div>
-              <div className="pf-saspay-receipt-row">
-                <span className="pf-saspay-receipt-lbl">Montant confirmé</span>
-                <span className="pf-saspay-receipt-val">{formatAmount(amount)} XOF</span>
+              <div className="pf-ui-receipt-row">
+                <span className="pf-ui-receipt-lbl">Montant confirmé</span>
+                <span className="pf-ui-receipt-val">{formatAmount(amount)} XOF</span>
               </div>
             </div>
           </div>
         )}
 
-        <div className="pf-saspay-watermark">
-          <span className="pf-saspay-watermark-lock"><FontAwesomeIcon icon={faLock} /></span>
+        <div className="pf-ui-watermark">
+          <span className="pf-ui-watermark-lock"><FontAwesomeIcon icon={faLock} /></span>
           <span>Paiement sécurisé par</span>
-          <span className="pf-saspay-watermark-brand">
-            <span className="pf-saspay-watermark-icon">⚡</span>
+          <span className="pf-ui-watermark-brand">
+            <span className="pf-ui-watermark-icon">⚡</span>
             Pitchflow
           </span>
         </div>

@@ -15,10 +15,24 @@ export async function GET(
     }
 
     const { id } = await context.params;
+    const { searchParams } = new URL(request.url);
+    const applicationId = (searchParams.get('applicationId') || searchParams.get('appId') || '').trim();
+    if (!applicationId) {
+      return NextResponse.json({ success: false, error: 'Application requise.' }, { status: 400 });
+    }
+
     const db = getDb();
+    const application = await db.execute({
+      sql: 'SELECT id FROM applications WHERE id = ? AND user_id = ?',
+      args: [applicationId, user.id],
+    });
+    if (application.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
+
     const result = await db.execute({
-      sql: 'SELECT * FROM transactions WHERE id = ? AND user_id = ?',
-      args: [id, user.id],
+      sql: 'SELECT * FROM transactions WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [id, user.id, applicationId],
     });
 
     if (result.rows.length === 0) {
@@ -33,7 +47,7 @@ export async function GET(
       customerEmail: String(row.customer_email),
       customerPhone: String(row.customer_phone || ''),
       country: String(row.country || 'BJ'),
-      provider: String(row.provider || 'saspay'),
+      provider: String(row.provider || '').toLowerCase() === 'paydunya' ? 'PayDunya' : 'Historique',
       amount: Number(row.amount),
       providerFee: Number(row.provider_fee || 0),
       platformFee: Number(row.platform_fee || 0),
@@ -50,4 +64,3 @@ export async function GET(
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

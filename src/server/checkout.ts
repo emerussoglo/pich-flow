@@ -54,8 +54,8 @@ function validateCustomer(input: CheckoutInput) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail) || customerEmail.length > 254) {
     throw new CheckoutError('Une adresse e-mail valide est requise.', 400);
   }
-  if (!/^\+?[1-9]\d{7,14}$/.test(normalizedPhone)) {
-    throw new CheckoutError('Un numéro de téléphone valide est requis.', 400);
+  if (!/^\+229\d{8}$/.test(normalizedPhone)) {
+    throw new CheckoutError('Un numéro béninois valide au format +229 suivi de 8 chiffres est requis.', 400);
   }
   return { customerName, customerEmail, customerPhone: normalizedPhone };
 }
@@ -98,7 +98,7 @@ export async function createCheckout(
                  l.is_fixed_amount, l.currency, l.status, l.usage_count, l.usage_limit,
                  a.name AS application_name
           FROM payment_links l
-          JOIN applications a ON a.id = l.application_id AND a.user_id = l.user_id
+          JOIN applications a ON a.id = l.application_id AND a.user_id = l.user_id AND a.status = 'active'
           WHERE ${paymentLinkId ? 'l.id = ?' : 'l.slug = ?'}
           LIMIT 1`,
     args: [paymentLinkId || paymentLinkSlug],
@@ -134,7 +134,7 @@ export async function createCheckout(
   if (suppliedKey && !/^[A-Za-z0-9._:-]{8,100}$/.test(suppliedKey)) {
     throw new CheckoutError('La clé d’idempotence est invalide.', 400);
   }
-  const idempotencyKey = `paydunya:${suppliedKey || crypto.randomUUID()}`;
+  const idempotencyKey = `paydunya:${String(link.application_id)}:${suppliedKey || crypto.randomUUID()}`;
   const existing = await db.execute({
     sql: 'SELECT * FROM checkout_sessions WHERE idempotency_key = ? LIMIT 1',
     args: [idempotencyKey],

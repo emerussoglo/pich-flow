@@ -232,7 +232,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ activeApp, onUpdateA
           TAB 1: APPLICATION SETTINGS
           ========================================================================= */}
       {activeTab === 'app' && (
-        <div className="pf-saspay-card" style={{ maxWidth: '800px', width: '100%', boxSizing: 'border-box', padding: '1.5rem' }}>
+        <div className="pf-ui-card" style={{ maxWidth: '800px', width: '100%', boxSizing: 'border-box', padding: '1.5rem' }}>
           <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', marginBottom: '0.35rem' }}>
             Informations de l'application
           </div>
@@ -339,7 +339,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ activeApp, onUpdateA
       {activeTab === 'kyc' && (
         <div style={{ width: '100%', maxWidth: '900px', boxSizing: 'border-box' }}>
           {/* Header Card & Certification Status */}
-          <div className="pf-saspay-card" style={{ padding: '1.5rem', marginBottom: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
+          <div className="pf-ui-card" style={{ padding: '1.5rem', marginBottom: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0F172A', margin: 0 }}>
@@ -404,7 +404,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ activeApp, onUpdateA
 
           {/* Business KYC Requirements */}
           {kycType === 'business' && (
-            <div className="pf-saspay-card" style={{ padding: '1.5rem', marginBottom: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
+            <div className="pf-ui-card" style={{ padding: '1.5rem', marginBottom: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
               <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A', marginBottom: '0.5rem' }}>
                 Pièces justificatives d'entreprise
               </div>
@@ -534,7 +534,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ activeApp, onUpdateA
 
           {/* Individual KYC Requirements */}
           {kycType === 'individual' && (
-            <div className="pf-saspay-card" style={{ padding: '1.5rem', marginBottom: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
+            <div className="pf-ui-card" style={{ padding: '1.5rem', marginBottom: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
               <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0F172A', marginBottom: '0.5rem' }}>
                 Vérification d'identité individuelle
               </div>
@@ -604,7 +604,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ activeApp, onUpdateA
       {activeTab === 'security' && (
         <div style={{ width: '100%', maxWidth: '800px', boxSizing: 'border-box' }}>
           {/* Change Password Card */}
-          <div className="pf-saspay-card" style={{ padding: '1.5rem', marginBottom: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
+          <div className="pf-ui-card" style={{ padding: '1.5rem', marginBottom: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', marginBottom: '0.35rem' }}>
               Changer de mot de passe
             </div>
@@ -671,7 +671,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ activeApp, onUpdateA
           </div>
 
           {/* Two-Factor Authentication Card */}
-          <div className="pf-saspay-card" style={{ padding: '1.5rem', marginBottom: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
+          <div className="pf-ui-card" style={{ padding: '1.5rem', marginBottom: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.75rem' }}>
               <div>
                 <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A' }}>
@@ -713,7 +713,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ activeApp, onUpdateA
           </div>
 
           {/* Active Sessions Card */}
-          <div className="pf-saspay-card" style={{ padding: '1.5rem', width: '100%', boxSizing: 'border-box' }}>
+          <div className="pf-ui-card" style={{ padding: '1.5rem', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A', marginBottom: '0.35rem' }}>
               Sessions actives
             </div>
@@ -762,12 +762,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ activeApp, onUpdateA
             </div>
           </div>
 
-          {/* Login Alerts Card (SaaSPay Style) */}
-          <div className="pf-saspay-card" style={{ padding: '1.5rem', marginTop: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
+          {/* Login alert preferences */}
+          <div className="pf-ui-card" style={{ padding: '1.5rem', marginTop: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.5rem' }}>
               <div>
                 <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A' }}>
-                  Alertes de sécurité de connexion (Format SaaSPay)
+                  Alertes de sécurité de connexion
                 </div>
                 <p style={{ fontSize: '0.8125rem', color: '#64748B', margin: '0.25rem 0 0', lineHeight: 1.5 }}>
                   Un e-mail de sécurité avec date UTC, adresse IP et empreinte de l’appareil est expédié à chaque ouverture de session.
