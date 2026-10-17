@@ -59,7 +59,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [editAmount, setEditAmount] = useState<number | undefined>(undefined);
 
   // Form states for creation
-  const [name, setName] = useState('Licence Pro PitchFlow');
+  const [name, setName] = useState('Licence Pro PichFlow');
   const [desc, setDesc] = useState('Accès complet aux modules et intégrations');
   const [amountType, setAmountType] = useState<'fixed' | 'libre'>('fixed');
   const [amountVal, setAmountVal] = useState('15000');
@@ -230,7 +230,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
 
       setLinks((prev) => [created, ...prev]);
       setViewMode('list');
-      setName('Licence Pro PitchFlow');
+      setName('Licence Pro PichFlow');
       setDesc('Accès complet aux modules et intégrations');
       showToast(`Lien "${created.title}" créé avec succès !`, 'success');
     } catch (err: any) {
@@ -302,7 +302,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                   <input
                     type="text"
                     className="pf-input"
-                    placeholder="Ex: Licence Pro PitchFlow, Formation Growth..."
+                    placeholder="Ex: Licence Pro PichFlow, Formation Growth..."
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
@@ -519,7 +519,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                           {name.trim() || 'Titre du produit'}
                         </div>
                         <div className="pf-ui-header-sub">
-                          {activeApp?.name || appName || 'PitchFlow Store'}
+                          {activeApp?.name || appName || 'PichFlow Store'}
                         </div>
                       </div>
                     </div>
@@ -534,7 +534,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                     </div>
                     <div className="pf-ui-sub-libre">Faire un paiement à</div>
                     <div className="pf-ui-title-libre">
-                      {activeApp?.name || appName || 'PitchFlow Store'}
+                      {activeApp?.name || appName || 'PichFlow Store'}
                     </div>
                   </div>
                 )}
