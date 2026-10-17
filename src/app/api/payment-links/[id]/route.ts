@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '@/src/config/payments';
 import { getDb } from '@/src/server/db';
-import { getAuthUserFromRequest } from '@/src/server/auth';
+import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 
 export const runtime = 'nodejs';
 
@@ -15,10 +16,15 @@ export async function GET(
     }
 
     const { id } = await context.params;
+    const { searchParams } = new URL(request.url);
+    const applicationId = searchParams.get('applicationId') || searchParams.get('appId') || '';
+    if (!await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     const db = getDb();
     const linkRes = await db.execute({
-      sql: 'SELECT * FROM payment_links WHERE id = ? AND user_id = ?',
-      args: [id, user.id],
+      sql: 'SELECT * FROM payment_links WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [id, user.id, applicationId],
     });
 
     if (linkRes.rows.length === 0) {
@@ -28,10 +34,10 @@ export async function GET(
     const pl = linkRes.rows[0];
 
     const txsRes = await db.execute({
-      sql: `SELECT * FROM transactions WHERE user_id = ? AND reference IN (
+      sql: `SELECT * FROM transactions WHERE user_id = ? AND application_id = ? AND reference IN (
         SELECT reference FROM checkout_sessions WHERE payment_link_id = ?
       ) ORDER BY created_at DESC`,
-      args: [user.id, id],
+      args: [user.id, applicationId, id],
     });
 
     const totalCount = txsRes.rows.length;
@@ -91,6 +97,16 @@ export async function PUT(
     const { id } = await context.params;
     const body = await request.json().catch(() => ({}));
     const { title, description, amount, isFixedAmount, status } = body;
+    const applicationId = typeof body.applicationId === 'string' ? body.applicationId.trim() : '';
+    if (!await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
+    if (amount !== undefined && (!Number.isSafeInteger(Number(amount)) || Number(amount) < PAYDUNYA_MINIMUM_AMOUNT_XOF)) {
+      return NextResponse.json({
+        success: false,
+        error: `Le montant du lien doit être un entier d’au moins ${PAYDUNYA_MINIMUM_AMOUNT_XOF} XOF.`,
+      }, { status: 400 });
+    }
 
     const db = getDb();
     await db.execute({
@@ -101,7 +117,7 @@ export async function PUT(
             is_fixed_amount = COALESCE(?, is_fixed_amount),
             status = COALESCE(?, status),
             updated_at = ?
-            WHERE id = ? AND user_id = ?`,
+            WHERE id = ? AND user_id = ? AND application_id = ?`,
       args: [
         title,
         description,
@@ -111,6 +127,7 @@ export async function PUT(
         new Date().toISOString(),
         id,
         user.id,
+        applicationId,
       ],
     });
 
@@ -131,10 +148,15 @@ export async function DELETE(
     }
 
     const { id } = await context.params;
+    const { searchParams } = new URL(request.url);
+    const applicationId = searchParams.get('applicationId') || searchParams.get('appId') || '';
+    if (!await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     const db = getDb();
     await db.execute({
-      sql: 'DELETE FROM payment_links WHERE id = ? AND user_id = ?',
-      args: [id, user.id],
+      sql: 'DELETE FROM payment_links WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [id, user.id, applicationId],
     });
 
     return NextResponse.json({ success: true, message: 'Lien de paiement supprimé.' });
@@ -142,4 +164,3 @@ export async function DELETE(
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/src/server/db';
-import { getAuthUserFromRequest } from '@/src/server/auth';
+import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 
 export const runtime = 'nodejs';
 
@@ -15,6 +15,9 @@ export async function PUT(
     }
 
     const { id } = await context.params;
+    if (!await userHasSelectedApplication(user, id)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     let body: any;
     try {
       body = await request.json();
@@ -56,12 +59,15 @@ export async function DELETE(
     }
 
     const { id } = await context.params;
+    if (!await userHasSelectedApplication(user, id)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     const db = getDb();
 
     // Check if app has transactions
     const txCheck = await db.execute({
-      sql: 'SELECT COUNT(*) as count FROM transactions WHERE application_id = ?',
-      args: [id],
+      sql: 'SELECT COUNT(*) as count FROM transactions WHERE application_id = ? AND user_id = ?',
+      args: [id, user.id],
     });
 
     const hasTxs = Number(txCheck.rows[0].count || 0) > 0;
@@ -82,4 +88,3 @@ export async function DELETE(
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

@@ -360,6 +360,15 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               <div><strong>Pays :</strong> {selectedCustomer.country || 'Bénin'}</div>
               <div><strong>Nombre de transactions :</strong> {selectedCustomer.paymentCount || 0}</div>
               <div><strong>Volume total dépensé :</strong> {(selectedCustomer.totalSpent || 0).toLocaleString('fr-FR')} {selectedCustomer.currency || 'XOF'}</div>
+              {selectedCustomer.lastTransaction && (
+                <>
+                  <div><strong>Dernière référence :</strong> {selectedCustomer.lastTransaction.reference}</div>
+                  <div><strong>Dernier paiement :</strong> {selectedCustomer.lastTransaction.amount.toLocaleString('fr-FR')} {selectedCustomer.lastTransaction.currency} — {selectedCustomer.lastTransaction.status}</div>
+                  {selectedCustomer.lastTransaction.paymentLinkTitle && (
+                    <div><strong>Lien associé :</strong> {selectedCustomer.lastTransaction.paymentLinkTitle}</div>
+                  )}
+                </>
+              )}
               <div>
                 <strong>Dernière activité :</strong>{' '}
                 {new Date(selectedCustomer.lastTransactionAt).toLocaleDateString('fr-FR', {

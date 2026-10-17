@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/src/server/db';
-import { getAuthUserFromRequest } from '@/src/server/auth';
+import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 
 export const runtime = 'nodejs';
 
@@ -11,14 +11,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Non authentifié.' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const applicationId = searchParams.get('applicationId') || '';
+    if (!await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     const db = getDb();
     const result = await db.execute({
       sql: `SELECT wl.*, w.url as webhook_url 
             FROM webhook_logs wl
             LEFT JOIN webhooks w ON wl.webhook_id = w.id
-            WHERE wl.user_id = ? 
+            WHERE wl.user_id = ? AND w.application_id = ?
             ORDER BY wl.created_at DESC LIMIT 50`,
-      args: [user.id],
+      args: [user.id, applicationId],
     });
 
     const logs = result.rows.map((r) => ({
@@ -39,4 +44,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

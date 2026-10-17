@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getDb } from '@/src/server/db';
-import { getAuthUserFromRequest } from '@/src/server/auth';
+import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 
 export const runtime = 'nodejs';
 
@@ -14,24 +14,19 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId') || searchParams.get('appId') || '';
-
-    const db = getDb();
-    let sql = 'SELECT * FROM webhooks WHERE user_id = ?';
-    const args: any[] = [user.id];
-
-    if (applicationId.trim()) {
-      sql += ' AND application_id = ?';
-      args.push(applicationId.trim());
+    if (!await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
     }
-
-    sql += ' ORDER BY created_at DESC';
-    const result = await db.execute({ sql, args });
+    const db = getDb();
+    const result = await db.execute({
+      sql: 'SELECT * FROM webhooks WHERE user_id = ? AND application_id = ? ORDER BY created_at DESC',
+      args: [user.id, applicationId],
+    });
 
     const webhooks = result.rows.map((row) => ({
       id: String(row.id),
       url: String(row.url),
       description: String(row.description || ''),
-      secret: String(row.secret),
       events: String(row.events).split(','),
       isActive: Boolean(row.is_active),
       createdAt: String(row.created_at),
@@ -62,6 +57,9 @@ export async function POST(request: NextRequest) {
     if (!url) {
       return NextResponse.json({ success: false, error: 'URL du webhook requise.' }, { status: 400 });
     }
+    if (typeof applicationId !== 'string' || !await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
 
     const id = `whk_${Date.now()}`;
     const secret = `whsec_pf_${crypto.randomBytes(12).toString('hex')}`;
@@ -74,7 +72,7 @@ export async function POST(request: NextRequest) {
       args: [
         id,
         user.id,
-        applicationId || 'app_default',
+        applicationId,
         url,
         description || 'Endpoint webhook',
         secret,
@@ -101,4 +99,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

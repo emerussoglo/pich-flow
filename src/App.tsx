@@ -74,8 +74,12 @@ function AppContent() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([]);
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
+  const [sessionRetryCount, setSessionRetryCount] = useState(0);
   const dashboardSessionCheck = useRef<Promise<unknown> | null>(null);
+  const lastSessionVerifiedAt = useRef(0);
+  const appDataLoadGeneration = useRef(0);
   const hasHandledUnauthorized = useRef(false);
+  const [dashboardLoadError, setDashboardLoadError] = useState('');
 
   const handleUnauthorized = useCallback(() => {
     if (hasHandledUnauthorized.current) return;
@@ -95,6 +99,7 @@ function AppContent() {
 
   // Function to load all isolated data for a specific application
   const loadAppData = useCallback(async (appId?: string) => {
+    const generation = ++appDataLoadGeneration.current;
     try {
       const withFallback = <T,>(request: Promise<T>, fallback: T): Promise<T> =>
         request.catch((error: unknown) => {
@@ -105,13 +110,14 @@ function AppContent() {
         });
 
       const [wals, txs, links, wdrs, keys, whs] = await Promise.all([
-        withFallback(apiClient.wallets.getAll(), []),
+        withFallback(apiClient.wallets.getAll(appId), []),
         withFallback(apiClient.transactions.getAll(appId), []),
         withFallback(apiClient.paymentLinks.getAll(appId), []),
-        withFallback(apiClient.withdrawals.getAll(), []),
+        withFallback(apiClient.withdrawals.getAll(appId), []),
         withFallback(apiClient.developer.getKeys(appId), []),
         withFallback(apiClient.developer.getWebhooks(appId), []),
       ]);
+      if (generation !== appDataLoadGeneration.current) return;
       if (wals) setWallets(wals);
       if (txs) setTransactions(txs);
       if (links) setPaymentLinks(links);
@@ -140,6 +146,7 @@ function AppContent() {
         try { return localStorage.getItem('pf_active_app_id'); } catch { return null; }
       })();
       const matchedApp = validApps.find((a) => a.id === savedAppId) || validApps[0];
+      await apiClient.apps.selectActive(matchedApp.id);
       setActiveApp(matchedApp);
       try { localStorage.setItem('pf_active_app_id', matchedApp.id); } catch {}
       await loadAppData(matchedApp.id);
@@ -149,13 +156,23 @@ function AppContent() {
   // Validate the session before loading any private dashboard data.
   useEffect(() => {
     if (currentRoute !== 'dashboard') {
+      lastSessionVerifiedAt.current = 0;
       hasHandledUnauthorized.current = false;
       setIsDashboardLoading(false);
+      setDashboardLoadError('');
       return;
     }
 
     let active = true;
+    if (Date.now() - lastSessionVerifiedAt.current < 5 * 60 * 1000) {
+      setIsDashboardLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
     hasHandledUnauthorized.current = false;
+    setDashboardLoadError('');
     setIsDashboardLoading(true);
 
     const loadDashboard = async () => {
@@ -165,6 +182,7 @@ function AppContent() {
         await sessionCheck;
         if (!active) return;
         await syncApplications();
+        lastSessionVerifiedAt.current = Date.now();
       } catch (error) {
         if (!active) return;
 
@@ -172,6 +190,7 @@ function AppContent() {
           handleUnauthorized();
         } else {
           console.error('Dashboard authentication or sync failed:', error);
+          setDashboardLoadError('Impossible de vérifier votre session ou de charger vos applications. Vérifiez votre connexion puis actualisez la page.');
         }
       } finally {
         if (dashboardSessionCheck.current === sessionCheck) {
@@ -185,7 +204,7 @@ function AppContent() {
     return () => {
       active = false;
     };
-  }, [currentRoute, handleUnauthorized, syncApplications]);
+  }, [currentRoute, handleUnauthorized, syncApplications, sessionRetryCount]);
 
   // Modals state
   const [isNewLinkModalOpen, setIsNewLinkModalOpen] = useState(false);
@@ -193,19 +212,33 @@ function AppContent() {
   const [isAppsScreenNewAppOpen, setIsAppsScreenNewAppOpen] = useState(false);
 
   // Handlers
-  const handleSelectApp = (app: Application) => {
-    setActiveApp(app);
+  const handleSelectApp = async (app: Application) => {
+    ++appDataLoadGeneration.current;
+    setTransactions([]);
+    setPaymentLinks([]);
+    setApiKeys([]);
+    setWebhooks([]);
+    setWallets([]);
+    setWithdrawals([]);
     try { localStorage.setItem('pf_active_app_id', app.id); } catch {}
-    loadAppData(app.id);
+    try {
+      await apiClient.apps.selectActive(app.id);
+      setActiveApp(app);
+      await loadAppData(app.id);
+    } catch (error) {
+      console.error('Select application error:', error);
+      setDashboardLoadError('Impossible de sélectionner cette application. Réessayez.');
+    }
   };
 
   const handleCreateApp = async (newApp: Application) => {
     try {
       const created = await apiClient.apps.create(newApp);
       setApplications((prev) => [created, ...prev.filter((a) => a.id !== created.id)]);
+      await apiClient.apps.selectActive(created.id);
       setActiveApp(created);
       try { localStorage.setItem('pf_active_app_id', created.id); } catch {}
-      loadAppData(created.id);
+      await loadAppData(created.id);
       navigate('/dashboard/overview');
     } catch (err: any) {
       console.error('Create app error:', err);
@@ -228,7 +261,7 @@ function AppContent() {
     try {
       const created = await apiClient.withdrawals.create(newWdr);
       setWithdrawals((prev) => [created, ...prev]);
-      const updatedWallets = await apiClient.wallets.getAll().catch(() => null);
+      const updatedWallets = await apiClient.wallets.getAll(activeApp?.id).catch(() => null);
       if (updatedWallets) setWallets(updatedWallets);
     } catch (err: any) {
       console.error('Create withdrawal error:', err);
@@ -254,7 +287,7 @@ function AppContent() {
 
   const handleRevokeApiKey = async (id: string) => {
     try {
-      await apiClient.developer.revokeKey(id);
+      await apiClient.developer.revokeKey(id, activeApp?.id || '');
       setApiKeys((prev) => prev.filter((k) => k.id !== id));
     } catch {
       setApiKeys((prev) => prev.filter((k) => k.id !== id));
@@ -345,13 +378,22 @@ function AppContent() {
           <main role="status" aria-live="polite" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
             Vérification de la session…
           </main>
+        ) : dashboardLoadError ? (
+          <main role="alert" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '2rem', textAlign: 'center' }}>
+            <div>
+              <p>{dashboardLoadError}</p>
+              <button type="button" onClick={() => { lastSessionVerifiedAt.current = 0; setDashboardLoadError(''); setIsDashboardLoading(true); setSessionRetryCount((count) => count + 1); }}>
+                Réessayer
+              </button>
+            </div>
+          </main>
         ) : <>
           {dashboardTab === 'apps-selection' ? (
             <>
               <AppsSelectionScreen
                 applications={applications}
-                onSelectApp={(app) => {
-                  handleSelectApp(app);
+                onSelectApp={async (app) => {
+                  await handleSelectApp(app);
                   navigate('/dashboard/overview');
                 }}
                 onOpenNewAppModal={() => setIsAppsScreenNewAppOpen(true)}
@@ -364,6 +406,7 @@ function AppContent() {
             </>
           ) : (
             <DashboardLayout
+              key={activeApp?.id || applications[0]?.id}
               activeApp={activeApp || applications[0] || { id: 'app_default', name: 'Mon Application', slug: 'mon-application', category: 'E-commerce', environment: 'test', createdAt: new Date().toISOString(), currency: 'XOF' }}
               applications={applications}
               wallets={wallets}
@@ -398,6 +441,7 @@ function AppContent() {
               {dashboardTab === 'wallets' && (
                 <WalletsPage
                   wallets={wallets}
+                  activeApp={activeApp || undefined}
                   ledgerEntries={[]}
                   onOpenWithdrawalModal={() => setIsNewWithdrawalModalOpen(true)}
                 />

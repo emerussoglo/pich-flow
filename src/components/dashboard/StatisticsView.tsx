@@ -62,7 +62,7 @@ export const StatisticsView: React.FC<StatisticsViewProps> = ({
   const successRate = totalCount > 0 ? ((successCount / totalCount) * 100).toFixed(1) : '0';
 
   // Total revenue from successful transactions strictly
-  const totalRevenue = successfulList.reduce((acc, t) => acc + (t.netAmount || t.amount || 0), 0);
+  const totalRevenue = successfulList.reduce((acc, t) => acc + (t.amount || 0), 0);
 
   // Breakdown by country
   const countryBreakdown = useMemo(() => {

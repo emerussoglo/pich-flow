@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       country: String(row.country || 'BJ'),
       currency: String(row.currency || 'XOF'),
       isDefault: Boolean(row.is_default),
-      isVerified: Boolean(row.is_verified || 1),
+      isVerified: false,
       createdAt: String(row.created_at),
     }));
 
@@ -86,8 +86,8 @@ export async function POST(request: NextRequest) {
     const isFirst = Number(countRes.rows[0].count || 0) === 0;
 
     await db.execute({
-      sql: `INSERT INTO payout_methods (id, user_id, type, label, operator_or_bank, recipient_name, recipient_phone_or_iban, account_number, iban, swift_bic, bank_code, branch_code, country, currency, is_default, is_verified, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO payout_methods (id, user_id, type, label, operator_or_bank, recipient_name, recipient_phone_or_iban, account_number, iban, swift_bic, bank_code, branch_code, country, currency, is_default, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
         user.id,
@@ -104,7 +104,6 @@ export async function POST(request: NextRequest) {
         country || 'BJ',
         currency || 'XOF',
         isFirst ? 1 : 0,
-        1,
         now,
       ],
     });
@@ -126,7 +125,7 @@ export async function POST(request: NextRequest) {
         country: country || 'BJ',
         currency: currency || 'XOF',
         isDefault: isFirst,
-        isVerified: true,
+        isVerified: false,
         createdAt: now,
       },
     });
@@ -134,4 +133,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

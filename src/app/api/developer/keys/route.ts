@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getDb } from '@/src/server/db';
-import { getAuthUserFromRequest } from '@/src/server/auth';
+import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 
 export const runtime = 'nodejs';
 
@@ -14,23 +14,20 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId') || searchParams.get('appId') || '';
-
-    const db = getDb();
-    let sql = 'SELECT * FROM api_credentials WHERE user_id = ?';
-    const args: any[] = [user.id];
-
-    if (applicationId.trim()) {
-      sql += ' AND application_id = ?';
-      args.push(applicationId.trim());
+    if (!await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
     }
 
-    sql += ' ORDER BY created_at DESC';
-    const result = await db.execute({ sql, args });
-
+    const result = await getDb().execute({
+      sql: 'SELECT * FROM api_credentials WHERE user_id = ? AND application_id = ? ORDER BY created_at DESC',
+      args: [user.id, applicationId],
+    });
     const apiKeys = result.rows.map((row) => ({
       id: String(row.id),
       name: String(row.name),
-      keyPrefix: String(row.key_prefix),
+      prefix: String(row.prefix),
+      secretMasked: String(row.secret_masked),
+      secretKey: '',
       environment: String(row.environment) as 'sandbox' | 'live',
       scope: String(row.scope || 'both') as 'payin' | 'payout' | 'both',
       isActive: Boolean(row.is_active),
@@ -39,8 +36,9 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({ success: true, apiKeys });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (error) {
+    console.error('[API Keys] List failed:', error);
+    return NextResponse.json({ success: false, error: 'Impossible de charger les clés API.' }, { status: 500 });
   }
 }
 
@@ -51,82 +49,88 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Non authentifié.' }, { status: 401 });
     }
 
-    let body: any;
+    let body: Record<string, unknown>;
     try {
       body = await request.json();
     } catch {
-      body = {};
+      return NextResponse.json({ success: false, error: 'Le corps JSON de la requête est invalide.' }, { status: 400 });
     }
 
-    const { name, scope, applicationId } = body;
-    if (!name || typeof name !== 'string' || !name.trim()) {
+    const name = typeof body.name === 'string' ? body.name.trim() : '';
+    const applicationId = typeof body.applicationId === 'string' ? body.applicationId.trim() : '';
+    const scope = body.scope || 'both';
+    if (!name) {
       return NextResponse.json({ success: false, error: 'Nom de la clé requis.' }, { status: 400 });
     }
+    if (name.length > 100 || !['payin', 'payout', 'both'].includes(String(scope))) {
+      return NextResponse.json({ success: false, error: 'Nom ou permission de clé invalide.' }, { status: 400 });
+    }
+    if (!await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
 
-    const cleanName = name.trim();
-    const resolvedAppId = applicationId || 'app_default';
     const now = new Date().toISOString();
+    const credentials = (['sandbox', 'live'] as const).map((environment) => {
+      const secret = `sk_${environment === 'sandbox' ? 'test' : 'live'}_pichflow_${crypto.randomBytes(32).toString('hex')}`;
+      const prefix = secret.slice(0, 18);
+      return {
+        id: `key_${crypto.randomUUID()}`,
+        name: `${name} (${environment === 'sandbox' ? 'Sandbox' : 'Live'})`,
+        environment,
+        prefix,
+        secret,
+        secretHash: crypto.createHash('sha256').update(secret).digest('hex'),
+        secretMasked: `${prefix}...${secret.slice(-4)}`,
+      };
+    });
+
     const db = getDb();
+    const inserted: string[] = [];
+    try {
+      for (const credential of credentials) {
+        await db.execute({
+          sql: `INSERT INTO api_credentials (
+                  id, user_id, application_id, name, environment, prefix,
+                  secret_key, secret_masked, secret_hash, scope, is_active, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, 1, ?)`,
+          args: [
+            credential.id, user.id, applicationId, credential.name,
+            credential.environment, credential.prefix, credential.secretMasked,
+            credential.secretHash, String(scope), now,
+          ],
+        });
+        inserted.push(credential.id);
+      }
+    } catch (error) {
+      if (inserted.length > 0) {
+        await db.execute({
+          sql: `DELETE FROM api_credentials WHERE user_id = ? AND id IN (${inserted.map(() => '?').join(',')})`,
+          args: [user.id, ...inserted],
+        });
+      }
+      throw error;
+    }
 
-    // Generate dual keys: 1 Sandbox (sk_test_) + 1 Live (sk_live_)
-    const testSecret = `sk_test_${crypto.randomBytes(24).toString('hex')}`;
-    const liveSecret = `sk_live_${crypto.randomBytes(24).toString('hex')}`;
-
-    const testId = `key_test_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-    const liveId = `key_live_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-
-    const testHash = crypto.createHash('sha256').update(testSecret).digest('hex');
-    const liveHash = crypto.createHash('sha256').update(liveSecret).digest('hex');
-
-    const testPrefix = testSecret.substring(0, 15) + '...';
-    const livePrefix = liveSecret.substring(0, 15) + '...';
-
-    // 1. Insert Sandbox key
-    await db.execute({
-      sql: `INSERT INTO api_credentials (id, user_id, application_id, name, key_prefix, secret_hash, environment, scope, is_active, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'sandbox', ?, 1, ?)`,
-      args: [testId, user.id, resolvedAppId, `${cleanName} (Sandbox)`, testPrefix, testHash, scope || 'both', now],
-    });
-
-    // 2. Insert Live key
-    await db.execute({
-      sql: `INSERT INTO api_credentials (id, user_id, application_id, name, key_prefix, secret_hash, environment, scope, is_active, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'live', ?, 1, ?)`,
-      args: [liveId, user.id, resolvedAppId, `${cleanName} (Live)`, livePrefix, liveHash, scope || 'both', now],
-    });
-
-    const sandboxKey = {
-      id: testId,
-      name: `${cleanName} (Sandbox)`,
-      keyPrefix: testPrefix,
-      secretKey: testSecret,
-      environment: 'sandbox' as const,
-      scope: (scope || 'both') as 'payin' | 'payout' | 'both',
+    const [sandbox, live] = credentials;
+    const formatKey = (credential: typeof sandbox) => ({
+      id: credential.id,
+      name: credential.name,
+      prefix: credential.prefix,
+      secretMasked: credential.secretMasked,
+      secretKey: credential.secret,
+      environment: credential.environment,
+      scope,
       isActive: true,
       createdAt: now,
-    };
-
-    const liveKey = {
-      id: liveId,
-      name: `${cleanName} (Live)`,
-      keyPrefix: livePrefix,
-      secretKey: liveSecret,
-      environment: 'live' as const,
-      scope: (scope || 'both') as 'payin' | 'payout' | 'both',
-      isActive: true,
-      createdAt: now,
-    };
+    });
 
     return NextResponse.json({
       success: true,
-      apiKey: sandboxKey,
-      keys: {
-        sandbox: sandboxKey,
-        live: liveKey,
-      },
+      apiKey: formatKey(sandbox),
+      keys: { sandbox: formatKey(sandbox), live: formatKey(live) },
     });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (error) {
+    console.error('[API Keys] Creation failed:', error);
+    return NextResponse.json({ success: false, error: 'Impossible de créer les clés API.' }, { status: 500 });
   }
 }
-

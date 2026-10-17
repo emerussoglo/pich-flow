@@ -17,8 +17,8 @@ export async function GET(
     const { id } = await context.params;
     const db = getDb();
     const result = await db.execute({
-      sql: 'SELECT * FROM transactions WHERE id = ? AND user_id = ?',
-      args: [id, user.id],
+      sql: 'SELECT * FROM transactions WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [id, user.id, user.activeApplicationId || ''],
     });
 
     if (result.rows.length === 0) {
@@ -33,12 +33,13 @@ export async function GET(
       customerEmail: String(row.customer_email),
       customerPhone: String(row.customer_phone || ''),
       country: String(row.country || 'BJ'),
-      provider: String(row.provider || 'saspay'),
+      provider: String(row.provider || 'PayDunya'),
       amount: Number(row.amount),
-      providerFee: Number(row.provider_fee || 0),
+      providerFee: Number(row.fees_confirmed) === 1 ? Number(row.provider_fee || 0) : null,
       platformFee: Number(row.platform_fee || 0),
       customerFee: Number(row.customer_fee || 0),
-      netAmount: Number(row.net_amount || row.amount),
+      netAmount: Number(row.fees_confirmed) === 1 ? Number(row.net_amount) : null,
+      feesConfirmed: Number(row.fees_confirmed) === 1,
       currency: String(row.currency || 'XOF'),
       status: String(row.status),
       paymentMethod: String(row.payment_method || 'Mobile Money'),
@@ -50,4 +51,3 @@ export async function GET(
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

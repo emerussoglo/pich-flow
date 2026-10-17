@@ -30,7 +30,7 @@ export async function PUT(
                 description = COALESCE(?, description),
                 events = COALESCE(?, events),
                 is_active = COALESCE(?, is_active)
-            WHERE id = ? AND user_id = ?`,
+            WHERE id = ? AND user_id = ? AND application_id = ?`,
       args: [
         url !== undefined ? url : null,
         description !== undefined ? description : null,
@@ -38,6 +38,7 @@ export async function PUT(
         isActive !== undefined ? (isActive ? 1 : 0) : null,
         id,
         user.id,
+        user.activeApplicationId || '',
       ],
     });
 
@@ -60,8 +61,8 @@ export async function DELETE(
     const { id } = await context.params;
     const db = getDb();
     await db.execute({
-      sql: 'DELETE FROM webhooks WHERE id = ? AND user_id = ?',
-      args: [id, user.id],
+      sql: 'DELETE FROM webhooks WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [id, user.id, user.activeApplicationId || ''],
     });
 
     return NextResponse.json({ success: true, message: 'Webhook supprimé.' });
@@ -69,4 +70,3 @@ export async function DELETE(
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

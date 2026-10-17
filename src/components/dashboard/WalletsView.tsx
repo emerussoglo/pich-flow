@@ -11,10 +11,11 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useToast } from '../ui/ToastContext';
 import { apiClient } from '../../lib/api';
-import { Wallet } from '../../types';
+import { Application, Wallet } from '../../types';
 
 interface WalletsViewProps {
   appName?: string;
+  activeApp?: Application;
   wallets?: Wallet[];
   ledgerEntries?: any[];
   onOpenWithdrawalModal?: () => void;
@@ -32,7 +33,7 @@ const SUPPORTED_COUNTRIES = [
   { countryCode: 'US', countryName: 'International (USD)', currency: 'USD', symbol: '$' },
 ];
 
-export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Application', onOpenWithdrawalModal }) => {
+export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Application', activeApp, onOpenWithdrawalModal }) => {
   const { showToast } = useToast();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,7 +53,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
   const loadWallets = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await apiClient.wallets.getAll();
+      const data = await apiClient.wallets.getAll(activeApp?.id);
       setWallets(data || []);
       if (data && data.length > 0) {
         if (!fromWalletId) setFromWalletId(data[0].id);
@@ -63,7 +64,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
     } finally {
       setIsLoading(false);
     }
-  }, [showToast, fromWalletId, toWalletId]);
+  }, [activeApp?.id, showToast, fromWalletId, toWalletId]);
 
   useEffect(() => {
     loadWallets();
@@ -94,6 +95,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
         fromWalletId,
         toWalletId,
         amount,
+        applicationId: activeApp?.id || '',
       });
 
       showToast(res.message || 'Transfert inter-portefeuilles réussi !', 'success');
@@ -117,6 +119,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
         countryCode: match.countryCode,
         currency: match.currency,
         symbol: match.symbol,
+        applicationId: activeApp?.id || '',
       });
       showToast(`Portefeuille ${match.countryName} (${match.currency}) activé avec succès.`, 'success');
       setAddWalletModalOpen(false);

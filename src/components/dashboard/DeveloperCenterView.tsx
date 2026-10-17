@@ -86,7 +86,7 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
       return;
     }
     try {
-      await apiClient.developer.revokeKey(id);
+      await apiClient.developer.revokeKey(id, activeApp?.id || '');
       setKeysList((prev) => prev.filter((k) => k.id !== id));
       showToast('Clé secrète révoquée.', 'info');
     } catch (err: any) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/src/server/db';
-import { getAuthUserFromRequest } from '@/src/server/auth';
+import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 
 export const runtime = 'nodejs';
 
@@ -13,18 +13,19 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const applicationId = searchParams.get('applicationId') || searchParams.get('appId') || '';
-
-    const db = getDb();
-    let sql = 'SELECT * FROM checkout_sessions WHERE user_id = ?';
-    const args: any[] = [user.id];
-
-    if (applicationId.trim()) {
-      sql += ' AND application_id = ?';
-      args.push(applicationId.trim());
+    if (!await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
     }
 
-    sql += ' ORDER BY created_at DESC';
-    const result = await db.execute({ sql, args });
+    const db = getDb();
+    const result = await db.execute({
+      sql: `SELECT cs.* FROM checkout_sessions cs
+            LEFT JOIN payment_links pl ON pl.id = cs.payment_link_id
+            WHERE cs.application_id = ?
+              AND (cs.user_id = ? OR (pl.user_id = ? AND pl.application_id = ?))
+            ORDER BY cs.created_at DESC`,
+      args: [applicationId, user.id, user.id, applicationId],
+    });
 
     const checkoutSessions = result.rows.map((row) => ({
       id: String(row.id),
@@ -35,8 +36,7 @@ export async function GET(request: NextRequest) {
       customerEmail: String(row.customer_email),
       customerPhone: String(row.customer_phone || ''),
       status: String(row.status),
-      saspaySessionId: row.saspay_session_id ? String(row.saspay_session_id) : undefined,
-      saspayCheckoutUrl: row.saspay_checkout_url ? String(row.saspay_checkout_url) : undefined,
+      paydunyaUrl: row.paydunya_url ? String(row.paydunya_url) : undefined,
       createdAt: String(row.created_at),
     }));
 
@@ -45,4 +45,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

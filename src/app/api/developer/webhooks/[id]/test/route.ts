@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getDb } from '@/src/server/db';
-import { getAuthUserFromRequest } from '@/src/server/auth';
+import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 
 export const runtime = 'nodejs';
 
@@ -16,10 +16,13 @@ export async function POST(
     }
 
     const { id } = await context.params;
+    if (!user.activeApplicationId || !await userHasSelectedApplication(user, user.activeApplicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     const db = getDb();
     const whRes = await db.execute({
-      sql: 'SELECT * FROM webhooks WHERE id = ? AND user_id = ?',
-      args: [id, user.id],
+      sql: 'SELECT * FROM webhooks WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [id, user.id, user.activeApplicationId],
     });
 
     if (whRes.rows.length === 0) {
@@ -75,18 +78,24 @@ export async function POST(
     // Log delivery
     const logId = `whl_${Date.now()}`;
     await db.execute({
-      sql: `INSERT INTO webhook_logs (id, webhook_id, event, payload, response_status, response_body, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO webhook_logs
+            (id, webhook_id, user_id, event, payload, status_code, response_body, success, attempts, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
       args: [
         logId,
         id,
+        user.id,
         'webhook.test',
         rawPayload,
         httpStatus,
         responseBody,
-        deliveryStatus,
+        deliveryStatus === 'success' ? 1 : 0,
         new Date().toISOString(),
       ],
+    });
+    await db.execute({
+      sql: 'UPDATE webhooks SET last_delivery_status = ? WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [deliveryStatus, id, user.id, user.activeApplicationId],
     });
 
     return NextResponse.json({
@@ -102,4 +111,3 @@ export async function POST(
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

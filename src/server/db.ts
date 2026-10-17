@@ -35,8 +35,8 @@ export function getDb(): Client {
   }
 }
 
-export async function initDatabase(): Promise<void> {
-  const db = getDb();
+export async function initDatabase(database: Client = getDb()): Promise<void> {
+  const db = database;
   console.log('[DB] Initializing database tables...');
 
   // 1. Users table
@@ -62,6 +62,7 @@ export async function initDatabase(): Promise<void> {
     CREATE TABLE IF NOT EXISTS sessions (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
+      application_id TEXT,
       token TEXT UNIQUE NOT NULL,
       ip_address TEXT,
       user_agent TEXT,
@@ -132,6 +133,7 @@ export async function initDatabase(): Promise<void> {
     CREATE TABLE IF NOT EXISTS wallets (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
+      application_id TEXT,
       currency TEXT NOT NULL,
       symbol TEXT NOT NULL,
       balance REAL DEFAULT 0,
@@ -258,6 +260,7 @@ export async function initDatabase(): Promise<void> {
     CREATE TABLE IF NOT EXISTS payout_requests (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
+      application_id TEXT,
       reference TEXT UNIQUE NOT NULL,
       external_id TEXT,
       amount REAL NOT NULL,
@@ -373,43 +376,206 @@ export async function initDatabase(): Promise<void> {
     )
   `);
 
-  // Migrations for existing tables (safe column additions)
-  const safeAlter = async (query: string) => {
-    try {
-      await db.execute(query);
-    } catch {
-      // Column likely already exists
-    }
-  };
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS checkout_idempotency (
+      application_id TEXT NOT NULL,
+      idempotency_key TEXT NOT NULL,
+      reference TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (application_id, idempotency_key)
+    )
+  `);
 
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN first_name TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN last_name TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN birth_date TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN recto_url TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN verso_url TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN selfie_url TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN representative_name TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN rccm_doc_url TEXT`);
-  await safeAlter(`ALTER TABLE merchant_kyc ADD COLUMN ifu_doc_url TEXT`);
-  await safeAlter(`ALTER TABLE payment_links ADD COLUMN client_fee_enabled INTEGER DEFAULT 0`);
-  await safeAlter(`ALTER TABLE payment_links ADD COLUMN fee_rate REAL DEFAULT 0`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN label TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN account_number TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN iban TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN swift_bic TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN bank_code TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN branch_code TEXT`);
-  await safeAlter(`ALTER TABLE payout_methods ADD COLUMN currency TEXT DEFAULT 'XOF'`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN user_id TEXT`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN saspay_session_id TEXT`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN saspay_checkout_url TEXT`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN idempotency_key TEXT`);
-  await safeAlter(`ALTER TABLE checkout_sessions ADD COLUMN provider TEXT DEFAULT 'saspay'`);
-  await safeAlter(`ALTER TABLE transactions ADD COLUMN idempotency_key TEXT`);
-  await safeAlter(`ALTER TABLE transactions ADD COLUMN saspay_id TEXT`);
-  await safeAlter(`ALTER TABLE api_credentials ADD COLUMN secret_hash TEXT`);
-  await safeAlter(`ALTER TABLE webhook_logs ADD COLUMN external_event_id TEXT`);
-  await safeAlter(`ALTER TABLE webhook_logs ADD COLUMN signature TEXT`);
+  await applyDatabaseMigrations(db);
 
   console.log('[DB] All tables verified successfully.');
+}
+
+const DATABASE_MIGRATIONS = [
+  {
+    version: 1,
+    name: 'additive-columns-for-existing-resources',
+    columns: [
+      ['merchant_kyc', 'first_name', 'TEXT'],
+      ['merchant_kyc', 'last_name', 'TEXT'],
+      ['merchant_kyc', 'birth_date', 'TEXT'],
+      ['merchant_kyc', 'recto_url', 'TEXT'],
+      ['merchant_kyc', 'verso_url', 'TEXT'],
+      ['merchant_kyc', 'selfie_url', 'TEXT'],
+      ['merchant_kyc', 'representative_name', 'TEXT'],
+      ['merchant_kyc', 'rccm_doc_url', 'TEXT'],
+      ['merchant_kyc', 'ifu_doc_url', 'TEXT'],
+      ['payment_links', 'client_fee_enabled', 'INTEGER DEFAULT 0'],
+      ['payment_links', 'fee_rate', 'REAL DEFAULT 0'],
+      ['payout_methods', 'label', 'TEXT'],
+      ['payout_methods', 'account_number', 'TEXT'],
+      ['payout_methods', 'iban', 'TEXT'],
+      ['payout_methods', 'swift_bic', 'TEXT'],
+      ['payout_methods', 'bank_code', 'TEXT'],
+      ['payout_methods', 'branch_code', 'TEXT'],
+      ['payout_methods', 'currency', "TEXT DEFAULT 'XOF'"],
+      ['checkout_sessions', 'user_id', 'TEXT'],
+      ['checkout_sessions', 'saspay_session_id', 'TEXT'],
+      ['checkout_sessions', 'saspay_checkout_url', 'TEXT'],
+      ['checkout_sessions', 'idempotency_key', 'TEXT'],
+      ['checkout_sessions', 'provider', "TEXT DEFAULT 'paydunya'"],
+      ['transactions', 'idempotency_key', 'TEXT'],
+      ['transactions', 'saspay_id', 'TEXT'],
+      ['api_credentials', 'secret_hash', 'TEXT'],
+      ['webhook_logs', 'external_event_id', 'TEXT'],
+      ['webhook_logs', 'signature', 'TEXT'],
+    ] as const,
+  },
+  {
+    version: 2,
+    name: 'scope-wallets-to-applications',
+    columns: [
+      ['wallets', 'application_id', 'TEXT'],
+    ] as const,
+  },
+  {
+    version: 3,
+    name: 'record-payment-fee-confirmation',
+    columns: [
+      ['transactions', 'fees_confirmed', 'INTEGER NOT NULL DEFAULT 0'],
+    ] as const,
+  },
+  {
+    version: 4,
+    name: 'bind-dashboard-session-to-active-application',
+    columns: [
+      ['sessions', 'application_id', 'TEXT'],
+    ] as const,
+  },
+  {
+    version: 5,
+    name: 'hash-existing-api-credential-secrets',
+    columns: [] as const,
+  },
+  {
+    version: 6,
+    name: 'attach-legacy-checkout-sessions-to-payment-links',
+    columns: [
+      ['checkout_sessions', 'application_id', 'TEXT'],
+      ['checkout_sessions', 'payment_link_id', 'TEXT'],
+    ] as const,
+  },
+  {
+    version: 7,
+    name: 'reattach-unambiguous-legacy-wallets',
+    columns: [] as const,
+  },
+  {
+    version: 8,
+    name: 'scope-payout-requests-to-applications',
+    columns: [
+      ['payout_requests', 'application_id', 'TEXT'],
+    ] as const,
+  },
+] as const;
+
+export async function applyDatabaseMigrations(db: Client): Promise<void> {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      applied_at TEXT NOT NULL
+    )
+  `);
+
+  for (const migration of DATABASE_MIGRATIONS) {
+    const applied = await db.execute({
+      sql: 'SELECT version FROM schema_migrations WHERE version = ?',
+      args: [migration.version],
+    });
+    if (applied.rows.length > 0) continue;
+
+    for (const [table, column, definition] of migration.columns) {
+      const info = await db.execute(`PRAGMA table_info(${table})`);
+      if (!info.rows.some((row) => String(row.name) === column)) {
+        await db.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+      }
+    }
+
+    if (migration.version === 2) {
+      await db.execute(`
+        UPDATE wallets
+        SET application_id = (
+          SELECT MIN(applications.id)
+          FROM applications
+          WHERE applications.user_id = wallets.user_id
+        )
+        WHERE application_id IS NULL
+          AND (SELECT COUNT(*) FROM applications WHERE applications.user_id = wallets.user_id) = 1
+      `);
+    }
+
+    if (migration.version === 5) {
+      const legacyKeys = await db.execute(
+        `SELECT id, secret_key, secret_hash
+         FROM api_credentials
+         WHERE secret_key IS NOT NULL AND secret_key <> ''`,
+      );
+      for (const key of legacyKeys.rows) {
+        const secret = String(key.secret_key);
+        let hash = String(key.secret_hash || '');
+        if (!hash) {
+          const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+          hash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        }
+        await db.execute({
+          sql: 'UPDATE api_credentials SET secret_hash = ?, secret_key = ? WHERE id = ?',
+          args: [hash, '', String(key.id)],
+        });
+      }
+    }
+
+    if (migration.version === 6) {
+      await db.execute(`
+        UPDATE checkout_sessions
+        SET user_id = COALESCE(user_id, (
+              SELECT payment_links.user_id
+              FROM payment_links
+              WHERE payment_links.id = checkout_sessions.payment_link_id
+            )),
+            application_id = COALESCE(application_id, (
+              SELECT payment_links.application_id
+              FROM payment_links
+              WHERE payment_links.id = checkout_sessions.payment_link_id
+            ))
+        WHERE payment_link_id IS NOT NULL
+      `);
+    }
+
+    if (migration.version === 7) {
+      await db.execute(`
+        UPDATE wallets
+        SET application_id = (
+          SELECT MIN(applications.id)
+          FROM applications
+          WHERE applications.user_id = wallets.user_id
+        )
+        WHERE application_id IS NULL
+          AND (SELECT COUNT(*) FROM applications WHERE applications.user_id = wallets.user_id) = 1
+      `);
+    }
+
+    if (migration.version === 8) {
+      await db.execute(`
+        UPDATE payout_requests
+        SET application_id = (
+          SELECT MIN(applications.id)
+          FROM applications
+          WHERE applications.user_id = payout_requests.user_id
+        )
+        WHERE application_id IS NULL
+          AND (SELECT COUNT(*) FROM applications WHERE applications.user_id = payout_requests.user_id) = 1
+      `);
+    }
+
+    await db.execute({
+      sql: 'INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)',
+      args: [migration.version, migration.name, new Date().toISOString()],
+    });
+  }
 }

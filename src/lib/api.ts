@@ -236,6 +236,13 @@ export const apiClient = {
       return res.applications;
     },
 
+    async selectActive(applicationId: string): Promise<void> {
+      await apiClient.request<{ success: boolean }>('/apps/active', {
+        method: 'POST',
+        body: JSON.stringify({ applicationId }),
+      });
+    },
+
     async create(data: Partial<Application>): Promise<Application> {
       const res = await apiClient.request<{ success: boolean; application: Application }>('/apps', {
         method: 'POST',
@@ -260,12 +267,13 @@ export const apiClient = {
 
   // Wallets
   wallets: {
-    async getAll(): Promise<Wallet[]> {
-      const res = await apiClient.request<{ success: boolean; wallets: Wallet[] }>('/wallets');
+    async getAll(applicationId?: string): Promise<Wallet[]> {
+      const query = applicationId ? `?applicationId=${encodeURIComponent(applicationId)}` : '';
+      const res = await apiClient.request<{ success: boolean; wallets: Wallet[] }>(`/wallets${query}`);
       return res.wallets;
     },
 
-    async create(data: { countryCode: string; currency: string; symbol?: string }): Promise<Wallet> {
+    async create(data: { countryCode: string; currency: string; symbol?: string; applicationId: string }): Promise<Wallet> {
       const res = await apiClient.request<{ success: boolean; wallet: Wallet }>('/wallets', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -273,7 +281,7 @@ export const apiClient = {
       return res.wallet;
     },
 
-    async transfer(data: { fromWalletId: string; toWalletId: string; amount: number }): Promise<{ success: boolean; message: string; reference: string }> {
+    async transfer(data: { fromWalletId: string; toWalletId: string; amount: number; applicationId: string }): Promise<{ success: boolean; message: string; reference: string }> {
       return apiClient.request<{ success: boolean; message: string; reference: string }>('/wallets/transfer', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -306,15 +314,15 @@ export const apiClient = {
       return res.paymentLink;
     },
 
-    async update(id: string, data: Partial<PaymentLink>) {
+    async update(id: string, data: Partial<PaymentLink> & { applicationId: string }) {
       return apiClient.request<{ success: boolean; message: string }>(`/payment-links/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       });
     },
 
-    async delete(id: string) {
-      return apiClient.request<{ success: boolean; message: string }>(`/payment-links/${id}`, {
+    async delete(id: string, applicationId: string) {
+      return apiClient.request<{ success: boolean; message: string }>(`/payment-links/${id}?applicationId=${encodeURIComponent(applicationId)}`, {
         method: 'DELETE',
       });
     },
@@ -365,8 +373,9 @@ export const apiClient = {
 
   // Withdrawals
   withdrawals: {
-    async getAll(): Promise<Withdrawal[]> {
-      const res = await apiClient.request<{ success: boolean; withdrawals: Withdrawal[] }>('/withdrawals');
+    async getAll(applicationId?: string): Promise<Withdrawal[]> {
+      const query = applicationId ? `?applicationId=${encodeURIComponent(applicationId)}` : '';
+      const res = await apiClient.request<{ success: boolean; withdrawals: Withdrawal[] }>(`/withdrawals${query}`);
       return res.withdrawals;
     },
 
@@ -423,8 +432,8 @@ export const apiClient = {
       return res;
     },
 
-    async revokeKey(id: string) {
-      return apiClient.request<{ success: boolean; message: string }>(`/developer/keys/${id}`, {
+    async revokeKey(id: string, applicationId: string) {
+      return apiClient.request<{ success: boolean; message: string }>(`/developer/keys/${id}?applicationId=${encodeURIComponent(applicationId)}`, {
         method: 'DELETE',
       });
     },
@@ -497,9 +506,10 @@ export const apiClient = {
 
   // Checkout
   checkout: {
-    async initiate(data: any) {
-      return apiClient.request<{ success: boolean; reference: string; token: string; invoiceUrl: string; isSimulated: boolean }>('/checkout/initiate', {
+    async initiate(data: Record<string, unknown>, idempotencyKey: string) {
+      return apiClient.request<{ success: boolean; reference: string; token: string; invoiceUrl: string; status: string }>('/checkout/initiate', {
         method: 'POST',
+        headers: { 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify(data),
       });
     },

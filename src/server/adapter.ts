@@ -52,6 +52,9 @@ export async function handleApiRequest(webRequest: Request): Promise<Response> {
   webRequest.headers.forEach((val, key) => {
     req.headers[key.toLowerCase()] = val;
   });
+  if (bodyBuffer.length > 0 && !req.headers['content-length'] && !req.headers['transfer-encoding']) {
+    req.headers['content-length'] = String(bodyBuffer.length);
+  }
 
   // Provide body to the incoming message stream
   req.push(bodyBuffer);
@@ -64,6 +67,16 @@ export async function handleApiRequest(webRequest: Request): Promise<Response> {
     const chunks: Buffer[] = [];
 
     const res = new ServerResponse(req);
+    Object.defineProperty(res, 'statusCode', {
+      configurable: true,
+      get: () => statusCode,
+      set: (code: number) => { statusCode = code; },
+    });
+    Object.defineProperty(res, 'statusMessage', {
+      configurable: true,
+      get: () => statusMessage,
+      set: (message: string) => { statusMessage = message; },
+    });
 
     res.writeHead = function (
       code: number,
@@ -140,4 +153,3 @@ export async function handleApiRequest(webRequest: Request): Promise<Response> {
     }
   });
 }
-

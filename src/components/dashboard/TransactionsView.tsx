@@ -390,8 +390,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               <div><strong>Identifiant :</strong> <span style={{ fontFamily: 'monospace' }}>{selectedTx.id}</span></div>
               <div><strong>Référence PayDunya / PichFlow :</strong> <span style={{ fontFamily: 'monospace' }}>{selectedTx.reference || selectedTx.id}</span></div>
               <div><strong>Montant brut :</strong> {Number(selectedTx.amount).toLocaleString('fr-FR')} {selectedTx.currency || 'XOF'}</div>
-              <div><strong>Frais de transaction :</strong> {Number(selectedTx.fee || 0).toLocaleString('fr-FR')} {selectedTx.currency || 'XOF'}</div>
-              <div><strong>Montant net crédité :</strong> {Number(selectedTx.netAmount || selectedTx.amount).toLocaleString('fr-FR')} {selectedTx.currency || 'XOF'}</div>
+              <div><strong>Frais PayDunya :</strong> {selectedTx.feesConfirmed ? `${Number(selectedTx.providerFee || 0).toLocaleString('fr-FR')} ${selectedTx.currency || 'XOF'}` : 'Non confirmés par l’API'}</div>
+              <div><strong>Montant net :</strong> {selectedTx.feesConfirmed && selectedTx.netAmount !== null ? `${Number(selectedTx.netAmount).toLocaleString('fr-FR')} ${selectedTx.currency || 'XOF'}` : 'Non calculable faute de frais confirmés'}</div>
               <div><strong>Réseau & Fournisseur :</strong> {selectedTx.provider || selectedTx.paymentMethod || 'Mobile Money'}</div>
               <div><strong>Pays :</strong> {selectedTx.country || 'BJ'}</div>
               <div><strong>Téléphone client :</strong> {selectedTx.customerPhone || 'Non renseigné'}</div>

@@ -34,14 +34,29 @@ export function createApiApp() {
     });
   });
 
+  app.use('/api', (req, res, next) => {
+    const legacyPaymentRoute =
+      /^\/(?:webhooks\/saspay|payments(?:\/|$)|withdrawals(?:\/|$)|payouts(?:\/|$)|wallets\/transfer(?:\/|$)|v1\/payments(?:\/|$)|v1\/checkout-sessions(?:\/|$)|v1\/payouts(?:\/|$)|v1\/wallets\/(?:balances|rates|transfer)(?:\/|$)|v1\/transactions\/export(?:\/|$)|v1\/transactions\/[^/]+\/invoice(?:\/|$))/.test(req.path);
+    if (legacyPaymentRoute) {
+      res.status(410).json({
+        success: false,
+        error: 'Cette route de paiement n’est plus prise en charge. Utilisez le parcours PayDunya hébergé de PichFlow.',
+      });
+      return;
+    }
+    next();
+  });
+
   app.use('/api', apiRouter);
   app.use('/api', (_req, res) => {
     res.status(404).json({ success: false, error: 'Route API introuvable.' });
   });
 
-  app.post('/webhooks/saspay', (req, res, next) => {
-    req.url = '/webhooks/saspay';
-    apiRouter(req, res, next);
+  app.post('/webhooks/saspay', (_req, res) => {
+    res.status(410).json({
+      success: false,
+      error: 'Cette route de webhook n’est plus prise en charge.',
+    });
   });
 
   app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {

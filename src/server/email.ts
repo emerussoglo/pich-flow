@@ -106,7 +106,7 @@ async function getTransporter(): Promise<{ transport: Transporter; isFallback: b
     return { transport: primaryTransporter, isFallback: false };
   } catch (err: any) {
     primaryTransporter = null;
-    console.error(`[PichFlow Email] ❌ Échec de vérification SMTP (${host}:${port}) : ${err.message}`);
+    console.error(`[PichFlow Email] Échec de vérification SMTP (${host}:${port}, code: ${String(err.code || 'unknown').slice(0, 40)}).`);
     if (err.message && err.message.includes('535')) {
       throw new Error(
         `Identifiants Gmail refusés (535 Bad Credentials) pour "${user}". ` +
@@ -142,14 +142,15 @@ export async function sendEmail({
     });
 
     if (isFallback) {
-      console.log(`[PichFlow Email] [Test Mode] Email intercepté pour ${to} (${subject})`);
+      console.log('[PichFlow Email] [Test Mode] Email intercepté.');
     } else {
-      console.log(`[PichFlow Email] ✅ Email délivré avec succès via SMTP à ${to} (MessageId: ${info.messageId})`);
+      console.log('[PichFlow Email] Email délivré avec succès via SMTP.');
     }
 
     return { success: true, isFallback, messageId: info.messageId };
   } catch (error: any) {
-    console.error(`[PichFlow Email] ❌ Erreur lors de l'envoi de l'e-mail à ${to}:`, error.message);
+    const errorCode = typeof error?.code === 'string' ? error.code.slice(0, 40) : 'unknown';
+    console.error(`[PichFlow Email] Échec de livraison SMTP (code: ${errorCode}).`);
     throw error;
   }
 }
@@ -159,7 +160,7 @@ export async function sendEmail({
  */
 export async function sendVerificationCodeEmail(to: string, code: string, fullName?: string): Promise<boolean> {
   const name = fullName ? fullName.trim() : 'Cher créateur';
-  const subject = `Votre code de validation PichFlow : ${code}`;
+  const subject = 'Votre code de validation PichFlow';
   const text = `Bonjour ${name},\n\nVotre code de confirmation PichFlow est : ${code}\nCe code est valable pendant 15 minutes.\n\nSaisissez ce code sur la plateforme pour finaliser l'activation de votre compte et commencer à encaisser vos paiements.\n\nSi vous n'êtes pas à l'origine de cette demande, veuillez ignorer cet e-mail.\n\nL'équipe PichFlow — Infrastructure de paiement pour l'Afrique.`;
 
   const html = `
@@ -329,7 +330,7 @@ export async function sendLoginNotificationEmail(
 
 export async function sendPasswordResetEmail(to: string, code: string, fullName?: string): Promise<boolean> {
   const name = fullName ? fullName.trim() : 'Cher utilisateur';
-  const subject = `Réinitialisation de votre mot de passe PichFlow : ${code}`;
+  const subject = 'Réinitialisation de votre mot de passe PichFlow';
   const text = `Bonjour ${name},\n\nVous avez demandé la réinitialisation de votre mot de passe PichFlow.\nVotre code de réinitialisation est : ${code}\nCe code expire dans 15 minutes.\n\nSi vous n'avez pas demandé cette réinitialisation, veuillez ignorer ce message.\n\nL'équipe PichFlow.`;
 
   const html = `

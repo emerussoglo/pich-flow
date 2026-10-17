@@ -1,6 +1,7 @@
 import https from 'https';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../config/payments';
 import { getDb } from './db';
 
 dotenv.config();
@@ -8,6 +9,7 @@ dotenv.config();
 export interface CreateInvoiceParams {
   amount: number;
   description: string;
+  reference?: string;
   storeName?: string;
   returnUrl?: string;
   cancelUrl?: string;
@@ -29,43 +31,80 @@ export interface InvoiceResult {
 }
 
 export class PayDunyaService {
-  private masterKey: string;
-  private privateKey: string;
-  private publicKey: string;
-  private token: string;
-  private isTestMode: boolean;
+  private readonly masterKey: string;
+  private readonly privateKey: string;
+  private readonly token: string;
+  private readonly mode: 'sandbox' | 'live';
 
   constructor() {
-    const sanitizeKey = (envVal: string | undefined, defaultVal: string) => {
-      const trimmed = (envVal || '').trim();
-      if (!trimmed || trimmed.includes('*')) {
-        return defaultVal;
-      }
-      return trimmed;
-    };
+    this.masterKey = (process.env.PAYDUNYA_MASTER_KEY || '').trim();
+    this.privateKey = (process.env.PAYDUNYA_PRIVATE_KEY || '').trim();
+    this.token = (process.env.PAYDUNYA_TOKEN || '').trim();
+    const configuredMode = (process.env.PAYDUNYA_MODE || '').trim().toLowerCase();
+    this.mode = configuredMode === 'sandbox'
+      ? 'sandbox'
+      : configuredMode === 'live' || configuredMode === 'production'
+        ? 'live'
+        : 'sandbox';
+    this.configurationError = !['sandbox', 'live', 'production'].includes(configuredMode)
+      ? 'PAYDUNYA_MODE must be set to sandbox or live.'
+      : !this.masterKey || !this.privateKey || !this.token
+        ? 'PayDunya server credentials are incomplete.'
+        : '';
+  }
 
-    this.masterKey = sanitizeKey(process.env.PAYDUNYA_MASTER_KEY, '2e1fiYSi-lB47-tEsH-H2Eu-qLVho7Kt2XQJ');
-    this.privateKey = sanitizeKey(process.env.PAYDUNYA_PRIVATE_KEY, 'test_private_fbEBOy3wlMbDcCg2Zoj6WuVvSE3');
-    this.publicKey = sanitizeKey(process.env.PAYDUNYA_PUBLIC_KEY, 'test_public_bPcQT0OdANmmWrmLuJkpbrdOmgY');
-    this.token = sanitizeKey(process.env.PAYDUNYA_TOKEN, 'BK51ZoY7DwaDmbtSbNEE');
-    this.isTestMode = this.privateKey.includes('test_') || !process.env.NODE_ENV || process.env.NODE_ENV !== 'production';
+  private readonly configurationError: string;
+
+  public get isSandbox(): boolean {
+    return this.mode === 'sandbox';
+  }
+
+  public verifyCallbackHash(hash: string): boolean {
+    if (!this.masterKey || !/^[a-f0-9]{128}$/i.test(hash)) return false;
+    const expected = crypto.createHash('sha512').update(this.masterKey).digest();
+    const received = Buffer.from(hash, 'hex');
+    return received.length === expected.length && crypto.timingSafeEqual(received, expected);
   }
 
   public async createInvoice(params: CreateInvoiceParams): Promise<InvoiceResult> {
-    const reference = `TX-PF-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+    const reference = params.reference || `PF-${crypto.randomUUID()}`;
+
+    if (this.configurationError) {
+      return {
+        token: '',
+        invoiceUrl: '',
+        reference,
+        isSimulated: false,
+        status: 'failed',
+        error: this.configurationError,
+      };
+    }
+    if (!Number.isSafeInteger(params.amount) || params.amount < PAYDUNYA_MINIMUM_AMOUNT_XOF) {
+      return {
+        token: '',
+        invoiceUrl: '',
+        reference,
+        isSimulated: false,
+        status: 'failed',
+        error: `Le montant minimum accepté par PayDunya est de ${PAYDUNYA_MINIMUM_AMOUNT_XOF} XOF.`,
+      };
+    }
 
     const payload = JSON.stringify({
       invoice: {
         total_amount: params.amount,
         description: params.description,
+        customer: {
+          name: params.customerName,
+          email: params.customerEmail,
+          phone: params.customerPhone,
+        },
       },
       store: {
         name: params.storeName || 'PichFlow Merchant',
       },
       custom_data: {
         reference,
-        customer_email: params.customerEmail,
-        customer_phone: params.customerPhone,
       },
       actions: {
         cancel_url: params.cancelUrl || `${process.env.APP_URL || 'http://localhost:3000'}/checkout-demo?status=cancel`,
@@ -76,7 +115,13 @@ export class PayDunyaService {
 
     try {
       const result = await this.callPayDunyaApi('/checkout-invoice/create', payload);
-      if (result && result.response_code === '00' && result.token) {
+      if (
+        result &&
+        result.response_code === '00' &&
+        typeof result.token === 'string' &&
+        typeof result.response_text === 'string' &&
+        isPayDunyaInvoiceUrl(result.response_text)
+      ) {
         return {
           token: result.token,
           invoiceUrl: result.response_text,
@@ -89,7 +134,21 @@ export class PayDunyaService {
       }
 
       if (result && result.response_code && result.response_code !== '00') {
-        console.warn(`[PayDunya] Gateway error (${result.response_code}): ${result.response_text}`);
+        const responseCode = String(result.response_code).slice(0, 20);
+        let diagnostic = typeof result.response_text === 'string' ? result.response_text : '';
+        for (const sensitiveValue of [
+          this.masterKey,
+          this.privateKey,
+          this.token,
+          params.customerName || '',
+          params.customerEmail || '',
+          params.customerPhone || '',
+          reference,
+        ]) {
+          if (sensitiveValue) diagnostic = diagnostic.split(sensitiveValue).join('[redacted]');
+        }
+        diagnostic = diagnostic.replace(/[\r\n\t]/g, ' ').slice(0, 160);
+        console.error(`[PayDunya] Invoice creation rejected (code ${responseCode}): ${diagnostic || 'No provider detail returned.'}`);
         return {
           token: '',
           invoiceUrl: '',
@@ -97,23 +156,32 @@ export class PayDunyaService {
           isSimulated: false,
           status: 'failed',
           gatewayResponseCode: result.response_code,
-          gatewayResponseText: result.response_text,
-          error: `Passerelle PayDunya (${result.response_code}): ${result.response_text}`,
+          gatewayResponseText: 'La passerelle a refusé la création de facture.',
+          error: `La passerelle PayDunya a refusé la création de facture (code ${String(result.response_code).slice(0, 20)}).`,
         };
       }
-    } catch (err: any) {
-      console.warn('[PayDunya] Gateway network or call error:', err.message);
+    } catch (err) {
+      console.error('[PayDunya] Invoice creation request failed:', errorName(err));
       return {
         token: '',
         invoiceUrl: '',
         reference,
         isSimulated: false,
         status: 'failed',
-        error: `Impossible de contacter l'API PayDunya: ${err.message}`,
+        error: "Impossible de contacter l'API PayDunya. Réessayez dans quelques instants.",
       };
     }
 
-    // Default error if unexpected response
+    const unexpectedCode = typeof result?.response_code === 'string' ? result.response_code.slice(0, 20) : 'missing';
+    let invoiceHost = 'invalid';
+    if (typeof result?.response_text === 'string') {
+      try {
+        invoiceHost = new URL(result.response_text).hostname;
+      } catch {
+        invoiceHost = 'not-a-url';
+      }
+    }
+    console.error(`[PayDunya] Unexpected invoice response (code ${unexpectedCode}, token present: ${Boolean(result?.token)}, invoice host: ${invoiceHost}).`);
     return {
       token: '',
       invoiceUrl: '',
@@ -126,7 +194,7 @@ export class PayDunyaService {
 
   private callPayDunyaApi(endpoint: string, data: string): Promise<any> {
     return new Promise((resolve, reject) => {
-      const baseUrl = this.isTestMode
+      const baseUrl = this.mode === 'sandbox'
         ? 'https://app.paydunya.com/sandbox-api/v1'
         : 'https://app.paydunya.com/api/v1';
 
@@ -143,17 +211,21 @@ export class PayDunyaService {
             'PAYDUNYA-TOKEN': this.token,
             'Content-Length': Buffer.byteLength(data),
           },
-          timeout: 7000,
+          timeout: 12000,
         },
         (res) => {
           let body = '';
-          res.on('data', (c) => (body += c));
+          res.on('data', (chunk) => {
+            body += chunk;
+            if (body.length > 1024 * 1024) req.destroy(new Error('PayDunya response exceeded size limit'));
+          });
           res.on('end', () => {
             try {
               const parsed = JSON.parse(body);
-              resolve(parsed);
+              if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) resolve(parsed);
+              else reject(new Error(`PayDunya HTTP ${res.statusCode || 'error'}`));
             } catch {
-              reject(new Error(`Invalid JSON: ${body}`));
+              reject(new Error('PayDunya returned an invalid JSON response'));
             }
           });
         }
@@ -171,12 +243,16 @@ export class PayDunyaService {
   }
 
   public async confirmInvoice(token: string): Promise<{ status: 'completed' | 'pending' | 'canceled' | 'failed'; data?: any; error?: string }> {
+    if (this.configurationError) return { status: 'pending', error: this.configurationError };
+    if (!token || !/^[a-zA-Z0-9_-]{1,160}$/.test(token)) {
+      return { status: 'pending', error: 'Jeton de facture invalide.' };
+    }
     return new Promise((resolve) => {
-      const baseUrl = this.isTestMode
+      const baseUrl = this.mode === 'sandbox'
         ? 'https://app.paydunya.com/sandbox-api/v1'
         : 'https://app.paydunya.com/api/v1';
 
-      const url = new URL(`${baseUrl}/checkout-invoice/confirm/${token}`);
+      const url = new URL(`${baseUrl}/checkout-invoice/confirm/${encodeURIComponent(token)}`);
 
       const req = https.request(
         url,
@@ -195,21 +271,25 @@ export class PayDunyaService {
           res.on('end', () => {
             try {
               const parsed = JSON.parse(body);
-              if (parsed.status === 'completed' || (parsed.response_code === '00' && parsed.status === 'completed')) {
+              if (parsed.response_code !== '00' || !parsed.invoice || parsed.invoice.token !== token) {
+                resolve({ status: 'pending', error: 'La réponse de confirmation PayDunya est incohérente.' });
+              } else if (String(parsed.status).toLowerCase() === 'completed') {
                 resolve({ status: 'completed', data: parsed });
-              } else if (parsed.status === 'canceled' || parsed.status === 'failed') {
-                resolve({ status: parsed.status, data: parsed });
+              } else if (String(parsed.status).toLowerCase() === 'cancelled' || String(parsed.status).toLowerCase() === 'canceled') {
+                resolve({ status: 'canceled', data: parsed });
+              } else if (String(parsed.status).toLowerCase() === 'failed') {
+                resolve({ status: 'failed', data: parsed });
               } else {
                 resolve({ status: 'pending', data: parsed });
               }
             } catch {
-              resolve({ status: 'pending', error: 'Impossible de parser la réponse PayDunya' });
+              resolve({ status: 'pending', error: 'La réponse de confirmation PayDunya est invalide.' });
             }
           });
         }
       );
 
-      req.on('error', (err) => resolve({ status: 'pending', error: err.message }));
+      req.on('error', (err) => resolve({ status: 'pending', error: errorName(err) }));
       req.on('timeout', () => {
         req.destroy();
         resolve({ status: 'pending', error: 'Timeout de validation PayDunya' });
@@ -217,6 +297,19 @@ export class PayDunyaService {
       req.end();
     });
   }
+}
+
+function isPayDunyaInvoiceUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname === 'app.paydunya.com';
+  } catch {
+    return false;
+  }
+}
+
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : 'unknown';
 }
 
 export const paydunyaService = new PayDunyaService();

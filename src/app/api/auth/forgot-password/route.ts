@@ -35,16 +35,26 @@ export async function POST(request: NextRequest) {
 
     const user = userRes.rows[0];
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+    const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const now = new Date().toISOString();
 
     await db.execute({
-      sql: 'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
-      args: [resetToken, expiresAt, user.id],
+      sql: "DELETE FROM email_verification_codes WHERE email = ? AND substr(id, 1, 5) = 'rset_'",
+      args: [cleanEmail],
+    });
+    await db.execute({
+      sql: `INSERT INTO email_verification_codes (id, user_id, email, code, expires_at, attempts, created_at)
+            VALUES (?, ?, ?, ?, ?, 0, ?)`,
+      args: [`rset_${crypto.randomUUID()}`, user.id, cleanEmail, resetTokenHash, expiresAt, now],
     });
 
-    sendPasswordResetEmail(cleanEmail, resetToken, String(user.full_name)).catch((err) =>
-      console.warn('[PichFlow Auth] Reset email error:', err.message)
-    );
+    try {
+      const sent = await sendPasswordResetEmail(cleanEmail, resetToken, String(user.full_name));
+      if (!sent) console.warn('[PichFlow Auth] Password reset email delivery failed.');
+    } catch {
+      console.warn('[PichFlow Auth] Password reset email delivery failed.');
+    }
 
     return NextResponse.json({
       success: true,
@@ -54,4 +64,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

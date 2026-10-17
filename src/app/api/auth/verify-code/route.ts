@@ -77,19 +77,6 @@ export async function POST(request: NextRequest) {
     });
     const user = userRes.rows[0];
 
-    // Initialize baseline empty wallet for the user's primary currency (strictly 0 balance)
-    const walletCheck = await db.execute({
-      sql: 'SELECT id FROM wallets WHERE user_id = ?',
-      args: [userId],
-    });
-    if (walletCheck.rows.length === 0) {
-      await db.execute({
-        sql: `INSERT INTO wallets (id, user_id, currency, symbol, balance, pending_balance, reserved_balance, country_code, is_default, created_at, updated_at)
-              VALUES (?, ?, ?, ?, 0, 0, 0, ?, 1, ?, ?)`,
-        args: [`wal_xof_${Date.now()}`, userId, 'XOF', 'FCFA', String(user.country || 'BJ'), now, now],
-      });
-    }
-
     // Create 15-hour session
     const token = await createSession(userId, request);
 

@@ -48,10 +48,11 @@ export interface Transaction {
   country: string;
   provider: string; // 'MTN MoMo' | 'Moov Money' | 'Celtiis Cash' | 'Wave' | 'Carte'
   amount: number;
-  providerFee: number;
+  providerFee: number | null;
   platformFee: number;
   customerFee: number;
-  netAmount: number;
+  netAmount: number | null;
+  feesConfirmed?: boolean;
   currency: string;
   status: PaymentStatus;
   createdAt: string;
@@ -105,6 +106,14 @@ export interface Customer {
   currency: string;
   lastTransactionAt: string;
   applicationId?: string;
+  lastTransaction?: {
+    reference: string;
+    amount: number;
+    currency: string;
+    status: string;
+    createdAt: string;
+    paymentLinkTitle?: string;
+  };
 }
 
 export interface Wallet {

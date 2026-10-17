@@ -24,18 +24,21 @@ export async function PUT(
 
     const { name, phone, country } = body;
     const db = getDb();
-    await db.execute({
-      sql: `UPDATE customers SET name = COALESCE(?, name), phone = COALESCE(?, phone), country = COALESCE(?, country), updated_at = ?
-            WHERE id = ? AND user_id = ?`,
+    const result = await db.execute({
+      sql: `UPDATE customers SET name = COALESCE(?, name), phone = COALESCE(?, phone), country = COALESCE(?, country)
+            WHERE id = ? AND user_id = ? AND application_id = ?`,
       args: [
         name !== undefined ? name : null,
         phone !== undefined ? phone : null,
         country !== undefined ? country : null,
-        new Date().toISOString(),
         id,
         user.id,
+        user.activeApplicationId || '',
       ],
     });
+    if (Number(result.rowsAffected) === 0) {
+      return NextResponse.json({ success: false, error: 'Client introuvable.' }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true, message: 'Client mis à jour.' });
   } catch (err: any) {
@@ -55,14 +58,16 @@ export async function DELETE(
 
     const { id } = await context.params;
     const db = getDb();
-    await db.execute({
-      sql: 'DELETE FROM customers WHERE id = ? AND user_id = ?',
-      args: [id, user.id],
+    const result = await db.execute({
+      sql: 'DELETE FROM customers WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [id, user.id, user.activeApplicationId || ''],
     });
+    if (Number(result.rowsAffected) === 0) {
+      return NextResponse.json({ success: false, error: 'Client introuvable.' }, { status: 404 });
+    }
 
     return NextResponse.json({ success: true, message: 'Client supprimé.' });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

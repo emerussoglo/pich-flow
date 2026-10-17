@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getDb } from '@/src/server/db';
-import { getAuthUserFromRequest } from '@/src/server/auth';
+import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 
 export const runtime = 'nodejs';
 
@@ -12,20 +12,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Non authentifié.' }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const applicationId = searchParams.get('applicationId') || searchParams.get('appId') || '';
+    if (!await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     const db = getDb();
     const result = await db.execute({
-      sql: 'SELECT * FROM wallets WHERE user_id = ? ORDER BY is_default DESC, created_at ASC',
-      args: [user.id],
+      sql: 'SELECT * FROM wallets WHERE user_id = ? AND application_id = ? ORDER BY is_default DESC, created_at ASC',
+      args: [user.id, applicationId],
     });
 
     // If user has zero wallets, initialize default XOF wallet
     if (result.rows.length === 0) {
       const now = new Date().toISOString();
-      const defaultId = `wal_xof_${Date.now()}`;
+      const defaultId = `wal_xof_${crypto.randomUUID()}`;
       await db.execute({
-        sql: `INSERT INTO wallets (id, user_id, currency, symbol, balance, pending_balance, reserved_balance, country_code, is_default, created_at, updated_at)
-              VALUES (?, ?, 'XOF', 'FCFA', 0, 0, 0, ?, 1, ?, ?)`,
-        args: [defaultId, user.id, user.country || 'BJ', now, now],
+        sql: `INSERT INTO wallets (id, user_id, application_id, currency, symbol, balance, pending_balance, reserved_balance, country_code, is_default, created_at, updated_at)
+              VALUES (?, ?, ?, 'XOF', 'FCFA', 0, 0, 0, ?, 1, ?, ?)`,
+        args: [defaultId, user.id, applicationId, user.country || 'BJ', now, now],
       });
 
       return NextResponse.json({
@@ -76,28 +81,31 @@ export async function POST(request: NextRequest) {
       body = {};
     }
 
-    const { countryCode, currency, symbol } = body;
+    const { countryCode, currency, symbol, applicationId } = body;
     if (!countryCode || !currency) {
       return NextResponse.json({ success: false, error: 'Code pays et devise requis.' }, { status: 400 });
+    }
+    if (typeof applicationId !== 'string' || !await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
     }
 
     const db = getDb();
     const existing = await db.execute({
-      sql: 'SELECT id FROM wallets WHERE user_id = ? AND currency = ? AND country_code = ?',
-      args: [user.id, currency, countryCode],
+      sql: 'SELECT id FROM wallets WHERE user_id = ? AND application_id = ? AND currency = ? AND country_code = ?',
+      args: [user.id, applicationId, currency, countryCode],
     });
 
     if (existing.rows.length > 0) {
       return NextResponse.json({ success: false, error: 'Un wallet pour ce pays et cette devise existe déjà.' }, { status: 400 });
     }
 
-    const id = `wal_${currency.toLowerCase()}_${Date.now()}`;
+    const id = `wal_${currency.toLowerCase()}_${crypto.randomUUID()}`;
     const now = new Date().toISOString();
 
     await db.execute({
-      sql: `INSERT INTO wallets (id, user_id, currency, symbol, balance, pending_balance, reserved_balance, country_code, is_default, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 0, 0, 0, ?, 0, ?, ?)`,
-      args: [id, user.id, currency, symbol || currency, countryCode, now, now],
+      sql: `INSERT INTO wallets (id, user_id, application_id, currency, symbol, balance, pending_balance, reserved_balance, country_code, is_default, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, 0, ?, ?)`,
+      args: [id, user.id, applicationId, currency, symbol || currency, countryCode, now, now],
     });
 
     return NextResponse.json({
@@ -117,4 +125,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

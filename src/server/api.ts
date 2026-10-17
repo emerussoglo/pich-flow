@@ -10,8 +10,10 @@ import {
   createSession,
   destroySession,
   AuthenticatedRequest,
+  userOwnsApplication,
 } from './auth';
 import { paydunyaService, dispatchMerchantWebhook } from './paydunya';
+import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../config/payments';
 import { sasPayService, formatDecimalAmount } from './saspay';
 import {
   sendVerificationCodeEmail,
@@ -107,7 +109,7 @@ apiRouter.post('/auth/register', async (req: Request, res: Response) => {
       ],
     });
 
-    console.log(`[PICHFLOW AUTH] Code de confirmation généré et envoyé à : ${cleanEmail}`);
+    console.log('[PICHFLOW AUTH] Code de confirmation généré.');
 
     let emailSent = false;
     try {
@@ -311,7 +313,7 @@ apiRouter.post('/auth/resend-code', async (req: Request, res: Response) => {
       ],
     });
 
-    console.log(`[PICHFLOW AUTH] Renvoi du code de confirmation pour : ${cleanEmail}`);
+    console.log('[PICHFLOW AUTH] Code de confirmation renvoyé.');
 
     let emailSent = false;
     try {
@@ -388,7 +390,7 @@ apiRouter.post('/auth/login', async (req: Request, res: Response) => {
     const displayIp = cleanIp === '::1' || cleanIp === '127.0.0.1' ? '127.0.0.1 (Localhost)' : cleanIp;
     const userAgent = (req.headers['user-agent'] as string) || 'Navigateur Web';
 
-    console.log(`[PichFlow Auth] 🛡️ Envoi de l'alerte de connexion pour ${cleanEmail} (IP: ${displayIp})`);
+    console.log('[PichFlow Auth] Envoi de l’alerte de connexion.');
     sendLoginNotificationEmail(cleanEmail, String(user.full_name), {
       ip: displayIp,
       userAgent,
@@ -889,7 +891,7 @@ apiRouter.post('/wallets', requireAuth, async (req: AuthenticatedRequest, res: R
 // Transfer between user wallets (atomic & authenticated)
 apiRouter.post('/wallets/transfer', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { fromWalletId, toWalletId, amount } = req.body;
+    const { fromWalletId, toWalletId, amount, applicationId } = req.body;
     const transferAmount = Number(amount);
 
     if (!fromWalletId || !toWalletId || isNaN(transferAmount) || transferAmount <= 0) {
@@ -901,13 +903,17 @@ apiRouter.post('/wallets/transfer', requireAuth, async (req: AuthenticatedReques
       res.status(400).json({ success: false, error: 'Les portefeuilles source et cible doivent être différents.' });
       return;
     }
+    if (typeof applicationId !== 'string' || !await userOwnsApplication(req.user!.id, applicationId)) {
+      res.status(404).json({ success: false, error: 'Application introuvable.' });
+      return;
+    }
 
     const db = getDb();
 
     // Verify source wallet and ownership
     const fromRes = await db.execute({
-      sql: 'SELECT * FROM wallets WHERE id = ? AND user_id = ?',
-      args: [fromWalletId, req.user!.id],
+      sql: 'SELECT * FROM wallets WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [fromWalletId, req.user!.id, applicationId],
     });
     if (fromRes.rows.length === 0) {
       res.status(404).json({ success: false, error: 'Portefeuille source introuvable ou non autorisé.' });
@@ -915,8 +921,8 @@ apiRouter.post('/wallets/transfer', requireAuth, async (req: AuthenticatedReques
     }
 
     const toRes = await db.execute({
-      sql: 'SELECT * FROM wallets WHERE id = ? AND user_id = ?',
-      args: [toWalletId, req.user!.id],
+      sql: 'SELECT * FROM wallets WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [toWalletId, req.user!.id, applicationId],
     });
     if (toRes.rows.length === 0) {
       res.status(404).json({ success: false, error: 'Portefeuille cible introuvable ou non autorisé.' });
@@ -2345,640 +2351,452 @@ async function settleSuccessfulPayment(params: {
 }): Promise<void> {
   const db = getDb();
   const now = new Date().toISOString();
-
-  // Check if transaction is already recorded and successful
-  const existingTx = await db.execute({
-    sql: `SELECT id, status FROM transactions WHERE reference = ? OR external_id = ?`,
-    args: [params.reference, params.externalId || ''],
-  });
-
-  if (existingTx.rows.length > 0 && String(existingTx.rows[0].status) === 'success') {
-    return; // Already settled, strictly idempotent
-  }
-
   const baseAmount = Number(params.amount);
-  const platformFee = params.platformFee !== undefined ? Number(params.platformFee) : Math.round(baseAmount * 0.015);
-  const providerFee = params.providerFee !== undefined ? Number(params.providerFee) : Math.round(baseAmount * 0.01);
-  const netAmount = params.netAmount !== undefined ? Number(params.netAmount) : baseAmount - platformFee;
-
-  let userId = params.userId || '';
-  let applicationId = params.applicationId || '';
-
-  if (!userId && params.paymentLinkId) {
-    const linkRes = await db.execute({
-      sql: 'SELECT user_id, application_id FROM payment_links WHERE id = ?',
-      args: [params.paymentLinkId],
-    });
-    if (linkRes.rows.length > 0) {
-      userId = String(linkRes.rows[0].user_id);
-      if (!applicationId) applicationId = String(linkRes.rows[0].application_id || '');
-    }
-  }
-
-  if (!userId && applicationId) {
-    const appRes = await db.execute({
-      sql: 'SELECT user_id FROM applications WHERE id = ?',
-      args: [applicationId],
-    });
-    if (appRes.rows.length > 0) {
-      userId = String(appRes.rows[0].user_id);
-    }
-  }
-
-  if (!userId) {
-    const defaultUser = await db.execute('SELECT id FROM users LIMIT 1');
-    userId = defaultUser.rows.length > 0 ? String(defaultUser.rows[0].id) : 'usr_merchant_default';
-  }
-
-  if (!applicationId) {
-    const userApp = await db.execute({
-      sql: 'SELECT id FROM applications WHERE user_id = ? LIMIT 1',
-      args: [userId],
-    });
-    applicationId = userApp.rows.length > 0 ? String(userApp.rows[0].id) : 'app_default';
-  }
-
-  const txId = `tx_${Date.now()}`;
-  const custEmail = (params.customerEmail || `client_${params.customerPhone || txId}@pichflow.com`).toLowerCase().trim();
-  const custName = (params.customerName || 'Client SasPay').trim();
+  if (!Number.isSafeInteger(baseAmount) || baseAmount <= 0) throw new Error('Verified payment amount is invalid.');
+  const transaction = await db.transaction('write');
+  let shouldDispatch = false;
+  let userId = '';
+  let applicationId = '';
+  let txId = '';
+  let custEmail = '';
+  let custName = '';
   const custPhone = (params.customerPhone || '').trim();
-
-  // 1. Insert or update transaction record
-  if (existingTx.rows.length > 0) {
-    await db.execute({
-      sql: `UPDATE transactions SET 
-              status = 'success', 
-              external_id = COALESCE(?, external_id),
-              net_amount = ?, 
-              provider_fee = ?,
-              platform_fee = ?,
-              updated_at = ? 
-            WHERE id = ?`,
-      args: [params.externalId || null, netAmount, providerFee, platformFee, now, String(existingTx.rows[0].id)],
+  try {
+    const sessionRes = await transaction.execute({
+      sql: 'SELECT * FROM checkout_sessions WHERE reference = ?',
+      args: [params.reference],
     });
-  } else {
-    await db.execute({
-      sql: `INSERT INTO transactions (
-              id, user_id, application_id, reference, external_id, saspay_id,
-              customer_name, customer_email, customer_phone, country, provider, 
-              amount, provider_fee, platform_fee, customer_fee, net_amount, 
-              currency, status, description, payment_method, metadata, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'saspay', ?, ?, ?, 0, ?, ?, 'success', ?, ?, null, ?, ?)`,
+    if (sessionRes.rows.length === 0) throw new Error('Checkout session is missing.');
+    const session = sessionRes.rows[0];
+    if (String(session.status) === 'success') {
+      await transaction.commit();
+      return;
+    }
+    if (
+      Number(session.amount) !== baseAmount ||
+      String(session.currency) !== (params.currency || 'XOF') ||
+      (params.externalId && String(session.paydunya_token || '') !== params.externalId)
+    ) throw new Error('Verified payment does not match its checkout session.');
+
+    userId = String(session.user_id || params.userId || '');
+    applicationId = String(session.application_id || params.applicationId || '');
+    if (!userId || !applicationId) throw new Error('Checkout ownership is missing.');
+    const appRes = await transaction.execute({
+      sql: 'SELECT id FROM applications WHERE id = ? AND user_id = ?',
+      args: [applicationId, userId],
+    });
+    if (appRes.rows.length === 0) throw new Error('Checkout application ownership does not match.');
+
+    const transactionRes = await transaction.execute({
+      sql: 'SELECT id, status FROM transactions WHERE reference = ? AND user_id = ? AND application_id = ?',
+      args: [params.reference, userId, applicationId],
+    });
+    if (transactionRes.rows.length === 0) throw new Error('Pending transaction is missing.');
+    const existingTransaction = transactionRes.rows[0];
+    if (String(existingTransaction.status) === 'success' || String(existingTransaction.status) === 'completed') {
+      await transaction.commit();
+      return;
+    }
+    const updated = await transaction.execute({
+      sql: `UPDATE transactions SET status = 'success', external_id = ?, provider = 'PayDunya',
+              provider_fee = 0, platform_fee = 0, net_amount = 0, fees_confirmed = 0,
+              metadata = ?, updated_at = ?
+            WHERE id = ? AND status = 'pending'`,
       args: [
-        txId,
-        userId,
-        applicationId,
-        params.reference,
-        params.externalId || `SAS-${txId}`,
-        params.externalId || `SAS-${txId}`,
-        custName,
-        custEmail,
-        custPhone,
-        params.country || 'BJ',
-        baseAmount,
-        providerFee,
-        platformFee,
-        netAmount,
-        params.currency || 'XOF',
-        `Paiement commande ${params.reference}`,
-        params.paymentMethod || 'Mobile Money',
+        params.externalId || null,
+        JSON.stringify({ providerFeesConfirmed: false, netAmountAvailable: false }),
         now,
-        now,
+        existingTransaction.id,
       ],
     });
+    if (Number(updated.rowsAffected) !== 1) {
+      await transaction.commit();
+      return;
+    }
+
+    txId = String(existingTransaction.id);
+    custEmail = String(session.customer_email || params.customerEmail || '').toLowerCase().trim();
+    custName = String(session.customer_name || params.customerName || '').trim();
+    if (!custEmail || !custName) throw new Error('Checkout customer data is missing.');
+    await transaction.execute({
+      sql: `UPDATE checkout_sessions SET status = 'success', updated_at = ?
+            WHERE reference = ? AND status = 'pending'`,
+      args: [now, params.reference],
+    });
+
+    const existingCustomer = await transaction.execute({
+      sql: 'SELECT id FROM customers WHERE user_id = ? AND application_id = ? AND lower(email) = ? LIMIT 1',
+      args: [userId, applicationId, custEmail],
+    });
+    if (existingCustomer.rows.length > 0) {
+      await transaction.execute({
+        sql: `UPDATE customers SET payment_count = payment_count + 1,
+                total_spent = total_spent + ?, last_transaction_at = ?,
+                phone = COALESCE(NULLIF(phone, ''), ?), name = ?
+              WHERE id = ? AND user_id = ? AND application_id = ?`,
+        args: [baseAmount, now, custPhone, custName, existingCustomer.rows[0].id, userId, applicationId],
+      });
+    } else {
+      await transaction.execute({
+        sql: `INSERT INTO customers (
+                id, user_id, application_id, name, email, phone, country,
+                payment_count, total_spent, currency, last_transaction_at, created_at
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
+        args: [
+          `cust_${crypto.randomUUID()}`, userId, applicationId, custName, custEmail,
+          custPhone, params.country || 'BJ', baseAmount, params.currency || 'XOF', now, now,
+        ],
+      });
+    }
+    if (session.payment_link_id) {
+      await transaction.execute({
+        sql: 'UPDATE payment_links SET usage_count = usage_count + 1 WHERE id = ? AND user_id = ? AND application_id = ?',
+        args: [session.payment_link_id, userId, applicationId],
+      });
+    }
+    await transaction.commit();
+    shouldDispatch = true;
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
+  } finally {
+    transaction.close();
   }
 
-  // 2. Customer record management (Strictly isolated by application_id and user_id)
-  const existingCust = await db.execute({
-    sql: 'SELECT id, payment_count, total_spent FROM customers WHERE user_id = ? AND application_id = ? AND email = ?',
-    args: [userId, applicationId, custEmail],
-  });
-
-  if (existingCust.rows.length > 0) {
-    await db.execute({
-      sql: `UPDATE customers SET 
-              payment_count = payment_count + 1, 
-              total_spent = total_spent + ?, 
-              last_transaction_at = ?,
-              phone = COALESCE(NULLIF(phone, ''), ?),
-              name = COALESCE(NULLIF(name, ''), ?)
-            WHERE id = ?`,
-      args: [baseAmount, now, custPhone, custName, existingCust.rows[0].id],
-    });
-  } else {
-    await db.execute({
-      sql: `INSERT INTO customers (
-              id, user_id, application_id, name, email, phone, country, 
-              payment_count, total_spent, currency, last_transaction_at, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`,
-      args: [
-        `cust_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
-        userId,
-        applicationId,
-        custName,
-        custEmail,
-        custPhone,
-        params.country || 'BJ',
-        baseAmount,
-        params.currency || 'XOF',
-        now,
-        now,
-      ],
+  if (shouldDispatch) {
+    await dispatchMerchantWebhook(userId, applicationId, 'payment.success', {
+      transactionId: txId,
+      reference: params.reference,
+      externalId: params.externalId,
+      amount: baseAmount,
+      currency: params.currency || 'XOF',
+      providerFeesConfirmed: false,
+      netAmount: null,
+      status: 'success',
+      paymentMethod: 'PayDunya checkout',
+      customerName: custName,
+      customerEmail: custEmail,
+      customerPhone: custPhone,
     });
   }
-
-  // 3. Credit merchant wallet
-  await db.execute({
-    sql: 'UPDATE wallets SET balance = balance + ?, updated_at = ? WHERE user_id = ? AND currency = ?',
-    args: [netAmount, now, userId, params.currency || 'XOF'],
-  });
-
-  // 4. Update payment link usage count if link associated
-  if (params.paymentLinkId) {
-    await db.execute({
-      sql: 'UPDATE payment_links SET usage_count = usage_count + 1 WHERE id = ?',
-      args: [params.paymentLinkId],
-    });
-  }
-
-  // 5. Update checkout session status
-  await db.execute({
-    sql: `UPDATE checkout_sessions SET status = 'success', updated_at = ? WHERE reference = ?`,
-    args: [now, params.reference],
-  });
-
-  // 6. Dispatch webhook to merchant
-  await dispatchMerchantWebhook(userId, applicationId, 'payment.success', {
-    transactionId: txId,
-    reference: params.reference,
-    externalId: params.externalId,
-    amount: baseAmount,
-    currency: params.currency || 'XOF',
-    netAmount,
-    status: 'success',
-    paymentMethod: params.paymentMethod || 'Mobile Money',
-    customerName: custName,
-    customerEmail: custEmail,
-    customerPhone: custPhone,
-  });
 }
 
 // ==========================================
-// 9. CHECKOUT & PAYMENT ENGINE (SASPAY REST)
+// 9. CHECKOUT & PAYMENT ENGINE (PAYDUNYA)
 // ==========================================
 
-// Initiate checkout (Card or Mobile Money via SasPay)
 apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
   try {
     const {
-      amount,
-      currency = 'XOF',
-      description,
-      customerName = 'Client',
-      customerEmail,
-      customerPhone = '',
-      paymentMethod,
-      network: explicitNetwork,
-      country = 'BJ',
       paymentLinkId,
-      clientFeeEnabled,
-      feeRate,
-      otp,
-    } = req.body;
-
-    if (!amount || Number(amount) <= 0) {
-      res.status(400).json({ success: false, error: 'Montant invalide.' });
+      paymentLinkSlug,
+      slug,
+      amount: requestedAmount,
+      firstName,
+      lastName,
+      customerName,
+      customerEmail,
+      customerPhone,
+    } = req.body || {};
+    const db = getDb();
+    const now = new Date().toISOString();
+    const linkSelector = String(paymentLinkId || paymentLinkSlug || slug || '').trim();
+    if (!linkSelector) {
+      res.status(400).json({ success: false, error: 'Un lien de paiement PichFlow valide est requis.' });
+      return;
+    }
+    const linkResult = await db.execute({
+      sql: `SELECT pl.*, a.name AS app_name
+            FROM payment_links pl
+            JOIN applications a ON a.id = pl.application_id AND a.user_id = pl.user_id
+            WHERE (pl.id = ? OR pl.slug = ?) AND pl.status = 'active'`,
+      args: [linkSelector, linkSelector],
+    });
+    if (linkResult.rows.length === 0) {
+      res.status(404).json({ success: false, error: 'Lien de paiement introuvable ou inactif.' });
+      return;
+    }
+    const link = linkResult.rows[0];
+    const usageLimit = link.usage_limit === null ? null : Number(link.usage_limit);
+    if (usageLimit !== null && Number(link.usage_count || 0) >= usageLimit) {
+      res.status(410).json({ success: false, error: 'Ce lien a atteint sa limite de paiements.' });
       return;
     }
 
-    const baseAmount = Number(amount);
-    let feeAmount = 0;
-    const isFeePassedToClient = Boolean(clientFeeEnabled);
-    const parsedFeeRate = feeRate ? Number(feeRate) : 0;
-
-    if (isFeePassedToClient && parsedFeeRate > 0) {
-      feeAmount = Math.round(baseAmount * (parsedFeeRate / 100));
+    const cleanFirstName = String(firstName || '').trim();
+    const cleanLastName = String(lastName || '').trim();
+    const cleanCustomerName = `${cleanFirstName} ${cleanLastName}`.trim() || String(customerName || '').trim();
+    const cleanEmail = String(customerEmail || '').trim().toLowerCase();
+    const cleanPhone = String(customerPhone || '').trim();
+    if (!cleanCustomerName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) || cleanPhone.replace(/\D/g, '').length < 7) {
+      res.status(400).json({ success: false, error: 'Prénom, nom, adresse e-mail valide et numéro de téléphone sont requis.' });
+      return;
     }
 
-    const totalToCharge = baseAmount + feeAmount;
-    const decimalAmount = formatDecimalAmount(totalToCharge);
-    const db = getDb();
-    const reference = `TX-PF-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
-    const now = new Date().toISOString();
-
-    // Resolve payment link if ID or slug provided
-    let resolvedLinkId: string | null = paymentLinkId || null;
-    let resolvedAppId: string | null = null;
-    let resolvedUserId: string | null = null;
-
-    if (resolvedLinkId) {
-      const linkCheck = await db.execute({
-        sql: 'SELECT id, user_id, application_id FROM payment_links WHERE id = ?',
-        args: [resolvedLinkId],
+    const isFixedAmount = Boolean(link.is_fixed_amount);
+    const amount = isFixedAmount ? Number(link.amount) : Number(requestedAmount);
+    if (!Number.isSafeInteger(amount) || amount < PAYDUNYA_MINIMUM_AMOUNT_XOF) {
+      res.status(400).json({
+        success: false,
+        error: `Le montant doit être un montant XOF entier d’au moins ${PAYDUNYA_MINIMUM_AMOUNT_XOF}.`,
       });
-      if (linkCheck.rows.length > 0) {
-        resolvedUserId = String(linkCheck.rows[0].user_id);
-        resolvedAppId = String(linkCheck.rows[0].application_id);
-      }
-    } else if (req.body.paymentLinkSlug || req.body.slug) {
-      const slugVal = String(req.body.paymentLinkSlug || req.body.slug).trim();
-      const linkCheck = await db.execute({
-        sql: 'SELECT id, user_id, application_id FROM payment_links WHERE slug = ?',
-        args: [slugVal],
-      });
-      if (linkCheck.rows.length > 0) {
-        resolvedLinkId = String(linkCheck.rows[0].id);
-        resolvedUserId = String(linkCheck.rows[0].user_id);
-        resolvedAppId = String(linkCheck.rows[0].application_id);
-      }
+      return;
+    }
+    const currency = String(link.currency || 'XOF').toUpperCase();
+    if (currency !== 'XOF' || String(link.country || 'BJ').toUpperCase() !== 'BJ') {
+      res.status(400).json({ success: false, error: 'Ce lien ne correspond pas à la configuration PayDunya actuellement vérifiée (XOF, Bénin).' });
+      return;
     }
 
-    const cleanEmail = (customerEmail || `client_${customerPhone.replace(/[^0-9]/g, '') || Date.now()}@pichflow.com`).toLowerCase().trim();
-    const cleanPhone = (customerPhone || '').trim();
-    const resolvedNetwork = explicitNetwork || resolveSasPayNetwork(paymentMethod, country);
-    const { first_name, last_name } = splitCustomerName(customerName);
-
-    // Idempotency key for financial safety
-    const idempotencyKey = crypto.randomUUID();
-
-    let saspayId = '';
-    let checkoutUrl = '';
-    let isPushDirect = false;
-
-    // Check if softpay direct push is appropriate (mobile money with phone number)
-    const isSoftpayCandidate = Boolean(cleanPhone && resolvedNetwork && resolvedNetwork !== 'card');
-
-    if (isSoftpayCandidate) {
-      const formattedPhone = cleanPhone.startsWith('+') ? cleanPhone : `+${cleanPhone.replace(/^00/, '')}`;
-      const softpayRes = await sasPayService.initiateSoftpay(
-        {
-          amount: decimalAmount,
-          currency,
-          country,
-          network: resolvedNetwork,
-          customer: {
-            email: cleanEmail,
-            first_name,
-            last_name,
-            phone: formattedPhone,
-          },
-          description: description || 'Paiement en ligne PichFlow',
-          fee_charge_mode: 'ADD_ON',
-          otp: otp || undefined,
-        },
-        idempotencyKey
-      );
-
-      if (!softpayRes.success) {
-        res.status(softpayRes.statusCode || 400).json({
-          success: false,
-          error: softpayRes.error || 'Échec de l’initiation du paiement SasPay.',
-          code: softpayRes.data?.code,
-        });
+    const idempotencyKey = String(req.headers['idempotency-key'] || req.body.idempotencyKey || '').trim();
+    if (!/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)) {
+      res.status(400).json({ success: false, error: 'Une clé d’idempotence valide est requise pour éviter les factures en double.' });
+      return;
+    }
+    const applicationId = String(link.application_id);
+    const userId = String(link.user_id);
+    const existingRequest = await db.execute({
+      sql: 'SELECT reference FROM checkout_idempotency WHERE application_id = ? AND idempotency_key = ?',
+      args: [applicationId, idempotencyKey],
+    });
+    if (existingRequest.rows.length > 0) {
+      const existingSession = await db.execute({
+        sql: 'SELECT reference, status, amount, currency, paydunya_url FROM checkout_sessions WHERE reference = ?',
+        args: [String(existingRequest.rows[0].reference)],
+      });
+      if (existingSession.rows.length > 0) {
+        const session = existingSession.rows[0];
+        if (session.paydunya_url) {
+          res.json({
+            success: true, reference: session.reference, amount: session.amount,
+            currency: session.currency, invoiceUrl: session.paydunya_url, status: session.status,
+          });
+          return;
+        }
+        res.status(409).json({ success: false, error: 'Cette demande de paiement est déjà en cours ou a échoué. Utilisez une nouvelle tentative.' });
         return;
       }
-
-      saspayId = softpayRes.data?.id || '';
-      checkoutUrl = softpayRes.data?.checkout_url || '';
-      isPushDirect = !checkoutUrl;
-    } else {
-      // Hosted checkout session
-      const appUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
-      const sessionRes = await sasPayService.createCheckoutSession({
-        amount: decimalAmount,
-        currency,
-        country,
-        customer_email: cleanEmail,
-        customer_name: customerName,
-        customer_phone: cleanPhone,
-        description: description || 'Paiement en ligne PichFlow',
-        return_url: `${appUrl}/checkout-demo?status=success&ref=${reference}`,
-        fee_charge_mode: 'ADD_ON',
-      });
-
-      if (!sessionRes.success) {
-        res.status(sessionRes.statusCode || 400).json({
-          success: false,
-          error: sessionRes.error || 'Échec de la création de session SasPay.',
-        });
-        return;
-      }
-
-      saspayId = sessionRes.data?.id || '';
-      checkoutUrl = sessionRes.data?.checkout_url || '';
-      isPushDirect = false;
+      res.status(409).json({ success: false, error: 'Cette demande de paiement est déjà en cours.' });
+      return;
     }
 
-    // Persist checkout session
-    const sessionId = `cs_${Date.now()}`;
+    const reference = `PF-${crypto.randomUUID()}`;
+    const reservation = await db.execute({
+      sql: 'INSERT OR IGNORE INTO checkout_idempotency (application_id, idempotency_key, reference, created_at) VALUES (?, ?, ?, ?)',
+      args: [applicationId, idempotencyKey, reference, now],
+    });
+    if (Number(reservation.rowsAffected) !== 1) {
+      res.status(409).json({ success: false, error: 'Cette demande de paiement est déjà en cours.' });
+      return;
+    }
+
+    const sessionId = `cs_${crypto.randomUUID()}`;
     await db.execute({
       sql: `INSERT INTO checkout_sessions (
-              id, payment_link_id, application_id, user_id, reference, 
+              id, payment_link_id, application_id, user_id, reference,
               amount, currency, customer_name, customer_email, customer_phone, 
-              status, saspay_session_id, saspay_checkout_url, idempotency_key, 
-              provider, payment_method, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 'saspay', ?, ?, ?)`,
+              status, idempotency_key, provider, payment_method, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'paydunya', 'PayDunya checkout', ?, ?)`,
       args: [
         sessionId,
-        resolvedLinkId,
-        resolvedAppId,
-        resolvedUserId,
+        String(link.id),
+        applicationId,
+        userId,
         reference,
-        totalToCharge,
+        amount,
         currency,
-        customerName,
+        cleanCustomerName,
         cleanEmail,
         cleanPhone,
-        saspayId,
-        checkoutUrl,
         idempotencyKey,
-        resolvedNetwork || paymentMethod || 'Mobile Money',
         now,
         now,
       ],
     });
+    await db.execute({
+      sql: `INSERT INTO transactions (
+              id, user_id, application_id, reference, customer_name, customer_email,
+              customer_phone, country, provider, amount, provider_fee, platform_fee,
+              customer_fee, net_amount, currency, status, description, payment_method,
+              metadata, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'BJ', 'PayDunya', ?, 0, 0, 0, 0, ?, 'pending', ?, 'PayDunya checkout', ?, ?, ?)`,
+      args: [
+        `tx_${crypto.randomUUID()}`, userId, applicationId, reference, cleanCustomerName,
+        cleanEmail, cleanPhone, amount, currency, String(link.title),
+        JSON.stringify({ providerFeesConfirmed: false, netAmountAvailable: false }), now, now,
+      ],
+    });
 
-    res.json({
-      success: true,
+    const appUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const invoice = await paydunyaService.createInvoice({
+      amount,
+      description: String(link.title),
+      storeName: String(link.app_name),
+      customerName: cleanCustomerName,
+      customerEmail: cleanEmail,
+      customerPhone: cleanPhone,
       reference,
-      baseAmount,
-      feeAmount,
-      totalAmount: totalToCharge,
-      token: saspayId || reference,
-      invoiceUrl: checkoutUrl,
-      checkoutUrl,
-      isPushDirect,
-      status: 'pending',
+      returnUrl: `${appUrl}/checkout-demo?ref=${encodeURIComponent(reference)}&slug=${encodeURIComponent(String(link.slug))}`,
+      cancelUrl: `${appUrl}/checkout-demo?ref=${encodeURIComponent(reference)}&slug=${encodeURIComponent(String(link.slug))}&cancelled=1`,
+      callbackUrl: `${appUrl}/api/webhooks/paydunya`,
     });
-  } catch (err: any) {
-    console.error('[Checkout Initiate Error]', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Confirm checkout payment or submit OTP
-apiRouter.post('/checkout/confirm', async (req: Request, res: Response) => {
-  try {
-    const { reference, otp } = req.body;
-    if (!reference) {
-      res.status(400).json({ success: false, error: 'Référence requise.' });
-      return;
-    }
-
-    const db = getDb();
-    const sessionRes = await db.execute({
-      sql: 'SELECT * FROM checkout_sessions WHERE reference = ?',
-      args: [reference],
-    });
-
-    if (sessionRes.rows.length === 0) {
-      res.status(404).json({ success: false, error: 'Session de paiement introuvable.' });
-      return;
-    }
-
-    const session = sessionRes.rows[0];
-
-    // If already validated
-    if (session.status === 'success') {
-      res.json({
-        success: true,
-        reference,
-        status: 'success',
-        message: 'Paiement déjà validé.',
+    if (invoice.status !== 'pending' || !invoice.token || !invoice.invoiceUrl) {
+      await db.execute({
+        sql: `UPDATE checkout_sessions SET status = 'failed', updated_at = ? WHERE reference = ? AND status = 'pending'`,
+        args: [new Date().toISOString(), reference],
       });
-      return;
-    }
-
-    const saspayId = String(session.saspay_session_id || '');
-
-    // Submit OTP if provided
-    if (otp && saspayId) {
-      const otpRes = await sasPayService.confirmOtp(saspayId, String(otp).trim());
-      if (!otpRes.success) {
-        res.status(otpRes.statusCode || 400).json({
-          success: false,
-          error: otpRes.error || 'Code OTP invalide.',
-        });
-        return;
-      }
-    }
-
-    // Verify verified payment status directly from SasPay
-    if (saspayId) {
-      const verifyRes = await sasPayService.verifyPayment(saspayId);
-      if (verifyRes.success && verifyRes.data) {
-        const remoteStatus = String(verifyRes.data.status || '').toUpperCase();
-        if (remoteStatus === 'SUCCESS') {
-          await settleSuccessfulPayment({
-            reference,
-            externalId: saspayId,
-            amount: Number(verifyRes.data.debited_amount || session.amount),
-            currency: String(verifyRes.data.currency || session.currency),
-            netAmount: Number(verifyRes.data.net_amount || (Number(session.amount) * 0.985)),
-            customerName: String(session.customer_name || 'Client'),
-            customerEmail: String(session.customer_email || ''),
-            customerPhone: String(session.customer_phone || ''),
-            applicationId: String(session.application_id || ''),
-            userId: String(session.user_id || ''),
-            paymentLinkId: String(session.payment_link_id || ''),
-          });
-
-          res.json({
-            success: true,
-            reference,
-            status: 'success',
-            message: 'Paiement confirmé avec succès !',
-          });
-          return;
-        } else if (remoteStatus === 'FAILED') {
-          await db.execute({
-            sql: `UPDATE checkout_sessions SET status = 'failed', updated_at = ? WHERE reference = ?`,
-            args: [new Date().toISOString(), reference],
-          });
-          res.json({
-            success: false,
-            reference,
-            status: 'failed',
-            message: 'Le paiement a échoué auprès de l’opérateur.',
-          });
-          return;
-        }
-      }
-    }
-
-    res.json({
-      success: false,
-      reference,
-      status: 'pending',
-      message: 'Paiement toujours en cours de validation sur le réseau opérateur.',
-    });
-  } catch (err: any) {
-    console.error('[Checkout Confirm Error]', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Check genuine payment status directly from SasPay
-apiRouter.get('/checkout/status/:reference', async (req: Request, res: Response) => {
-  try {
-    const db = getDb();
-    const sessionRes = await db.execute({
-      sql: 'SELECT * FROM checkout_sessions WHERE reference = ?',
-      args: [req.params.reference],
-    });
-
-    if (sessionRes.rows.length === 0) {
-      res.status(404).json({ success: false, error: 'Session introuvable.' });
-      return;
-    }
-
-    const session = sessionRes.rows[0];
-
-    // If pending, check genuine status from SasPay
-    if (session.status === 'pending' && session.saspay_session_id) {
-      const saspayId = String(session.saspay_session_id);
-
-      // Check payment status first
-      const verifyRes = await sasPayService.verifyPayment(saspayId);
-      if (verifyRes.success && verifyRes.data) {
-        const remoteStatus = String(verifyRes.data.status || '').toUpperCase();
-        if (remoteStatus === 'SUCCESS') {
-          await settleSuccessfulPayment({
-            reference: String(session.reference),
-            externalId: saspayId,
-            amount: Number(verifyRes.data.debited_amount || session.amount),
-            currency: String(verifyRes.data.currency || session.currency),
-            netAmount: Number(verifyRes.data.net_amount || (Number(session.amount) * 0.985)),
-            customerName: String(session.customer_name || 'Client'),
-            customerEmail: String(session.customer_email || ''),
-            customerPhone: String(session.customer_phone || ''),
-            applicationId: String(session.application_id || ''),
-            userId: String(session.user_id || ''),
-            paymentLinkId: String(session.payment_link_id || ''),
-          });
-
-          res.json({
-            success: true,
-            reference: session.reference,
-            status: 'success',
-            amount: session.amount,
-            currency: session.currency,
-          });
-          return;
-        } else if (remoteStatus === 'FAILED') {
-          await db.execute({
-            sql: `UPDATE checkout_sessions SET status = 'failed', updated_at = ? WHERE reference = ?`,
-            args: [new Date().toISOString(), session.reference],
-          });
-          res.json({
-            success: false,
-            reference: session.reference,
-            status: 'failed',
-            amount: session.amount,
-            currency: session.currency,
-          });
-          return;
-        }
-      }
-
-      // Check checkout session status as secondary check
-      const sessionStatusRes = await sasPayService.getCheckoutSessionStatus(saspayId);
-      if (sessionStatusRes.success && sessionStatusRes.data) {
-        const csStatus = String(sessionStatusRes.data.status || '').toUpperCase();
-        const txStatus = String(sessionStatusRes.data.transaction_status || '').toUpperCase();
-
-        if (csStatus === 'PAID' || txStatus === 'SUCCESS') {
-          await settleSuccessfulPayment({
-            reference: String(session.reference),
-            externalId: saspayId,
-            amount: Number(session.amount),
-            currency: String(session.currency),
-            customerName: String(session.customer_name || 'Client'),
-            customerEmail: String(session.customer_email || ''),
-            customerPhone: String(session.customer_phone || ''),
-            applicationId: String(session.application_id || ''),
-            userId: String(session.user_id || ''),
-            paymentLinkId: String(session.payment_link_id || ''),
-          });
-
-          res.json({
-            success: true,
-            reference: session.reference,
-            status: 'success',
-            amount: session.amount,
-            currency: session.currency,
-          });
-          return;
-        }
-      }
-    }
-
-    res.json({
-      success: true,
-      reference: session.reference,
-      status: session.status,
-      amount: session.amount,
-      currency: session.currency,
-    });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Retry failed payment
-apiRouter.post('/checkout/retry', async (req: Request, res: Response) => {
-  try {
-    const { reference } = req.body;
-    if (!reference) {
-      res.status(400).json({ success: false, error: 'Référence de transaction requise.' });
-      return;
-    }
-
-    const db = getDb();
-    const sessionRes = await db.execute({
-      sql: 'SELECT * FROM checkout_sessions WHERE reference = ?',
-      args: [reference],
-    });
-
-    if (sessionRes.rows.length === 0) {
-      res.status(404).json({ success: false, error: 'Session introuvable.' });
-      return;
-    }
-
-    const session = sessionRes.rows[0];
-    const saspayId = String(session.saspay_session_id || '');
-    if (!saspayId) {
-      res.status(400).json({ success: false, error: 'Identifiant SasPay manquant pour cette transaction.' });
-      return;
-    }
-
-    // Reuse existing idempotency key to prevent double debit
-    const idempotencyKey = String(session.idempotency_key || crypto.randomUUID());
-    const retryRes = await sasPayService.retryPayment(saspayId, idempotencyKey);
-
-    if (!retryRes.success) {
-      res.status(retryRes.statusCode || 400).json({
-        success: false,
-        error: retryRes.error || 'Impossible de relancer le paiement.',
+      await db.execute({
+        sql: `UPDATE transactions SET status = 'failed', updated_at = ? WHERE reference = ? AND status = 'pending'`,
+        args: [new Date().toISOString(), reference],
       });
+      console.error('[PayDunya] Invoice creation failed for checkout reference:', reference);
+      res.status(502).json({ success: false, error: invoice.error || 'PayDunya n’a pas pu créer la facture. Veuillez réessayer.' });
       return;
     }
 
     await db.execute({
-      sql: `UPDATE checkout_sessions SET status = 'pending', updated_at = ? WHERE reference = ?`,
-      args: [new Date().toISOString(), reference],
+      sql: `UPDATE checkout_sessions SET paydunya_token = ?, paydunya_url = ?, updated_at = ?
+            WHERE reference = ? AND status = 'pending'`,
+      args: [invoice.token, invoice.invoiceUrl, new Date().toISOString(), reference],
     });
 
     res.json({
       success: true,
       reference,
+      amount,
+      currency,
+      token: invoice.token,
+      invoiceUrl: invoice.invoiceUrl,
       status: 'pending',
-      message: 'Demande de relance transmise à l’opérateur.',
-      data: retryRes.data,
     });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+  } catch (error) {
+    console.error('[PayDunya] Checkout initiation failed:', error instanceof Error ? error.name : 'unknown');
+    res.status(500).json({ success: false, error: 'Impossible d’initialiser le paiement. Veuillez réessayer.' });
   }
+});
+
+async function verifyPayDunyaCheckout(reference: string) {
+  const db = getDb();
+  const result = await db.execute({
+    sql: 'SELECT * FROM checkout_sessions WHERE reference = ?',
+    args: [reference],
+  });
+  if (result.rows.length === 0) return null;
+  const session = result.rows[0];
+  if (String(session.status) !== 'pending') return session;
+
+  const token = String(session.paydunya_token || '');
+  if (!token) return session;
+  const verification = await paydunyaService.confirmInvoice(token);
+  if (verification.status === 'completed') {
+    const invoice = verification.data?.invoice;
+    const confirmedReference = String(verification.data?.custom_data?.reference || '');
+    if (
+      String(session.currency || '') !== 'XOF' ||
+      Number(invoice?.total_amount) !== Number(session.amount) ||
+      String(invoice?.token || '') !== token ||
+      confirmedReference !== reference
+    ) {
+      console.error('[PayDunya] Invoice verification mismatch.');
+      return session;
+    }
+    await settleSuccessfulPayment({
+      reference,
+      externalId: token,
+      amount: Number(invoice.total_amount),
+      currency: String(session.currency || 'XOF'),
+      customerName: String(session.customer_name || ''),
+      customerEmail: String(session.customer_email || ''),
+      customerPhone: String(session.customer_phone || ''),
+      applicationId: String(session.application_id || ''),
+      userId: String(session.user_id || ''),
+      paymentLinkId: String(session.payment_link_id || ''),
+    });
+    const updated = await db.execute({
+      sql: 'SELECT * FROM checkout_sessions WHERE reference = ?',
+      args: [reference],
+    });
+    return updated.rows[0] || session;
+  }
+
+  if (verification.status === 'failed' || verification.status === 'canceled') {
+    const status = verification.status === 'canceled' ? 'cancelled' : 'failed';
+    const now = new Date().toISOString();
+    await db.execute({
+      sql: `UPDATE checkout_sessions SET status = ?, updated_at = ? WHERE reference = ? AND status = 'pending'`,
+      args: [status, now, reference],
+    });
+    await db.execute({
+      sql: `UPDATE transactions SET status = ?, updated_at = ? WHERE reference = ? AND status = 'pending'`,
+      args: [status, now, reference],
+    });
+    const updated = await db.execute({
+      sql: 'SELECT * FROM checkout_sessions WHERE reference = ?',
+      args: [reference],
+    });
+    return updated.rows[0] || session;
+  }
+  return session;
+}
+
+apiRouter.post('/checkout/confirm', async (req: Request, res: Response) => {
+  try {
+    const reference = typeof req.body?.reference === 'string' ? req.body.reference.trim() : '';
+    if (!reference) {
+      res.status(400).json({ success: false, error: 'Référence de paiement requise.' });
+      return;
+    }
+    const session = await verifyPayDunyaCheckout(reference);
+    if (!session) {
+      res.status(404).json({ success: false, error: 'Session de paiement introuvable.' });
+      return;
+    }
+    res.json({
+      success: true,
+      reference,
+      status: String(session.status),
+      amount: Number(session.amount),
+      currency: String(session.currency),
+      message: session.status === 'success'
+        ? 'Paiement confirmé par PayDunya.'
+        : session.status === 'pending'
+          ? 'Paiement en cours de confirmation auprès de PayDunya.'
+          : 'Le paiement a été annulé ou refusé.',
+    });
+  } catch (error) {
+    console.error('[PayDunya] Server-side confirmation failed:', error instanceof Error ? error.name : 'unknown');
+    res.status(502).json({ success: false, error: 'Impossible de vérifier le paiement auprès de PayDunya pour le moment.' });
+  }
+});
+
+apiRouter.get('/checkout/status/:reference', async (req: Request, res: Response) => {
+  try {
+    const reference = String(req.params.reference || '').trim();
+    const session = await verifyPayDunyaCheckout(reference);
+    if (!session) {
+      res.status(404).json({ success: false, error: 'Session de paiement introuvable.' });
+      return;
+    }
+    res.json({
+      success: true,
+      reference,
+      status: String(session.status),
+      amount: Number(session.amount),
+      currency: String(session.currency),
+      feesConfirmed: false,
+      netAmount: null,
+    });
+  } catch (error) {
+    console.error('[PayDunya] Status verification failed:', error instanceof Error ? error.name : 'unknown');
+    res.status(502).json({ success: false, error: 'Impossible de vérifier le paiement auprès de PayDunya pour le moment.' });
+  }
+});
+
+apiRouter.post('/checkout/retry', async (req: Request, res: Response) => {
+  res.status(410).json({
+    success: false,
+    error: 'La relance sur une ancienne facture n’est pas disponible. Recommencez le paiement depuis le lien PichFlow.',
+  });
 });
 
 // ==========================================
@@ -3135,9 +2953,43 @@ apiRouter.post('/webhooks/saspay', async (req: Request, res: Response) => {
   }
 });
 
-// Backward compatibility webhook endpoint
 apiRouter.post('/webhooks/paydunya', async (req: Request, res: Response) => {
-  res.status(200).send('OK');
+  try {
+    const rawData = req.body?.data;
+    const payload = typeof rawData === 'string'
+      ? JSON.parse(rawData)
+      : rawData && typeof rawData === 'object'
+        ? rawData
+        : req.body;
+    const hash = typeof payload?.hash === 'string' ? payload.hash : '';
+    if (!paydunyaService.verifyCallbackHash(hash)) {
+      res.status(401).json({ success: false, error: 'Signature PayDunya invalide.' });
+      return;
+    }
+
+    const token = String(payload?.invoice?.token || payload?.token || '');
+    const reference = String(payload?.custom_data?.reference || '');
+    if (!token || !reference) {
+      res.status(400).json({ success: false, error: 'Notification PayDunya incomplète.' });
+      return;
+    }
+
+    const session = await getDb().execute({
+      sql: `SELECT reference FROM checkout_sessions
+            WHERE reference = ? AND paydunya_token = ?`,
+      args: [reference, token],
+    });
+    if (session.rows.length === 0) {
+      res.status(404).json({ success: false, error: 'Facture PayDunya non rattachée à une session PichFlow.' });
+      return;
+    }
+
+    await verifyPayDunyaCheckout(reference);
+    res.status(200).json({ success: true, received: true });
+  } catch (error) {
+    console.error('[PayDunya] Callback processing failed:', error instanceof Error ? error.name : 'unknown');
+    res.status(400).json({ success: false, error: 'Notification PayDunya invalide.' });
+  }
 });
 
 // ==========================================
@@ -3785,8 +3637,8 @@ apiRouter.get('/v1/transactions/:id', requireApiKey, async (req: AuthenticatedRe
   try {
     const db = getDb();
     const result = await db.execute({
-      sql: 'SELECT * FROM transactions WHERE (id = ? OR reference = ?) AND user_id = ?',
-      args: [req.params.id, req.params.id, req.user!.id],
+      sql: 'SELECT * FROM transactions WHERE (id = ? OR reference = ?) AND user_id = ? AND application_id = ?',
+      args: [req.params.id, req.params.id, req.user!.id, req.apiKey!.application_id],
     });
 
     if (result.rows.length === 0) {

@@ -4,7 +4,7 @@ import { getDb } from '@/src/server/db';
 export const runtime = 'nodejs';
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ slug: string }> }
 ) {
   try {
@@ -14,8 +14,9 @@ export async function GET(
       sql: `SELECT pl.*, u.full_name as merchant_name, a.name as app_name
             FROM payment_links pl
             JOIN users u ON pl.user_id = u.id
-            LEFT JOIN applications a ON pl.application_id = a.id
-            WHERE pl.slug = ?`,
+            JOIN applications a ON pl.application_id = a.id AND a.user_id = pl.user_id
+            WHERE pl.slug = ? AND pl.status = 'active'
+              AND (pl.usage_limit IS NULL OR pl.usage_count < pl.usage_limit)`,
       args: [slug],
     });
 
@@ -34,8 +35,10 @@ export async function GET(
       isFixedAmount: Boolean(row.is_fixed_amount),
       country: String(row.country || 'BJ'),
       redirectUrl: String(row.redirect_url || ''),
-      isActive: Boolean(row.is_active),
-      merchantName: String(row.app_name || row.merchant_name || 'PitchFlow Studios'),
+      isActive: true,
+      merchantName: String(row.app_name || row.merchant_name || 'Marchand'),
+      requirePhone: Boolean(row.require_phone),
+      paymentUrl: `${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin}/pay/${row.slug}`,
     };
 
     return NextResponse.json({ success: true, paymentLink });
@@ -43,4 +46,3 @@ export async function GET(
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

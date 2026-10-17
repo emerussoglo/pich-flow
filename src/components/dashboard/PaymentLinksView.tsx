@@ -23,6 +23,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useToast } from '../ui/ToastContext';
 import { apiClient } from '../../lib/api';
+import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../../config/payments';
 import { SUPPORTED_COUNTRIES, PaymentMethodOption } from '../../config/countries';
 
 interface PaymentLinksViewProps {
@@ -68,7 +69,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [maxUsage, setMaxUsage] = useState('');
   const [defaultCountry, setDefaultCountry] = useState('BJ');
   const [requirePhone, setRequirePhone] = useState(true);
-  const [clientFeeEnabled, setClientFeeEnabled] = useState(true);
+  const clientFeeEnabled = false;
   const [customSlug, setCustomSlug] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -136,7 +137,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
     e.stopPropagation();
     const newStatus = link.status === 'active' ? 'archived' : 'active';
     try {
-      await apiClient.paymentLinks.update(link.id, { status: newStatus });
+      await apiClient.paymentLinks.update(link.id, { status: newStatus, applicationId: activeApp?.id || '' });
       setLinks((prev) =>
         prev.map((l) => (l.id === link.id ? { ...l, status: newStatus } : l))
       );
@@ -158,7 +159,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
       return;
     }
     try {
-      await apiClient.paymentLinks.delete(id);
+      await apiClient.paymentLinks.delete(id, activeApp?.id || '');
       setLinks((prev) => prev.filter((l) => l.id !== id));
       if (selectedLink?.id === id) setSelectedLink(null);
       showToast('Lien de paiement supprimé avec succès.', 'success');
@@ -185,6 +186,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
         description: editDesc.trim(),
         amount: editAmount,
         requirePhone: editRequirePhone,
+        applicationId: activeApp?.id || '',
       });
 
       setLinks((prev) =>
@@ -210,6 +212,10 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (amountType === 'fixed' && (!Number.isSafeInteger(Number(amountVal)) || Number(amountVal) < PAYDUNYA_MINIMUM_AMOUNT_XOF)) {
+      showToast(`Le montant minimum accepté par PayDunya est de ${PAYDUNYA_MINIMUM_AMOUNT_XOF} XOF.`, 'error');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -407,7 +413,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                         className="pf-input"
                         value={amountVal}
                         onChange={(e) => setAmountVal(e.target.value)}
-                        min="100"
+                        min={PAYDUNYA_MINIMUM_AMOUNT_XOF}
                         required
                       />
                     </div>
@@ -420,11 +426,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
                     >
-                      <option value="XOF">XOF (FCFA UEMOA)</option>
-                      <option value="XAF">XAF (FCFA CEMAC)</option>
-                      <option value="GNF">GNF (Franc Guinéen)</option>
-                      <option value="USD">USD ($)</option>
-                      <option value="EUR">EUR (€)</option>
+                      <option value="XOF">XOF (FCFA)</option>
                     </select>
                   </div>
                 </div>
@@ -445,7 +447,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                     value={defaultCountry}
                     onChange={(e) => setDefaultCountry(e.target.value)}
                   >
-                    {SUPPORTED_COUNTRIES.map((c) => (
+                    {SUPPORTED_COUNTRIES.filter((c) => c.code === 'BJ').map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.flag} {c.name} ({c.dialCode}) — {c.currency}
                       </option>
@@ -453,26 +455,9 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                   </select>
                 </div>
 
-                <div className="pf-form-group" style={{ background: '#F8FAFC', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '0.85rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0F172A' }}>
-                        Répercuter les frais de transaction (2,2 %)
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>
-                        {clientFeeEnabled
-                          ? 'Le client paye +2,2 % en sus du prix affiché.'
-                          : 'Vous absorbez les frais, le client paye exactement le prix affiché.'}
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={clientFeeEnabled}
-                      onChange={(e) => setClientFeeEnabled(e.target.checked)}
-                      style={{ width: '1.25rem', height: '1.25rem', accentColor: '#5E30E8', cursor: 'pointer' }}
-                    />
-                  </label>
-                </div>
+                <p className="pf-form-group" role="note">
+                  Aucun frais supplémentaire n’est ajouté au montant demandé. Les frais PayDunya éventuels ne sont pas présumés.
+                </p>
 
                 <div className="pf-form-group" style={{ background: '#F8FAFC', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
                   <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
@@ -481,7 +466,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                         Numéro de téléphone requis
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>
-                        Indispensable pour envoyer le push de débit Mobile Money (MTN, Moov, Wave, Orange).
+                        Le numéro est transmis à PayDunya pour préremplir sa page de paiement sécurisée.
                       </div>
                     </div>
                     <input
@@ -629,7 +614,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                       value={defaultCountry}
                       onChange={(e) => setDefaultCountry(e.target.value)}
                     >
-                      {SUPPORTED_COUNTRIES.map((c) => (
+                      {SUPPORTED_COUNTRIES.filter((c) => c.code === 'BJ').map((c) => (
                         <option key={c.code} value={c.code}>
                           {c.flag} {c.name} ({c.dialCode})
                         </option>
@@ -639,27 +624,8 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                   </div>
                 </div>
 
-                {/* 2-Column Payment Methods Grid */}
-                <div className="pf-saspay-methods-grid">
-                  {currentPreviewCountry.methods.map((method) => {
-                    const isSelected = previewMethodId === method.id;
-                    const brandClass = getMethodBrandClass(method);
-                    return (
-                      <div
-                        key={method.id}
-                        onClick={() => setPreviewMethodId(method.id)}
-                        className={`pf-saspay-method-card ${isSelected ? 'active' : ''}`}
-                      >
-                        <div className={`pf-saspay-method-logo ${brandClass}`}>
-                          {renderMethodLogo(method)}
-                        </div>
-                        <div className="pf-saspay-method-info">
-                          <div className="pf-saspay-method-name">{method.name}</div>
-                          <div className="pf-saspay-method-fee">{method.indicativeFee}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="pf-saspay-notice-chip">
+                  Les moyens de paiement actifs sur ce compte seront présentés par la page sécurisée PayDunya.
                 </div>
 
                 {/* Customer Info */}
@@ -686,9 +652,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
 
                 {/* Phone Input with Calling Code Divider */}
                 <div className="pf-saspay-form-group">
-                  <label className="pf-saspay-label">
-                    Numéro {selectedPreviewMethod?.name || 'Mobile Money'}
-                  </label>
+                  <label className="pf-saspay-label">Numéro de téléphone</label>
                   <div className="pf-saspay-phone-row">
                     <span className="pf-saspay-phone-icon">
                       <FontAwesomeIcon icon={faMobileScreen} />
@@ -706,7 +670,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
 
                 {/* Notice Chip */}
                 <div className="pf-saspay-notice-chip">
-                  📲 Une invite USSD sera envoyée instantanément sur ce numéro pour valider le débit.
+                  PayDunya collecte les informations sensibles sur son domaine sécurisé.
                 </div>
 
                 {/* Summary Breakdown Box */}
@@ -1114,7 +1078,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                     className="pf-input"
                     value={editAmount || ''}
                     onChange={(e) => setEditAmount(Number(e.target.value))}
-                    min="100"
+                    min={PAYDUNYA_MINIMUM_AMOUNT_XOF}
                     required
                   />
                 </div>

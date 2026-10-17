@@ -12,6 +12,7 @@ export interface AuthUser {
   country: string;
   role: string;
   is_verified: number;
+  activeApplicationId?: string;
 }
 
 export interface AuthenticatedRequest extends ExpressRequest {
@@ -22,6 +23,38 @@ export interface AuthenticatedRequest extends ExpressRequest {
     application_id: string;
     scope: string;
   };
+}
+
+export async function userOwnsApplication(userId: string, applicationId: string): Promise<boolean> {
+  if (!applicationId.trim()) return false;
+  const result = await getDb().execute({
+    sql: 'SELECT id FROM applications WHERE id = ? AND user_id = ?',
+    args: [applicationId.trim(), userId],
+  });
+  return result.rows.length > 0;
+}
+
+export async function userHasSelectedApplication(user: AuthUser, applicationId: string): Promise<boolean> {
+  if (!applicationId.trim() || !user.activeApplicationId || user.activeApplicationId !== applicationId.trim()) return false;
+  return userOwnsApplication(user.id, applicationId);
+}
+
+export async function selectActiveApplication(request: globalThis.Request, userId: string, applicationId: string): Promise<boolean> {
+  if (!await userOwnsApplication(userId, applicationId)) return false;
+  const authHeader = request.headers.get('authorization') || '';
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookieMatch = cookieHeader.match(/(?:^|;\s*)pf_auth_token=([^;]+)/);
+  const cookieToken = cookieMatch?.[1] || '';
+  const tokens = [...new Set([cookieToken, bearerToken].filter(Boolean))];
+  if (tokens.length === 0) return false;
+  const db = getDb();
+  const placeholders = tokens.map(() => '?').join(',');
+  const result = await db.execute({
+    sql: `UPDATE sessions SET application_id = ? WHERE user_id = ? AND token IN (${placeholders}) AND datetime(expires_at) > datetime('now')`,
+    args: [applicationId, userId, ...tokens],
+  });
+  return Number(result.rowsAffected) > 0;
 }
 
 export function hashPassword(password: string): string {
@@ -109,6 +142,7 @@ export async function getAuthUserFromRequest(request: globalThis.Request): Promi
         country: String(row.country || 'BJ'),
         role: String(row.role || 'merchant'),
         is_verified: Number(row.is_verified || 1),
+        activeApplicationId: row.application_id ? String(row.application_id) : undefined,
       };
     }
   }
@@ -137,6 +171,7 @@ export async function getApiKeyFromRequest(request: globalThis.Request): Promise
     sql: `SELECT k.*, u.id as u_id, u.email, u.full_name, u.phone, u.country, u.role, u.is_verified
           FROM api_credentials k
           JOIN users u ON k.user_id = u.id
+          JOIN applications a ON a.id = k.application_id AND a.user_id = k.user_id
           WHERE (k.secret_key = ? OR k.secret_hash = ?) AND k.is_active = 1`,
     args: [key, keyHash],
   });
@@ -152,6 +187,7 @@ export async function getApiKeyFromRequest(request: globalThis.Request): Promise
     country: String(row.country || 'BJ'),
     role: String(row.role || 'merchant'),
     is_verified: Number(row.is_verified || 1),
+    activeApplicationId: row.application_id ? String(row.application_id) : undefined,
   };
 
   const apiKey = {
@@ -200,6 +236,7 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
         country: String(row.country || 'BJ'),
         role: String(row.role || 'merchant'),
         is_verified: Number(row.is_verified || 1),
+        activeApplicationId: row.application_id ? String(row.application_id) : undefined,
       };
       return next();
     }
@@ -224,6 +261,7 @@ export async function requireApiKey(req: AuthenticatedRequest, res: Response, ne
     sql: `SELECT k.*, u.id as u_id, u.email, u.full_name, u.phone, u.country, u.role, u.is_verified
           FROM api_credentials k
           JOIN users u ON k.user_id = u.id
+          JOIN applications a ON a.id = k.application_id AND a.user_id = k.user_id
           WHERE (k.secret_key = ? OR k.secret_hash = ?) AND k.is_active = 1`,
     args: [key, keyHash],
   });
@@ -249,6 +287,16 @@ export async function requireApiKey(req: AuthenticatedRequest, res: Response, ne
     application_id: String(row.application_id),
     scope: String(row.scope),
   };
+
+  const requiredScope = req.path.startsWith('/v1/payouts') || req.path.startsWith('/v1/wallets/transfer')
+    ? 'payout'
+    : req.path.startsWith('/v1/')
+      ? 'payin'
+      : null;
+  if (requiredScope && row.scope !== 'both' && row.scope !== requiredScope) {
+    res.status(403).json({ success: false, error: 'Cette clé API ne dispose pas de la permission requise.' });
+    return;
+  }
 
   // Update last_used_at
   db.execute({
