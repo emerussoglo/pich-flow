@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faRotate,
@@ -11,10 +11,11 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useToast } from '../ui/ToastContext';
 import { apiClient } from '../../lib/api';
-import { Wallet } from '../../types';
+import { Application, Wallet } from '../../types';
 
 interface WalletsViewProps {
   appName?: string;
+  activeApp?: Application;
   wallets?: Wallet[];
   ledgerEntries?: any[];
   onOpenWithdrawalModal?: () => void;
@@ -32,10 +33,11 @@ const SUPPORTED_COUNTRIES = [
   { countryCode: 'US', countryName: 'International (USD)', currency: 'USD', symbol: '$' },
 ];
 
-export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Application', onOpenWithdrawalModal }) => {
+export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Application', activeApp, onOpenWithdrawalModal }) => {
   const { showToast } = useToast();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const loadRequestId = useRef(0);
 
   // Transfer modal
   const [transferModalOpen, setTransferModalOpen] = useState(false);
@@ -50,20 +52,29 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
   const [isAdding, setIsAdding] = useState(false);
 
   const loadWallets = useCallback(async () => {
+    const requestId = ++loadRequestId.current;
+    setWallets([]);
+    if (!activeApp?.id) {
+      setFromWalletId('');
+      setToWalletId('');
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
-      const data = await apiClient.wallets.getAll();
+      const data = await apiClient.wallets.getAll(activeApp.id);
+      if (requestId !== loadRequestId.current) return;
       setWallets(data || []);
-      if (data && data.length > 0) {
-        if (!fromWalletId) setFromWalletId(data[0].id);
-        if (!toWalletId && data.length > 1) setToWalletId(data[1].id);
-      }
+      setFromWalletId(data[0]?.id || '');
+      setToWalletId(data[1]?.id || '');
     } catch {
+      if (requestId !== loadRequestId.current) return;
+      setWallets([]);
       showToast('Impossible de charger les portefeuilles.', 'error');
     } finally {
-      setIsLoading(false);
+      if (requestId === loadRequestId.current) setIsLoading(false);
     }
-  }, [showToast, fromWalletId, toWalletId]);
+  }, [activeApp?.id, showToast]);
 
   useEffect(() => {
     loadWallets();
@@ -71,6 +82,10 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
 
   const handleTransferSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeApp?.id) {
+      showToast('Sélectionnez d’abord une application.', 'error');
+      return;
+    }
     const amount = Number(transferAmount);
     if (!amount || amount <= 0) {
       showToast('Veuillez saisir un montant valide et strictement positif.', 'error');
@@ -91,6 +106,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
     setIsTransferring(true);
     try {
       const res = await apiClient.wallets.transfer({
+        applicationId: activeApp.id,
         fromWalletId,
         toWalletId,
         amount,
@@ -108,12 +124,17 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
 
   const handleAddWalletSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeApp?.id) {
+      showToast('Sélectionnez d’abord une application.', 'error');
+      return;
+    }
     const match = SUPPORTED_COUNTRIES.find((c) => c.countryCode === selectedCountryCode);
     if (!match) return;
 
     setIsAdding(true);
     try {
       await apiClient.wallets.create({
+        applicationId: activeApp.id,
         countryCode: match.countryCode,
         currency: match.currency,
         symbol: match.symbol,
@@ -157,11 +178,12 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
             <span>Actualiser</span>
           </button>
           <button
-            onClick={() => setAddWalletModalOpen(true)}
+            onClick={() => showToast('La configuration PayDunya actuelle prend en charge les portefeuilles XOF uniquement.', 'info')}
             className="pf-btn pf-btn-secondary pf-btn-sm"
+            title="Seule la devise XOF est actuellement activée."
           >
             <FontAwesomeIcon icon={faPlus} />
-            <span>Activer un pays</span>
+            <span>Autres devises indisponibles</span>
           </button>
           <button
             onClick={() => {
@@ -209,10 +231,11 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
 
         {onOpenWithdrawalModal && (
           <button
-            onClick={onOpenWithdrawalModal}
-            className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
+            disabled
+            title="Les retraits PayDunya ne sont pas activés pour ce compte."
+            className="pf-btn pf-btn-primary pf-btn-md"
           >
-            <span>Demander un reversement</span>
+            <span>Retraits indisponibles</span>
           </button>
         )}
       </div>

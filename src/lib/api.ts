@@ -260,12 +260,13 @@ export const apiClient = {
 
   // Wallets
   wallets: {
-    async getAll(): Promise<Wallet[]> {
-      const res = await apiClient.request<{ success: boolean; wallets: Wallet[] }>('/wallets');
+    async getAll(applicationId: string): Promise<Wallet[]> {
+      const query = `?applicationId=${encodeURIComponent(applicationId)}`;
+      const res = await apiClient.request<{ success: boolean; wallets: Wallet[] }>(`/wallets${query}`);
       return res.wallets;
     },
 
-    async create(data: { countryCode: string; currency: string; symbol?: string }): Promise<Wallet> {
+    async create(data: { applicationId: string; countryCode: string; currency: string; symbol?: string }): Promise<Wallet> {
       const res = await apiClient.request<{ success: boolean; wallet: Wallet }>('/wallets', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -273,7 +274,7 @@ export const apiClient = {
       return res.wallet;
     },
 
-    async transfer(data: { fromWalletId: string; toWalletId: string; amount: number }): Promise<{ success: boolean; message: string; reference: string }> {
+    async transfer(data: { applicationId: string; fromWalletId: string; toWalletId: string; amount: number }): Promise<{ success: boolean; message: string; reference: string }> {
       return apiClient.request<{ success: boolean; message: string; reference: string }>('/wallets/transfer', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -365,8 +366,9 @@ export const apiClient = {
 
   // Withdrawals
   withdrawals: {
-    async getAll(): Promise<Withdrawal[]> {
-      const res = await apiClient.request<{ success: boolean; withdrawals: Withdrawal[] }>('/withdrawals');
+    async getAll(applicationId: string): Promise<Withdrawal[]> {
+      const query = `?applicationId=${encodeURIComponent(applicationId)}`;
+      const res = await apiClient.request<{ success: boolean; withdrawals: Withdrawal[] }>(`/withdrawals${query}`);
       return res.withdrawals;
     },
 

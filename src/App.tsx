@@ -75,6 +75,7 @@ function AppContent() {
   const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([]);
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const dashboardSessionCheck = useRef<Promise<unknown> | null>(null);
+  const appDataRequestId = useRef(0);
   const hasHandledUnauthorized = useRef(false);
 
   const handleUnauthorized = useCallback(() => {
@@ -95,6 +96,15 @@ function AppContent() {
 
   // Function to load all isolated data for a specific application
   const loadAppData = useCallback(async (appId?: string) => {
+    const requestId = ++appDataRequestId.current;
+    setWallets([]);
+    setTransactions([]);
+    setPaymentLinks([]);
+    setWithdrawals([]);
+    setApiKeys([]);
+    setWebhooks([]);
+    if (!appId) return;
+
     try {
       const withFallback = <T,>(request: Promise<T>, fallback: T): Promise<T> =>
         request.catch((error: unknown) => {
@@ -105,13 +115,14 @@ function AppContent() {
         });
 
       const [wals, txs, links, wdrs, keys, whs] = await Promise.all([
-        withFallback(apiClient.wallets.getAll(), []),
+        withFallback(apiClient.wallets.getAll(appId), []),
         withFallback(apiClient.transactions.getAll(appId), []),
         withFallback(apiClient.paymentLinks.getAll(appId), []),
-        withFallback(apiClient.withdrawals.getAll(), []),
+        withFallback(apiClient.withdrawals.getAll(appId), []),
         withFallback(apiClient.developer.getKeys(appId), []),
         withFallback(apiClient.developer.getWebhooks(appId), []),
       ]);
+      if (requestId !== appDataRequestId.current) return;
       if (wals) setWallets(wals);
       if (txs) setTransactions(txs);
       if (links) setPaymentLinks(links);
@@ -119,6 +130,7 @@ function AppContent() {
       if (keys) setApiKeys(keys);
       if (whs) setWebhooks(whs);
     } catch (err) {
+      if (requestId !== appDataRequestId.current) return;
       if (err instanceof ApiResponseError && err.status === 401) {
         handleUnauthorized();
       } else {
@@ -225,10 +237,14 @@ function AppContent() {
   };
 
   const handleCreateWithdrawal = async (newWdr: Withdrawal) => {
+    if (!activeApp?.id) return;
     try {
-      const created = await apiClient.withdrawals.create(newWdr);
+      const created = await apiClient.withdrawals.create({
+        ...newWdr,
+        applicationId: activeApp.id,
+      });
       setWithdrawals((prev) => [created, ...prev]);
-      const updatedWallets = await apiClient.wallets.getAll().catch(() => null);
+      const updatedWallets = await apiClient.wallets.getAll(activeApp.id).catch(() => null);
       if (updatedWallets) setWallets(updatedWallets);
     } catch (err: any) {
       console.error('Create withdrawal error:', err);
@@ -399,6 +415,7 @@ function AppContent() {
                 <WalletsPage
                   wallets={wallets}
                   ledgerEntries={[]}
+                  activeApp={activeApp || undefined}
                   onOpenWithdrawalModal={() => setIsNewWithdrawalModalOpen(true)}
                 />
               )}

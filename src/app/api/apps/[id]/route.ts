@@ -24,7 +24,7 @@ export async function PUT(
 
     const { name, category, website, currency, environment } = body;
     const db = getDb();
-    await db.execute({
+    const updated = await db.execute({
       sql: `UPDATE applications SET name = COALESCE(?, name), category = COALESCE(?, category), website = COALESCE(?, website), currency = COALESCE(?, currency), environment = COALESCE(?, environment), updated_at = ?
             WHERE id = ? AND user_id = ?`,
       args: [
@@ -39,6 +39,9 @@ export async function PUT(
       ],
     });
 
+    if (updated.rowsAffected === 0) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     return NextResponse.json({ success: true, message: 'Application mise à jour.' });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
@@ -58,10 +61,18 @@ export async function DELETE(
     const { id } = await context.params;
     const db = getDb();
 
+    const ownedApp = await db.execute({
+      sql: 'SELECT id FROM applications WHERE id = ? AND user_id = ?',
+      args: [id, user.id],
+    });
+    if (ownedApp.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
+
     // Check if app has transactions
     const txCheck = await db.execute({
-      sql: 'SELECT COUNT(*) as count FROM transactions WHERE application_id = ?',
-      args: [id],
+      sql: 'SELECT COUNT(*) as count FROM transactions WHERE application_id = ? AND user_id = ?',
+      args: [id, user.id],
     });
 
     const hasTxs = Number(txCheck.rows[0].count || 0) > 0;
@@ -82,4 +93,3 @@ export async function DELETE(
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-
