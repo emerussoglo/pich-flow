@@ -372,7 +372,7 @@ export const apiClient = {
       return res.withdrawals;
     },
 
-    async create(data: Partial<Withdrawal>): Promise<Withdrawal> {
+    async create(data: Partial<Withdrawal> & { applicationId: string }): Promise<Withdrawal> {
       const res = await apiClient.request<{ success: boolean; withdrawal: Withdrawal }>('/withdrawals', {
         method: 'POST',
         body: JSON.stringify(data),

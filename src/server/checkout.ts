@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { getDb } from './db';
+import { ensureDatabaseInitialized, getDb } from './db';
 import { dispatchMerchantWebhook, paydunyaService } from './paydunya';
 
 type CheckoutStatus = 'pending' | 'success' | 'cancelled' | 'failed';
@@ -68,6 +68,10 @@ function checkoutResponse(session: CheckoutSession) {
     token: session.paydunya_token || session.reference,
     invoiceUrl,
     checkoutUrl: invoiceUrl,
+    baseAmount: Number(session.amount),
+    feeAmount: 0,
+    totalAmount: Number(session.amount),
+    isPushDirect: false,
     status: session.status,
     amount: Number(session.amount),
     currency: session.currency,
@@ -79,6 +83,7 @@ export async function createCheckout(
   input: CheckoutInput,
   requestedIdempotencyKey?: string | null,
 ) {
+  await ensureDatabaseInitialized();
   const db = getDb();
   const paymentLinkId = typeof input.paymentLinkId === 'string' ? input.paymentLinkId.trim() : '';
   const paymentLinkSlug = typeof (input.paymentLinkSlug || input.slug) === 'string'
@@ -139,8 +144,17 @@ export async function createCheckout(
     if (prior.payment_link_id !== String(link.id)) {
       throw new CheckoutError('Cette clé d’idempotence a déjà été utilisée pour une autre opération.', 409);
     }
+    if (Number(prior.amount) !== amount ||
+        prior.customer_name !== customerName ||
+        prior.customer_email !== customerEmail ||
+        prior.customer_phone !== customerPhone) {
+      throw new CheckoutError('Cette clé d’idempotence a déjà été utilisée avec d’autres données.', 409);
+    }
     if (prior.status === 'failed' || prior.status === 'cancelled') {
       throw new CheckoutError('Cette tentative de paiement est terminée. Créez une nouvelle tentative.', 409);
+    }
+    if (!prior.paydunya_token || !prior.paydunya_url) {
+      throw new CheckoutError('Cette tentative est incomplète. Utilisez une nouvelle clé d’idempotence.', 409);
     }
     return checkoutResponse(prior);
   }
@@ -362,6 +376,7 @@ async function getSession(reference: string): Promise<CheckoutSession | null> {
 }
 
 export async function getCheckoutStatus(reference: string) {
+  await ensureDatabaseInitialized();
   if (!/^pf_[0-9a-f-]{36}$/i.test(reference)) {
     throw new CheckoutError('Référence de paiement invalide.', 400);
   }
@@ -387,6 +402,7 @@ export async function getCheckoutStatus(reference: string) {
 }
 
 export async function handlePayDunyaNotification(notification: Record<string, unknown>) {
+  await ensureDatabaseInitialized();
   const data = notification.data && typeof notification.data === 'object'
     ? notification.data as Record<string, unknown>
     : notification;

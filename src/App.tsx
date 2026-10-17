@@ -458,6 +458,7 @@ function AppContent() {
               {dashboardTab === 'withdrawals' && (
                 <WithdrawalsPage
                   withdrawals={withdrawals}
+                  activeApp={activeApp || undefined}
                   onOpenWithdrawalModal={() => setIsNewWithdrawalModalOpen(true)}
                 />
               )}

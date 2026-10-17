@@ -4,142 +4,179 @@ import { getAuthUserFromRequest } from '@/src/server/auth';
 
 export const runtime = 'nodejs';
 
+function applicationIdFromRequest(request: NextRequest) {
+  return request.nextUrl.searchParams.get('applicationId')?.trim() || '';
+}
+
+async function getOwnedLink(id: string, userId: string, applicationId: string) {
+  return getDb().execute({
+    sql: `SELECT * FROM payment_links
+          WHERE id = ? AND user_id = ? AND application_id = ? LIMIT 1`,
+    args: [id, userId, applicationId],
+  });
+}
+
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await getAuthUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Non authentifié.' }, { status: 401 });
+    if (!user) return NextResponse.json({ success: false, error: 'Non authentifié.' }, { status: 401 });
+    const applicationId = applicationIdFromRequest(request);
+    if (!applicationId) {
+      return NextResponse.json({ success: false, error: 'applicationId requis.' }, { status: 400 });
     }
-
     const { id } = await context.params;
     const db = getDb();
-    const linkRes = await db.execute({
-      sql: 'SELECT * FROM payment_links WHERE id = ? AND user_id = ?',
-      args: [id, user.id],
-    });
-
-    if (linkRes.rows.length === 0) {
+    const linkResult = await getOwnedLink(id, user.id, applicationId);
+    if (linkResult.rows.length === 0) {
       return NextResponse.json({ success: false, error: 'Lien de paiement introuvable.' }, { status: 404 });
     }
-
-    const pl = linkRes.rows[0];
-
-    const txsRes = await db.execute({
-      sql: `SELECT * FROM transactions WHERE user_id = ? AND reference IN (
-        SELECT reference FROM checkout_sessions WHERE payment_link_id = ?
-      ) ORDER BY created_at DESC`,
-      args: [user.id, id],
+    const link = linkResult.rows[0];
+    const txResult = await db.execute({
+      sql: `SELECT t.id, t.reference, t.customer_name, t.customer_phone, t.amount,
+                   t.currency, t.status, t.created_at, t.application_id
+            FROM transactions t
+            JOIN checkout_sessions cs ON cs.reference = t.reference
+            WHERE t.user_id = ? AND t.application_id = ? AND cs.payment_link_id = ?
+            ORDER BY t.created_at DESC`,
+      args: [user.id, applicationId, id],
     });
-
-    const totalCount = txsRes.rows.length;
-    const successCount = txsRes.rows.filter((t) => t.status === 'success').length;
-    const failedCount = txsRes.rows.filter((t) => t.status === 'failed').length;
-    const collectedAmount = txsRes.rows
-      .filter((t) => t.status === 'success')
-      .reduce((sum, t) => sum + Number(t.net_amount || t.amount || 0), 0);
-
+    const transactions = txResult.rows.map((row) => ({
+      id: String(row.id),
+      reference: String(row.reference),
+      customerName: String(row.customer_name),
+      customerPhone: String(row.customer_phone || ''),
+      amount: Number(row.amount),
+      currency: String(row.currency || 'XOF'),
+      status: String(row.status),
+      createdAt: String(row.created_at),
+    }));
     return NextResponse.json({
       success: true,
       paymentLink: {
-        id: String(pl.id),
-        slug: String(pl.slug),
-        title: String(pl.title),
-        description: String(pl.description || ''),
-        amount: pl.amount !== null ? Number(pl.amount) : null,
-        isFixedAmount: Boolean(pl.is_fixed_amount),
-        currency: String(pl.currency || 'XOF'),
-        country: String(pl.country || 'BJ'),
-        status: String(pl.status),
-        usageCount: Number(pl.usage_count || 0),
-        createdAt: String(pl.created_at),
+        id: String(link.id),
+        slug: String(link.slug),
+        title: String(link.title),
+        description: String(link.description || ''),
+        amount: link.amount === null ? null : Number(link.amount),
+        isFixedAmount: Boolean(link.is_fixed_amount),
+        currency: String(link.currency || 'XOF'),
+        country: String(link.country || 'BJ'),
+        status: String(link.status),
+        usageCount: Number(link.usage_count || 0),
+        usageLimit: link.usage_limit === null ? null : Number(link.usage_limit),
+        createdAt: String(link.created_at),
         stats: {
-          totalTransactions: totalCount,
-          successCount,
-          failedCount,
-          collectedAmount,
+          totalTransactions: transactions.length,
+          successCount: transactions.filter((item) => item.status === 'success').length,
+          failedCount: transactions.filter((item) => item.status === 'failed').length,
+          collectedAmount: transactions
+            .filter((item) => item.status === 'success')
+            .reduce((sum, item) => sum + item.amount, 0),
         },
-        transactions: txsRes.rows.map((r) => ({
-          id: String(r.id),
-          reference: String(r.reference),
-          customerName: String(r.customer_name),
-          customerPhone: String(r.customer_phone || ''),
-          amount: Number(r.amount),
-          currency: String(r.currency || 'XOF'),
-          status: String(r.status),
-          createdAt: String(r.created_at),
-        })),
+        transactions,
       },
     });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Impossible de charger le lien.';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await getAuthUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Non authentifié.' }, { status: 401 });
+    if (!user) return NextResponse.json({ success: false, error: 'Non authentifié.' }, { status: 401 });
+    const applicationId = applicationIdFromRequest(request);
+    if (!applicationId) {
+      return NextResponse.json({ success: false, error: 'applicationId requis.' }, { status: 400 });
+    }
+    const { id } = await context.params;
+    const body: unknown = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ success: false, error: 'Requête JSON invalide.' }, { status: 400 });
+    }
+    const values = body as Record<string, unknown>;
+    const title = values.title;
+    const description = values.description;
+    const amount = values.amount;
+    const isFixedAmount = values.isFixedAmount;
+    const status = values.status;
+    if (title !== undefined && (typeof title !== 'string' || !title.trim() || title.trim().length > 160)) {
+      return NextResponse.json({ success: false, error: 'Titre invalide.' }, { status: 400 });
+    }
+    if (status !== undefined && status !== 'active' && status !== 'inactive') {
+      return NextResponse.json({ success: false, error: 'Statut de lien invalide.' }, { status: 400 });
+    }
+    if (isFixedAmount === true && (!Number.isSafeInteger(Number(amount)) || Number(amount) <= 0)) {
+      return NextResponse.json({ success: false, error: 'Un montant fixe entier positif en XOF est requis.' }, { status: 400 });
     }
 
-    const { id } = await context.params;
-    const body = await request.json().catch(() => ({}));
-    const { title, description, amount, isFixedAmount, status } = body;
-
     const db = getDb();
-    await db.execute({
-      sql: `UPDATE payment_links SET 
-            title = COALESCE(?, title),
-            description = COALESCE(?, description),
-            amount = COALESCE(?, amount),
-            is_fixed_amount = COALESCE(?, is_fixed_amount),
-            status = COALESCE(?, status),
-            updated_at = ?
-            WHERE id = ? AND user_id = ?`,
+    const owned = await getOwnedLink(id, user.id, applicationId);
+    if (owned.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Lien de paiement introuvable.' }, { status: 404 });
+    }
+    const result = await db.execute({
+      sql: `UPDATE payment_links SET
+              title = COALESCE(?, title),
+              description = COALESCE(?, description),
+              amount = CASE WHEN ? = 0 THEN NULL ELSE COALESCE(?, amount) END,
+              is_fixed_amount = COALESCE(?, is_fixed_amount),
+              status = COALESCE(?, status),
+              updated_at = ?
+            WHERE id = ? AND user_id = ? AND application_id = ?`,
       args: [
-        title,
-        description,
-        amount !== undefined ? amount : null,
-        isFixedAmount !== undefined ? (isFixedAmount ? 1 : 0) : null,
-        status,
+        title === undefined ? null : title.trim(),
+        description === undefined ? null : String(description).trim().slice(0, 1000),
+        isFixedAmount === false ? 0 : 1,
+        amount === undefined ? null : Number(amount),
+        isFixedAmount === undefined ? null : isFixedAmount ? 1 : 0,
+        status === undefined ? null : status,
         new Date().toISOString(),
         id,
         user.id,
+        applicationId,
       ],
     });
-
+    if (result.rowsAffected === 0) {
+      return NextResponse.json({ success: false, error: 'Lien de paiement introuvable.' }, { status: 404 });
+    }
     return NextResponse.json({ success: true, message: 'Lien de paiement mis à jour.' });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Impossible de modifier le lien.';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await getAuthUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Non authentifié.' }, { status: 401 });
+    if (!user) return NextResponse.json({ success: false, error: 'Non authentifié.' }, { status: 401 });
+    const applicationId = applicationIdFromRequest(request);
+    if (!applicationId) {
+      return NextResponse.json({ success: false, error: 'applicationId requis.' }, { status: 400 });
     }
-
     const { id } = await context.params;
-    const db = getDb();
-    await db.execute({
-      sql: 'DELETE FROM payment_links WHERE id = ? AND user_id = ?',
-      args: [id, user.id],
+    const result = await getDb().execute({
+      sql: `UPDATE payment_links SET status = 'inactive', updated_at = ?
+            WHERE id = ? AND user_id = ? AND application_id = ?`,
+      args: [new Date().toISOString(), id, user.id, applicationId],
     });
-
-    return NextResponse.json({ success: true, message: 'Lien de paiement supprimé.' });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    if (result.rowsAffected === 0) {
+      return NextResponse.json({ success: false, error: 'Lien de paiement introuvable.' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, message: 'Lien de paiement désactivé.' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Impossible de désactiver le lien.';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
-

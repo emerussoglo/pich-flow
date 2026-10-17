@@ -3,7 +3,6 @@ import crypto from 'node:crypto';
 import { after, before, test } from 'node:test';
 import { NextRequest } from 'next/server';
 
-process.env.NODE_ENV = 'test';
 process.env.TURSO_DATABASE_URL = 'file::memory:';
 process.env.TURSO_AUTH_TOKEN = '';
 process.env.PAYDUNYA_MODE = 'sandbox';
@@ -292,4 +291,80 @@ test('PayDunya invoice confirmation rejects invalid tokens before any request', 
   };
   await assert.rejects(() => paydunyaService.confirmInvoice('../invalid'));
   assert.equal(called, false);
+});
+
+test('versioned Pitchflow API keys cannot create or inspect payments across applications', async () => {
+  mockPayDunyaFetch();
+  const db = getDb();
+  const now = new Date().toISOString();
+  const secretA = `pf_test_${crypto.randomBytes(32).toString('base64url')}`;
+  const secretB = `pf_test_${crypto.randomBytes(32).toString('base64url')}`;
+  const createApiKey = async (id: string, appId: string, secret: string) => {
+    await db.execute({
+      sql: `INSERT INTO api_credentials
+        (id, user_id, application_id, name, environment, prefix, secret_key,
+         secret_masked, secret_hash, scope, is_active, created_at)
+        VALUES (?, ?, ?, 'Integration test', 'sandbox', ?, '', ?, ?, 'payin', 1, ?)`,
+      args: [
+        id, userId, appId, secret.slice(0, 16), `${secret.slice(0, 16)}…`,
+        crypto.createHash('sha256').update(secret).digest('hex'), now,
+      ],
+    });
+  };
+  await createApiKey(`key_test_${crypto.randomUUID()}`, appA, secretA);
+  await createApiKey(`key_test_${crypto.randomUUID()}`, appB, secretB);
+
+  const { POST } = await import('../src/app/api/v1/checkout-sessions/route');
+  const { GET } = await import('../src/app/api/v1/payments/[reference]/route');
+  const createRequest = (secret: string, link: string, idempotencyKey: string) =>
+    new NextRequest('http://localhost/api/v1/checkout-sessions', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${secret}`,
+        'content-type': 'application/json',
+        'idempotency-key': idempotencyKey,
+      },
+      body: JSON.stringify({
+        paymentLinkId: link,
+        amount: 1,
+        customerName: 'API Buyer',
+        customerEmail: 'api-buyer@example.test',
+        customerPhone: '+22997001234',
+      }),
+    });
+
+  const foreignLinkResponse = await POST(createRequest(secretA, linkVariable, 'api-foreign-link-0001'));
+  assert.equal(foreignLinkResponse.status, 404);
+
+  const createdResponse = await POST(createRequest(secretA, linkFixed, 'api-session-create-0001'));
+  assert.equal(createdResponse.status, 201);
+  const createdBody = await createdResponse.json() as {
+    data: { reference: string; amount: number; status: string };
+  };
+  assert.equal(createdBody.data.amount, 5000);
+  assert.equal(createdBody.data.status, 'pending');
+
+  const foreignStatusResponse = await GET(
+    new NextRequest(`http://localhost/api/v1/payments/${createdBody.data.reference}`, {
+      headers: { authorization: `Bearer ${secretB}` },
+    }),
+    { params: Promise.resolve({ reference: createdBody.data.reference }) },
+  );
+  assert.equal(foreignStatusResponse.status, 404);
+
+  const ownStatusResponse = await GET(
+    new NextRequest(`http://localhost/api/v1/payments/${createdBody.data.reference}`, {
+      headers: { authorization: `Bearer ${secretA}` },
+    }),
+    { params: Promise.resolve({ reference: createdBody.data.reference }) },
+  );
+  assert.equal(ownStatusResponse.status, 200);
+  const ownStatus = await ownStatusResponse.json() as { data: { status: string; amount: number } };
+  assert.deepEqual(ownStatus.data, {
+    id: createdBody.data.reference,
+    reference: createdBody.data.reference,
+    status: 'success',
+    amount: 5000,
+    currency: 'XOF',
+  });
 });

@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
     }
 
     const { url, description, applicationId } = body;
-    if (!url) {
-      return NextResponse.json({ success: false, error: 'URL du webhook requise.' }, { status: 400 });
+    if (!url || typeof applicationId !== 'string' || !applicationId.trim()) {
+      return NextResponse.json({ success: false, error: 'URL du webhook et applicationId requis.' }, { status: 400 });
     }
 
     const id = `whk_${Date.now()}`;
@@ -68,13 +68,20 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
 
     const db = getDb();
+    const app = await db.execute({
+      sql: 'SELECT id FROM applications WHERE id = ? AND user_id = ?',
+      args: [applicationId, user.id],
+    });
+    if (app.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     await db.execute({
       sql: `INSERT INTO webhooks (id, user_id, application_id, url, description, secret, events, is_active, last_delivery_status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
         user.id,
-        applicationId || 'app_default',
+        applicationId,
         url,
         description || 'Endpoint webhook',
         secret,
@@ -101,4 +108,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

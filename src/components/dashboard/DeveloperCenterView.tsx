@@ -29,7 +29,6 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
   // New key form
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [keyName, setKeyName] = useState('');
-  const [keyScope, setKeyScope] = useState<'both' | 'payin' | 'payout'>('both');
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Created secret keys reveal modal (Shown ONLY once on creation!)
@@ -59,7 +58,7 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
     try {
       const res = await apiClient.developer.generateKey({
         name: keyName.trim() || 'Intégration API',
-        scope: keyScope,
+        scope: 'payin',
         applicationId: activeApp?.id,
       });
 
@@ -378,16 +377,8 @@ export const DeveloperCenterView: React.FC<{ appName?: string; activeApp?: Appli
               </div>
 
               <div className="pf-form-group">
-                <label className="pf-label">Portée des droits (Scope)</label>
-                <select
-                  className="pf-select"
-                  value={keyScope}
-                  onChange={(e) => setKeyScope(e.target.value as any)}
-                >
-                  <option value="both">Encaissement et Décaissement (Payin & Payout)</option>
-                  <option value="payin">Encaissement uniquement (Payin)</option>
-                  <option value="payout">Décaissement uniquement (Payout)</option>
-                </select>
+                <label className="pf-label">Portée des droits</label>
+                <p className="pf-helper-text">Encaissement (payin). Les décaissements ne sont pas disponibles via l’API.</p>
               </div>
 
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>

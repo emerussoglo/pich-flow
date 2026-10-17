@@ -3712,8 +3712,8 @@ apiRouter.get('/v1/payments/status/:reference', requireApiKey, async (req: Authe
   try {
     const db = getDb();
     const result = await db.execute({
-      sql: 'SELECT * FROM transactions WHERE reference = ? AND user_id = ?',
-      args: [req.params.reference, req.user!.id],
+      sql: 'SELECT * FROM transactions WHERE reference = ? AND user_id = ? AND application_id = ?',
+      args: [req.params.reference, req.user!.id, req.apiKey!.application_id],
     });
 
     if (result.rows.length === 0) {
@@ -3785,8 +3785,8 @@ apiRouter.get('/v1/transactions/:id', requireApiKey, async (req: AuthenticatedRe
   try {
     const db = getDb();
     const result = await db.execute({
-      sql: 'SELECT * FROM transactions WHERE (id = ? OR reference = ?) AND user_id = ?',
-      args: [req.params.id, req.params.id, req.user!.id],
+      sql: 'SELECT * FROM transactions WHERE (id = ? OR reference = ?) AND user_id = ? AND application_id = ?',
+      args: [req.params.id, req.params.id, req.user!.id, req.apiKey!.application_id],
     });
 
     if (result.rows.length === 0) {

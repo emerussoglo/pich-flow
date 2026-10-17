@@ -16,15 +16,16 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useToast } from '../ui/ToastContext';
 import { apiClient } from '../../lib/api';
-import { Withdrawal, PayoutMethod } from '../../types';
+import { Application, Withdrawal, PayoutMethod } from '../../types';
 
 interface WithdrawalsViewProps {
   appName?: string;
+  activeApp?: Application;
   withdrawals?: Withdrawal[];
   onOpenWithdrawalModal?: () => void;
 }
 
-export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon Application' }) => {
+export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon Application', activeApp }) => {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'retraits' | 'methodes'>('retraits');
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,10 +61,16 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
   const [currency, setCurrency] = useState('XOF');
 
   const loadData = useCallback(async () => {
+    if (!activeApp?.id) {
+      setWithdrawals([]);
+      setPayoutMethods([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const [wList, mList] = await Promise.all([
-        apiClient.withdrawals.getAll(),
+        apiClient.withdrawals.getAll(activeApp.id),
         apiClient.payoutMethods.getAll(),
       ]);
       setWithdrawals(wList);
@@ -77,7 +84,7 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
     } finally {
       setIsLoading(false);
     }
-  }, [showToast, selectedMethodId]);
+  }, [activeApp?.id, showToast, selectedMethodId]);
 
   useEffect(() => {
     loadData();
@@ -85,6 +92,10 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
 
   const handleWithdrawSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeApp?.id) {
+      showToast('Sélectionnez d’abord une application.', 'error');
+      return;
+    }
     const parsedAmount = Number(withdrawAmount);
     if (!parsedAmount || parsedAmount < 500) {
       showToast('Le montant minimum de retrait est de 500 XOF.', 'error');
@@ -96,6 +107,7 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
     setIsSubmitting(true);
     try {
       const created = await apiClient.withdrawals.create({
+        applicationId: activeApp.id,
         amount: parsedAmount,
         currency: chosenMethod ? chosenMethod.currency : 'XOF',
         methodType: chosenMethod ? chosenMethod.type : 'mobile_money',

@@ -1,0 +1,480 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PitchFlow API",
+    "version": "1.0.0",
+    "description": "API publique actuellement implémentée pour les liens et sessions de paiement PayDunya. Une clé est limitée à son application propriétaire."
+  },
+  "servers": [
+    {
+      "url": "https://pichflow.vercel.app/api/v1",
+      "description": "Production actuelle"
+    },
+    {
+      "url": "http://localhost:3000/api/v1",
+      "description": "Développement local"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/payment-links": {
+      "get": {
+        "summary": "Lister les liens de paiement",
+        "operationId": "listPaymentLinks",
+        "responses": {
+          "200": {
+            "description": "Liens de l'application de la clé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinksResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      },
+      "post": {
+        "summary": "Créer un lien de paiement",
+        "operationId": "createPaymentLink",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePaymentLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Lien créé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinkResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/checkout-sessions": {
+      "post": {
+        "summary": "Créer une session de paiement",
+        "operationId": "createCheckoutSession",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 100
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCheckoutSessionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Session créée; status reste pending jusqu'à vérification fournisseur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Lien absent ou hors de l'application associée à la clé"
+          },
+          "409": {
+            "description": "Conflit de clé d'idempotence"
+          },
+          "502": {
+            "description": "Facture PayDunya non créée"
+          }
+        }
+      }
+    },
+    "/payments/{reference}": {
+      "get": {
+        "summary": "Consulter le statut d'un paiement",
+        "operationId": "getPayment",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^pf_[0-9a-f-]{36}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "État de paiement vérifié ou encore en attente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Paiement absent ou hors de l'application associée à la clé"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Clé d'intégration PitchFlow pf_test_ ou pf_live_, jamais une clé PayDunya."
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "error"
+        ],
+        "properties": {
+          "success": {
+            "const": false
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "PaymentLink": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "isFixedAmount": {
+            "type": "boolean"
+          },
+          "currency": {
+            "const": "XOF"
+          },
+          "country": {
+            "const": "BJ"
+          },
+          "status": {
+            "type": "string"
+          },
+          "usageCount": {
+            "type": "integer"
+          },
+          "usageLimit": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreatePaymentLinkRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "free"
+            ]
+          },
+          "isFixedAmount": {
+            "type": "boolean"
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "currency": {
+            "const": "XOF"
+          },
+          "usageLimit": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "CreateCheckoutSessionRequest": {
+        "type": "object",
+        "required": [
+          "customerName",
+          "customerEmail",
+          "customerPhone"
+        ],
+        "properties": {
+          "paymentLinkId": {
+            "type": "string"
+          },
+          "paymentLinkSlug": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Requis uniquement pour un lien à montant libre; le prix d'un lien fixe est imposé par le serveur."
+          },
+          "customerName": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "customerEmail": {
+            "type": "string",
+            "format": "email"
+          },
+          "customerPhone": {
+            "type": "string",
+            "pattern": "^\\+?[1-9][0-9]{7,14}$"
+          }
+        },
+        "oneOf": [
+          {
+            "required": [
+              "paymentLinkId"
+            ],
+            "not": {
+              "required": [
+                "paymentLinkSlug"
+              ]
+            }
+          },
+          {
+            "required": [
+              "paymentLinkSlug"
+            ],
+            "not": {
+              "required": [
+                "paymentLinkId"
+              ]
+            }
+          }
+        ]
+      },
+      "CheckoutSession": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "success",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "currency": {
+            "const": "XOF"
+          },
+          "checkoutUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "PaymentLinkResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/CreatedPaymentLink"
+          }
+        }
+      },
+      "CreatedPaymentLink": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "customer"
+            ]
+          },
+          "amount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "currency": {
+            "const": "XOF"
+          },
+          "country": {
+            "const": "BJ"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PaymentLinksResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentLink"
+            }
+          }
+        }
+      },
+      "CheckoutSessionResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/CheckoutSession"
+          }
+        }
+      },
+      "PaymentStatusResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/CheckoutSession"
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Requête invalide",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Clé API manquante, invalide ou révoquée",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  }
+}

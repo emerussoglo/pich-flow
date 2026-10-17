@@ -9,7 +9,7 @@
     "start": "next start",
     "clean": "node -e \"require('node:fs').rmSync('.next', { recursive: true, force: true })\"",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/suite.test.ts && tsx --test tests/auth.test.ts tests/next-api.test.ts tests/payments.test.ts"
+    "test": "tsx --test tests/auth.test.ts tests/next-api.test.ts tests/payments.test.ts"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",

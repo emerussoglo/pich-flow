@@ -1,7 +1,7 @@
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { Socket } from 'node:net';
 import { createApiApp } from './app';
-import { initDatabase } from './db';
+import { ensureDatabaseInitialized } from './db';
 import { seedInitialDataIfNeeded } from './seed';
 
 let appInstance: ReturnType<typeof createApiApp> | null = null;
@@ -13,7 +13,7 @@ async function ensureDbInitialized(): Promise<void> {
   if (!dbInitPromise) {
     dbInitPromise = (async () => {
       try {
-        await initDatabase();
+        await ensureDatabaseInitialized();
         await seedInitialDataIfNeeded();
         dbInitialized = true;
       } catch (err) {
@@ -140,4 +140,3 @@ export async function handleApiRequest(webRequest: Request): Promise<Response> {
     }
   });
 }
-

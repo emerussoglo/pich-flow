@@ -5,6 +5,7 @@ import path from 'path';
 dotenv.config();
 
 let dbClient: Client | null = null;
+let databaseInitPromise: Promise<void> | null = null;
 
 export function getDb(): Client {
   if (dbClient) return dbClient;
@@ -421,4 +422,14 @@ export async function initDatabase(): Promise<void> {
     WHERE substr(idempotency_key, 1, 9) = 'paydunya:'`);
 
   console.log('[DB] All tables verified successfully.');
+}
+
+export async function ensureDatabaseInitialized(): Promise<void> {
+  if (!databaseInitPromise) {
+    databaseInitPromise = initDatabase().catch((error: unknown) => {
+      databaseInitPromise = null;
+      throw error;
+    });
+  }
+  await databaseInitPromise;
 }

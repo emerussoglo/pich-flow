@@ -62,6 +62,9 @@ export async function POST(request: NextRequest) {
     if (!name || !email) {
       return NextResponse.json({ success: false, error: 'Nom et adresse email requis.' }, { status: 400 });
     }
+    if (typeof applicationId !== 'string' || !applicationId.trim()) {
+      return NextResponse.json({ success: false, error: 'applicationId requis.' }, { status: 400 });
+    }
 
     const cleanEmail = String(email).toLowerCase().trim();
     const cleanName = String(name).trim();
@@ -69,13 +72,22 @@ export async function POST(request: NextRequest) {
     const now = new Date().toISOString();
 
     const db = getDb();
+    const app = await db.execute({
+      sql: 'SELECT id FROM applications WHERE id = ? AND user_id = ?',
+      args: [applicationId, user.id],
+    });
+    if (app.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     await db.execute({
-      sql: `INSERT INTO customers (id, user_id, application_id, name, email, phone, country, payment_count, total_spent, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`,
+      sql: `INSERT INTO customers
+        (id, user_id, application_id, name, email, phone, country, payment_count,
+         total_spent, currency, last_transaction_at, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, 'XOF', ?, ?)`,
       args: [
         id,
         user.id,
-        applicationId || 'app_default',
+        applicationId,
         cleanName,
         cleanEmail,
         phone || '',
@@ -102,4 +114,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
-

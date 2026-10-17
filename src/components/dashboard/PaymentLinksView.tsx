@@ -68,7 +68,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [maxUsage, setMaxUsage] = useState('');
   const [defaultCountry, setDefaultCountry] = useState('BJ');
   const [requirePhone, setRequirePhone] = useState(true);
-  const [clientFeeEnabled, setClientFeeEnabled] = useState(true);
   const [customSlug, setCustomSlug] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -88,10 +87,8 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const selectedPreviewMethod =
     currentPreviewCountry.methods.find((m) => m.id === previewMethodId) || currentPreviewCountry.methods[0];
 
-  const parsedFeeRate = 2.2;
   const numericAmount = amountType === 'fixed' ? Number(amountVal) || 0 : 5000;
-  const calculatedFee = clientFeeEnabled ? Math.round(numericAmount * (parsedFeeRate / 100)) : 0;
-  const previewTotal = numericAmount + calculatedFee;
+  const previewTotal = numericAmount;
 
   const loadLinks = useCallback(async () => {
     setIsLoading(true);
@@ -453,27 +450,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                   </select>
                 </div>
 
-                <div className="pf-form-group" style={{ background: '#F8FAFC', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #E2E8F0', marginBottom: '0.85rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0F172A' }}>
-                        Répercuter les frais de transaction (2,2 %)
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>
-                        {clientFeeEnabled
-                          ? 'Le client paye +2,2 % en sus du prix affiché.'
-                          : 'Vous absorbez les frais, le client paye exactement le prix affiché.'}
-                      </div>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={clientFeeEnabled}
-                      onChange={(e) => setClientFeeEnabled(e.target.checked)}
-                      style={{ width: '1.25rem', height: '1.25rem', accentColor: '#5E30E8', cursor: 'pointer' }}
-                    />
-                  </label>
-                </div>
-
                 <div className="pf-form-group" style={{ background: '#F8FAFC', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
                   <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                     <div>
@@ -717,14 +693,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                       {new Intl.NumberFormat('fr-FR').format(numericAmount)} {currency}
                     </span>
                   </div>
-                  {clientFeeEnabled && calculatedFee > 0 && (
-                    <div className="pf-saspay-summary-row">
-                      <span>Frais de passerelle ({parsedFeeRate} %)</span>
-                      <span style={{ fontWeight: 600, color: '#5E30E8' }}>
-                        + {new Intl.NumberFormat('fr-FR').format(calculatedFee)} {currency}
-                      </span>
-                    </div>
-                  )}
                   <div className="pf-saspay-summary-divider" />
                   <div className="pf-saspay-summary-total">
                     <span>Total à payer</span>

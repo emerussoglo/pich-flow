@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "name": "PichFlow",
-  "description": "Documentation développeur PichFlow : intégration des paiements, opérations et API.",
+  "description": "Documentation de l’API PitchFlow versionnée et de son intégration PayDunya.",
   "theme": "mint",
   "logo": "/img/log.png",
   "favicon": "/img/log.png",
@@ -11,7 +11,7 @@
     "dark": "#4520B0"
   },
   "api": {
-    "openapi": "openapi.json",
+    "openapi": "api-v1.openapi.json",
     "mdx": {
       "auth": {
         "method": "bearer"
@@ -27,47 +27,9 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Découvrir",
+            "group": "API PitchFlow",
             "pages": [
-              "index",
-              "create-account",
-              "quickstart",
-              "authentication",
-              "concepts"
-            ]
-          },
-          {
-            "group": "Paiements",
-            "pages": [
-              "payments-overview",
-              "hosted-checkout",
-              "payment-links",
-              "softpay-otp",
-              "payment-verification"
-            ]
-          },
-          {
-            "group": "Opérations",
-            "pages": [
-              "customers-transactions",
-              "wallets",
-              "payouts",
-              "countries-networks"
-            ]
-          },
-          {
-            "group": "Intégration",
-            "pages": [
-              "webhooks",
-              "errors",
-              "code-samples",
-              "real-payloads"
-            ]
-          },
-          {
-            "group": "Aide",
-            "pages": [
-              "faq"
+              "api-v1"
             ]
           }
         ]

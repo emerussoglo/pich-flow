@@ -1,6 +1,6 @@
 import type { NextFunction, Request as ExpressRequest, Response } from 'express';
 import crypto from 'crypto';
-import { getDb } from './db';
+import { ensureDatabaseInitialized, getDb } from './db';
 
 const SALT = 'pichflow_salt_2026';
 
@@ -89,6 +89,7 @@ export async function getAuthUserFromRequest(request: globalThis.Request): Promi
   const tokens = [...new Set([cookieToken, bearerToken].filter(Boolean))];
   if (tokens.length === 0) return null;
 
+  await ensureDatabaseInitialized();
   const db = getDb();
   for (const token of tokens) {
     const sessionRes = await db.execute({
