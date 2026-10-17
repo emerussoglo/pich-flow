@@ -427,7 +427,6 @@ function AppContent() {
                   transactions={transactions}
                   wallets={wallets}
                   onOpenCreateLinkModal={() => setIsNewLinkModalOpen(true)}
-                  onOpenWithdrawalModal={() => setIsNewWithdrawalModalOpen(true)}
                 />
               )}
 
@@ -443,7 +442,6 @@ function AppContent() {
                   wallets={wallets}
                   activeApp={activeApp || undefined}
                   ledgerEntries={[]}
-                  onOpenWithdrawalModal={() => setIsNewWithdrawalModalOpen(true)}
                 />
               )}
 
@@ -485,7 +483,6 @@ function AppContent() {
               {dashboardTab === 'withdrawals' && (
                 <WithdrawalsPage
                   withdrawals={withdrawals}
-                  onOpenWithdrawalModal={() => setIsNewWithdrawalModalOpen(true)}
                 />
               )}
 

@@ -5,7 +5,6 @@ import {
   faWallet,
   faPlus,
   faArrowUpRightFromSquare,
-  faCircleArrowDown,
   faReceipt,
 } from '@fortawesome/free-solid-svg-icons';
 import { useRouter } from '../../lib/router';
@@ -15,21 +14,17 @@ interface DashboardOverviewProps {
   transactions: Transaction[];
   wallets: Wallet[];
   onOpenCreateLinkModal?: () => void;
-  onOpenWithdrawalModal?: () => void;
   onNavigateTab?: (tab: string) => void;
 }
-
-const DEFAULT_CURRENCIES = ['XOF', 'XAF', 'USD', 'NGN', 'GHS', 'GNF'];
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   activeApp,
   transactions,
   wallets,
-  onOpenWithdrawalModal,
 }) => {
   const { navigate } = useRouter();
 
-  // Compute actual balances by currency from real user wallets
+  // These are local ledger values, not provider-confirmed available balances.
   const walletMap = React.useMemo(() => {
     const map: Record<string, number> = {};
     for (const w of wallets) {
@@ -38,34 +33,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     return map;
   }, [wallets]);
 
-  // Display currencies: real active user currencies first, followed by default currencies with 0
   const displayCurrencies = React.useMemo(() => {
-    const list: { code: string; amount: number; highlight?: boolean }[] = [];
-    const seen = new Set<string>();
-
-    for (const w of wallets) {
-      if (!seen.has(w.currency)) {
-        seen.add(w.currency);
-        list.push({
-          code: w.currency,
-          amount: walletMap[w.currency] || 0,
-          highlight: w.isDefault,
-        });
-      }
-    }
-
-    for (const c of DEFAULT_CURRENCIES) {
-      if (!seen.has(c)) {
-        seen.add(c);
-        list.push({
-          code: c,
-          amount: 0,
-          highlight: false,
-        });
-      }
-    }
-
-    return list;
+    return [...new Set(wallets.map((wallet) => wallet.currency))].map((code) => ({
+      code,
+      amount: walletMap[code] || 0,
+      highlight: wallets.some((wallet) => wallet.currency === code && wallet.isDefault),
+    }));
   }, [wallets, walletMap]);
 
   // Real recent transactions (limit 6)
@@ -78,22 +51,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <div>
           <h1 className="pf-page-title">Tableau de bord</h1>
           <p className="pf-page-subtitle">
-            Vue d'ensemble de {activeApp.name} — suivi en temps réel des encaissements et soldes.
+            Vue d’ensemble de {activeApp.name} — suivi des encaissements de cette application.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button
-            onClick={() => {
-              if (onOpenWithdrawalModal) onOpenWithdrawalModal();
-              else navigate('/dashboard/withdrawals');
-            }}
-            className="pf-btn-action-secondary"
-          >
-            <FontAwesomeIcon icon={faCircleArrowDown} />
-            <span>Retirer</span>
-          </button>
-
           <button
             onClick={() => navigate('/dashboard/create-payment-link')}
             className="pf-btn-action-primary"
@@ -104,25 +66,28 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       </div>
 
-      {/* 2-Column Grid (Solde disponible + Transactions récentes) */}
+      {/* 2-Column Grid (PichFlow ledger + recent transactions) */}
       <div className="pf-overview-2col-grid">
-        {/* Left Card: Solde disponible */}
+        {/* Left Card: PichFlow ledger */}
         <div className="pf-saspay-card">
           <div className="pf-card-head-between">
             <div className="pf-card-head-title">
               <FontAwesomeIcon icon={faWallet} style={{ color: '#2563EB' }} />
-              <span>Solde disponible par devise</span>
+              <span>Registre PichFlow par devise</span>
             </div>
             <span
               onClick={() => navigate('/dashboard/wallets')}
               className="pf-card-head-link"
               style={{ cursor: 'pointer' }}
             >
-              Voir le wallet →
+              Voir le registre →
             </span>
           </div>
 
           <div className="pf-currency-balance-grid">
+            {displayCurrencies.length === 0 && (
+              <p>Solde PayDunya non disponible; aucun montant n’est enregistré dans le registre PichFlow.</p>
+            )}
             {displayCurrencies.map((item) => (
               <div key={item.code} className="pf-currency-cell">
                 <div className="pf-currency-code">{item.code}</div>

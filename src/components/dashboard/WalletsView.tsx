@@ -18,7 +18,6 @@ interface WalletsViewProps {
   activeApp?: Application;
   wallets?: Wallet[];
   ledgerEntries?: any[];
-  onOpenWithdrawalModal?: () => void;
 }
 
 const SUPPORTED_COUNTRIES = [
@@ -33,7 +32,7 @@ const SUPPORTED_COUNTRIES = [
   { countryCode: 'US', countryName: 'International (USD)', currency: 'USD', symbol: '$' },
 ];
 
-export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Application', activeApp, onOpenWithdrawalModal }) => {
+export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Application', activeApp }) => {
   const { showToast } = useToast();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,9 +135,6 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
     return match ? match.countryName : code;
   };
 
-  // Total balance across wallets in XOF equivalent
-  const totalBalance = wallets.reduce((acc, w) => acc + (w.currency === 'XOF' ? w.balance : 0), 0);
-
   return (
     <div>
       {/* Header */}
@@ -146,7 +142,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
         <div>
           <h1 className="pf-page-title">Portefeuilles (Wallets)</h1>
           <p className="pf-page-subtitle">
-            Gérez vos soldes et devises par pays pour {appName}.
+            Registre local PichFlow pour {appName}; il ne confirme pas le solde disponible chez PayDunya.
           </p>
         </div>
 
@@ -157,28 +153,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
             title="Actualiser les soldes"
           >
             <FontAwesomeIcon icon={faRotate} spin={isLoading} />
-            <span>Actualiser</span>
-          </button>
-          <button
-            onClick={() => setAddWalletModalOpen(true)}
-            className="pf-btn pf-btn-secondary pf-btn-sm"
-          >
-            <FontAwesomeIcon icon={faPlus} />
-            <span>Activer un pays</span>
-          </button>
-          <button
-            onClick={() => {
-              if (wallets.length < 2) {
-                showToast('Vous devez posséder au moins 2 portefeuilles pour effectuer un transfert.', 'info');
-                setAddWalletModalOpen(true);
-              } else {
-                setTransferModalOpen(true);
-              }
-            }}
-            className="pf-btn-action-primary"
-          >
-            <FontAwesomeIcon icon={faArrowRightArrowLeft} />
-            <span>Transférer des fonds</span>
+            <span>Actualiser le registre</span>
           </button>
         </div>
       </div>
@@ -200,27 +175,24 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
       >
         <div>
           <div style={{ fontSize: '0.8125rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Solde total disponible (XOF)
+            Solde officiel PayDunya
           </div>
           <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>
-            {totalBalance.toLocaleString('fr-FR')} FCFA
+            Non disponible
           </div>
           <div style={{ fontSize: '0.75rem', color: '#CBD5E1', marginTop: '0.25rem' }}>
-            {wallets.length} portefeuille(s) actif(s) sur votre compte marchand
+            L’API PayDunya utilisée ne fournit pas le solde marchand.
           </div>
         </div>
-
-        {onOpenWithdrawalModal && (
-          <button
-            onClick={onOpenWithdrawalModal}
-            className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
-          >
-            <span>Demander un reversement</span>
-          </button>
-        )}
       </div>
 
-      {/* Grid of Real Wallets */}
+      {wallets.length === 0 && !isLoading && (
+        <p role="status" className="pf-saspay-card" style={{ padding: '1rem 1.25rem', marginBottom: '1rem' }}>
+          Aucun solde de registre n’est enregistré pour {appName}. PichFlow ne crée pas de portefeuille fictif.
+        </p>
+      )}
+
+      {/* Stored PichFlow ledger entries; they are not provider-confirmed balances. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
         {wallets.map((w) => (
           <div
@@ -272,7 +244,7 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
               </div>
 
               <div style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Solde disponible</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Montant inscrit au registre PichFlow</div>
                 <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A' }}>
                   {w.balance.toLocaleString('fr-FR')} {w.currency}
                 </div>
@@ -280,8 +252,8 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
             </div>
 
             <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748B' }}>
-              <span>En attente : {w.pendingBalance.toLocaleString('fr-FR')}</span>
-              <span>Réservé : {w.reservedBalance.toLocaleString('fr-FR')}</span>
+              <span>En attente (registre) : {w.pendingBalance.toLocaleString('fr-FR')}</span>
+              <span>Réservé (registre) : {w.reservedBalance.toLocaleString('fr-FR')}</span>
             </div>
           </div>
         ))}

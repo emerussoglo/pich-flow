@@ -30,7 +30,7 @@ const { GET: getStats } = await import('../src/app/api/stats/overview/route');
 const { GET: listCustomers, POST: createCustomer } = await import('../src/app/api/customers/route');
 const { PUT: updateCustomer } = await import('../src/app/api/customers/[id]/route');
 const { POST: createPayoutMethod } = await import('../src/app/api/payout-methods/route');
-const { GET: listWallets } = await import('../src/app/api/wallets/route');
+const { GET: listWallets, POST: createWallet } = await import('../src/app/api/wallets/route');
 const { GET: listWebhooks, POST: createWebhook } = await import('../src/app/api/developer/webhooks/route');
 const { handleApiRequest } = await import('../src/server/adapter');
 
@@ -150,6 +150,37 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   assert.equal(createdSecondApp.status, 200);
   const applicationB = (await createdSecondApp.json()).application;
 
+  assert.equal((await selectApp(
+    makeRequest('/api/apps/active', 'POST', { applicationId: applicationA.id }, undefined, sessionCookie),
+  )).status, 200);
+  const emptyWalletResponse = await listWallets(
+    makeRequest(`/api/wallets?applicationId=${applicationA.id}`, 'GET', undefined, undefined, sessionCookie),
+  );
+  assert.equal(emptyWalletResponse.status, 200);
+  assert.deepEqual((await emptyWalletResponse.json()).wallets, []);
+  const emptyWalletCount = await getDb().execute('SELECT COUNT(*) AS count FROM wallets');
+  assert.equal(Number(emptyWalletCount.rows[0].count), 0);
+
+  const testUser = await getDb().execute({
+    sql: 'SELECT id FROM users WHERE email = ?',
+    args: [email],
+  });
+  const walletCreatedAt = new Date().toISOString();
+  await getDb().execute({
+    sql: `INSERT INTO wallets (
+            id, user_id, application_id, currency, symbol, balance,
+            pending_balance, reserved_balance, country_code, is_default, created_at, updated_at
+          ) VALUES (?, ?, ?, 'XOF', 'FCFA', ?, 0, 0, 'BJ', 1, ?, ?)`,
+    args: ['wallet-app-a', testUser.rows[0].id, applicationA.id, 900, walletCreatedAt, walletCreatedAt],
+  });
+  await getDb().execute({
+    sql: `INSERT INTO wallets (
+            id, user_id, application_id, currency, symbol, balance,
+            pending_balance, reserved_balance, country_code, is_default, created_at, updated_at
+          ) VALUES (?, ?, ?, 'XOF', 'FCFA', ?, 0, 0, 'BJ', 1, ?, ?)`,
+    args: ['wallet-app-b', testUser.rows[0].id, applicationB.id, 2100, walletCreatedAt, walletCreatedAt],
+  });
+
   const selectApplication = async (applicationId: string) => selectApp(
     makeRequest('/api/apps/active', 'POST', { applicationId }, undefined, sessionCookie),
   );
@@ -178,8 +209,11 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
     makeRequest(`/api/wallets?applicationId=${applicationA.id}`, 'GET', undefined, undefined, sessionCookie),
   );
   assert.equal(walletListA.status, 200);
-  const walletA = (await walletListA.json()).wallets[0];
+  const walletResponseA = await walletListA.json();
+  const walletA = walletResponseA.wallets[0];
   assert.equal(walletA.currency, 'XOF');
+  assert.equal(walletA.balance, 900);
+  assert.equal(walletResponseA.providerBalanceAvailable, false);
   const webhookAResponse = await createWebhook(
     makeRequest('/api/developer/webhooks', 'POST', {
       url: 'https://example.test/webhook',
@@ -301,6 +335,15 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   assert.equal(walletListB.status, 200);
   const walletB = (await walletListB.json()).wallets[0];
   assert.notEqual(walletA.id, walletB.id);
+  assert.equal(walletB.balance, 2100);
+  const walletCreation = await createWallet(
+    makeRequest('/api/wallets', 'POST', {
+      countryCode: 'BJ',
+      currency: 'XOF',
+      applicationId: applicationB.id,
+    }, undefined, sessionCookie),
+  );
+  assert.equal(walletCreation.status, 501);
   const webhooksForB = await listWebhooks(
     makeRequest(`/api/developer/webhooks?applicationId=${applicationB.id}`, 'GET', undefined, undefined, sessionCookie),
   );
@@ -515,10 +558,10 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   });
   assert.equal(consumedResetToken.rows.length, 0);
 
-  const legacyReference = await handleApiRequest(
+  const disabledLegacyReference = await handleApiRequest(
     new Request('http://localhost/api/reference/countries'),
   );
-  assert.equal(legacyReference.status, 200);
+  assert.equal(disabledLegacyReference.status, 410);
 
   const checkoutBody = await handleApiRequest(
     new Request('http://localhost/api/checkout/initiate', {

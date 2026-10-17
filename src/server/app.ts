@@ -36,11 +36,11 @@ export function createApiApp() {
 
   app.use('/api', (req, res, next) => {
     const legacyPaymentRoute =
-      /^\/(?:webhooks\/saspay|payments(?:\/|$)|withdrawals(?:\/|$)|payouts(?:\/|$)|wallets\/transfer(?:\/|$)|v1\/payments(?:\/|$)|v1\/checkout-sessions(?:\/|$)|v1\/payouts(?:\/|$)|v1\/wallets\/(?:balances|rates|transfer)(?:\/|$)|v1\/transactions\/export(?:\/|$)|v1\/transactions\/[^/]+\/invoice(?:\/|$))/.test(req.path);
+      /^\/(?:webhooks\/saspay|reference\/(?:countries|networks|rates)(?:\/|$)|payments(?:\/|$)|withdrawals(?:\/|$)|payouts(?:\/|$)|wallets\/transfer(?:\/|$)|v1\/payments(?:\/|$)|v1\/checkout-sessions(?:\/|$)|v1\/payouts(?:\/|$)|v1\/wallets\/(?:balances|rates|transfer)(?:\/|$)|v1\/transactions\/export(?:\/|$)|v1\/transactions\/[^/]+\/invoice(?:\/|$))/.test(req.path);
     if (legacyPaymentRoute) {
       res.status(410).json({
         success: false,
-        error: 'Cette route de paiement n’est plus prise en charge. Utilisez le parcours PayDunya hébergé de PichFlow.',
+        error: 'Cette route d’intégration historique n’est plus active. Utilisez les flux PayDunya pris en charge par PichFlow.',
       });
       return;
     }

@@ -8,7 +8,6 @@ interface OverviewPageProps {
   transactions: Transaction[];
   wallets: Wallet[];
   onOpenCreateLinkModal: () => void;
-  onOpenWithdrawalModal: () => void;
 }
 
 export const OverviewPage: React.FC<OverviewPageProps> = ({
@@ -16,7 +15,6 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
   transactions,
   wallets,
   onOpenCreateLinkModal,
-  onOpenWithdrawalModal,
 }) => {
   const { navigate } = useRouter();
 
@@ -27,7 +25,6 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
       wallets={wallets}
       onNavigateTab={(tab) => navigate(`/dashboard/${tab}`)}
       onOpenCreateLinkModal={onOpenCreateLinkModal}
-      onOpenWithdrawalModal={onOpenWithdrawalModal}
     />
   );
 };

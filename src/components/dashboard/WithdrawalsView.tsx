@@ -21,7 +21,6 @@ import { Withdrawal, PayoutMethod } from '../../types';
 interface WithdrawalsViewProps {
   appName?: string;
   withdrawals?: Withdrawal[];
-  onOpenWithdrawalModal?: () => void;
 }
 
 export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon Application' }) => {
@@ -154,7 +153,7 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
       setSwiftBic('');
       setBankCode('');
       setBranchCode('');
-      showToast('Nouvelle méthode de retrait enregistrée et vérifiée.', 'success');
+      showToast('Coordonnées enregistrées; elles ne sont pas vérifiées et aucun retrait n’a été effectué.', 'info');
     } catch (err: any) {
       showToast(err.message || 'Erreur lors de l’enregistrement de la méthode.', 'error');
     } finally {
@@ -275,19 +274,13 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
             </button>
           ) : (
             <button
-              onClick={() => {
-                if (payoutMethods.length === 0) {
-                  showToast('Veuillez d’abord ajouter une méthode de versement (Mobile Money ou Banque).', 'info');
-                  setActiveTab('methodes');
-                  setMethodModalOpen(true);
-                } else {
-                  setWithdrawalModalOpen(true);
-                }
-              }}
+              type="button"
+              disabled
+              title="Les retraits ne sont pas intégrés à PayDunya dans cette application."
               className="pf-btn-action-primary"
             >
               <FontAwesomeIcon icon={faPlus} />
-              <span>Demander un retrait</span>
+              <span>Retraits indisponibles</span>
             </button>
           )}
         </div>
@@ -296,6 +289,9 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
       {/* TAB 1: RETRAITS */}
       {activeTab === 'retraits' && (
         <>
+          <p role="note" className="pf-saspay-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
+            Les retraits ne sont pas intégrés. Aucun solde affiché par PichFlow ne peut être retiré ou considéré comme un solde PayDunya confirmé.
+          </p>
           <div className="pf-saspay-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
             <input
               type="text"
