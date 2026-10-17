@@ -88,6 +88,9 @@ export async function POST(request: NextRequest) {
       ? body.redirectUrl.trim()
       : null;
 
+    if (!await userHasSelectedApplication(user, applicationId)) {
+      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
+    }
     if (!title || title.length > 140) {
       return NextResponse.json({ success: false, error: 'Le nom du produit est requis (140 caractères maximum).' }, { status: 400 });
     }
@@ -113,10 +116,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'L’URL de redirection doit être une URL HTTPS valide.' }, { status: 400 });
       }
     }
-    if (!await userHasSelectedApplication(user, applicationId)) {
-      return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
-    }
-
     const id = `pl_${crypto.randomUUID()}`;
     const cleanSlug = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 55) || 'paiement';
