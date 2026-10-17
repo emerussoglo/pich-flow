@@ -169,7 +169,7 @@ export async function createCheckout(
   const now = new Date().toISOString();
   const userId = String(link.user_id);
   const applicationId = String(link.application_id);
-  const description = String(link.description || link.title || 'Paiement PitchFlow');
+  const description = String(link.description || link.title || 'Paiement PichFlow');
   const tx = await db.transaction('write');
   try {
     const usageUpdate = await tx.execute({

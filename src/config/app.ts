@@ -23,7 +23,7 @@ export const FAQ_ITEMS = [
   {
     question: "Comment intégrer PichFlow dans mon site ou application ?",
     answer:
-      "Depuis votre serveur, utilisez l'API PitchFlow versionnée pour créer un lien de paiement ou une session checkout. Les routes actuellement disponibles sont documentées dans le centre développeur; aucun SDK public n'est annoncé.",
+      "Depuis votre serveur, utilisez l'API PichFlow versionnée pour créer un lien de paiement ou une session checkout. Les routes actuellement disponibles sont documentées dans le centre développeur; aucun SDK public n'est annoncé.",
   },
   {
     question: "Quels moyens de paiement sont supportés ?",
@@ -43,7 +43,7 @@ export const FAQ_ITEMS = [
   {
     question: "Qu'est-ce qu'une clé API et comment est-elle sécurisée ?",
     answer:
-      "Une clé API PitchFlow pf_test_ ou pf_live_ autorise les opérations liées à une seule application. Son hash est stocké côté serveur; la valeur secrète complète n'est affichée qu'à la création et doit rester sur votre serveur.",
+      "Une clé API PichFlow pf_test_ ou pf_live_ autorise les opérations liées à une seule application. Son hash est stocké côté serveur; la valeur secrète complète n'est affichée qu'à la création et doit rester sur votre serveur.",
   },
   {
     question: "Comment fonctionnent les webhooks et sont-ils sécurisés ?",

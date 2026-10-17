@@ -26,7 +26,7 @@ export async function authenticateApiKey(
   await ensureDatabaseInitialized();
   const authorization = request.headers.get('authorization') || '';
   if (!authorization.startsWith('Bearer ')) {
-    throw new ApiKeyError('Clé API PitchFlow requise dans Authorization: Bearer.', 401);
+    throw new ApiKeyError('Clé API PichFlow requise dans Authorization: Bearer.', 401);
   }
   const secret = authorization.slice(7).trim();
   if (secret.length < 24 || secret.length > 256) {

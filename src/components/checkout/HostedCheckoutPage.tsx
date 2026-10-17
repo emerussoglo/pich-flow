@@ -35,7 +35,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   const [checkoutStep, setCheckoutStep] = useState<CheckoutStep>('customer');
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState('');
-  const [merchantName, setMerchantName] = useState('Pitchflow');
+  const [merchantName, setMerchantName] = useState('PichFlow');
   const [amount, setAmount] = useState(0);
   const [isFixedAmount, setIsFixedAmount] = useState(true);
   const [paymentLinkId, setPaymentLinkId] = useState<string | null>(null);
@@ -74,7 +74,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
       setPaymentLinkId(link.id);
       setTitle(link.title);
       setDescription(link.description || '');
-      setMerchantName(link.merchantName || 'Marchand Pitchflow');
+      setMerchantName(link.merchantName || 'Marchand PichFlow');
       setIsFixedAmount(link.isFixedAmount);
       setAmount(link.isFixedAmount && typeof link.amount === 'number' ? link.amount : 0);
       if (link.currency !== 'XOF') {
@@ -136,7 +136,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
     const email = customerEmail.trim();
     const phoneDigits = phone.replace(/\D/g, '');
     if (!paymentLinkId || !activeSlug) {
-      setErrorMessage('Le paiement doit être initié depuis un lien Pitchflow actif.');
+      setErrorMessage('Le paiement doit être initié depuis un lien PichFlow actif.');
       return;
     }
     if (!firstName.trim() || !lastName.trim() ||
@@ -459,7 +459,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
           <span>Paiement sécurisé par</span>
           <span className="pf-ui-watermark-brand">
             <span className="pf-ui-watermark-icon">⚡</span>
-            Pitchflow
+            PichFlow
           </span>
         </div>
       </div>

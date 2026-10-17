@@ -44,7 +44,7 @@ export async function GET(
         country: String(row.country || 'BJ'),
         isActive: true,
         requirePhone: true,
-        merchantName: String(row.app_name || 'Pitchflow'),
+        merchantName: String(row.app_name || 'PichFlow'),
       },
     });
   } catch (error) {

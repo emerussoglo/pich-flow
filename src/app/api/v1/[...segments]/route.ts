@@ -4,7 +4,7 @@ export const runtime = 'nodejs';
 
 function unavailable() {
   return NextResponse.json(
-    { success: false, error: 'Cette route API Pitchflow v1 n’est pas disponible.' },
+    { success: false, error: 'Cette route API PichFlow v1 n’est pas disponible.' },
     { status: 404 },
   );
 }

@@ -38,7 +38,7 @@ export function createApiApp() {
     const requestPath = req.path.replace(/\/+$/, '').toLowerCase() || '/';
     const path = requestPath.startsWith('/api/') ? requestPath.slice(4) : requestPath;
     if (path === '/v1' || path.startsWith('/v1/')) {
-      res.status(404).json({ success: false, error: 'Route API Pitchflow v1 introuvable.' });
+      res.status(404).json({ success: false, error: 'Route API PichFlow v1 introuvable.' });
       return;
     }
     if (path === '/reference' || path.startsWith('/reference/') ||
