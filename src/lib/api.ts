@@ -1,6 +1,7 @@
 import { Application, Transaction, Wallet, PaymentLink, Customer, Withdrawal, PayoutMethod, ApiKey, WebhookEndpoint, CheckoutSession } from '../types';
 
 const TOKEN_KEY = 'pf_auth_token';
+const inFlightGetRequests = new Map<string, Promise<unknown>>();
 
 export class ApiResponseError extends Error {
   constructor(
@@ -114,6 +115,13 @@ export const apiClient = {
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = this.getToken();
+    const method = (options.method || 'GET').toUpperCase();
+    const requestKey = `${token || 'cookie-session'}:${endpoint}`;
+    if (method === 'GET') {
+      const pendingRequest = inFlightGetRequests.get(requestKey);
+      if (pendingRequest) return pendingRequest as Promise<T>;
+    }
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -123,19 +131,29 @@ export const apiClient = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    let response: Response;
-    try {
-      response = await fetch(`/api${endpoint}`, {
-        ...options,
-        credentials: options.credentials ?? 'same-origin',
-        headers,
-      });
-    } catch (error) {
-      console.error('[API] Request failed:', { endpoint, error });
-      throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.');
-    }
+    const request = (async () => {
+      let response: Response;
+      try {
+        response = await fetch(`/api${endpoint}`, {
+          ...options,
+          credentials: options.credentials ?? 'same-origin',
+          headers,
+        });
+      } catch (error) {
+        console.error('[API] Request failed:', { endpoint, error });
+        throw new Error('Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.');
+      }
 
-    return (await parseApiResponse(response, endpoint)) as T;
+      return await parseApiResponse(response, endpoint);
+    })();
+
+    if (method !== 'GET') return (await request) as T;
+    inFlightGetRequests.set(requestKey, request);
+    try {
+      return (await request) as T;
+    } finally {
+      if (inFlightGetRequests.get(requestKey) === request) inFlightGetRequests.delete(requestKey);
+    }
   },
 
   // Auth
@@ -373,13 +391,13 @@ export const apiClient = {
 
   // Withdrawals
   withdrawals: {
-    async getAll(applicationId?: string): Promise<Withdrawal[]> {
+    async getAll(applicationId: string): Promise<Withdrawal[]> {
       const query = applicationId ? `?applicationId=${encodeURIComponent(applicationId)}` : '';
       const res = await apiClient.request<{ success: boolean; withdrawals: Withdrawal[] }>(`/withdrawals${query}`);
       return res.withdrawals;
     },
 
-    async create(data: Partial<Withdrawal>): Promise<Withdrawal> {
+    async create(data: Partial<Withdrawal> & { applicationId: string }): Promise<Withdrawal> {
       const res = await apiClient.request<{ success: boolean; withdrawal: Withdrawal }>('/withdrawals', {
         method: 'POST',
         body: JSON.stringify(data),

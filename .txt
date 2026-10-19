@@ -1,290 +1,233 @@
-# PICHFLOW — MISSION CIBLÉE : FINALISER ET FIABILISER LES LIENS DE PAIEMENT PAYDUNYA
+PAYDUNYA_MODE="sandbox" 
+PAYDUNYA_MASTER_KEY="2e1fiYSi-lB47-tEsH-H2Eu-qLVho7Kt2XQJ"
+PAYDUNYA_PRIVATE_KEY="test_private_fbEBOy3wlMbDcCg2Zoj6WuVvSE3"
+PAYDUNYA_PUBLIC_KEY="test_public_bPcQT0OdANmmWrmLuJkpbrdOmgY"
+PAYDUNYA_TOKEN="BK51ZoY7DwaDmbtSbNEE"
 
-Tu travailles directement dans le dépôt local de mon projet PichFlow. Tu as accès au code source. Ta mission est de **faire fonctionner le paiement de bout en bout, en local et en ligne**, en conservant l'intégration PayDunya existante lorsqu'elle fonctionne déjà.
 
-Ne refais pas tout le dashboard. Ne modifie pas les fonctionnalités sans rapport avec le paiement. Inspecte d'abord le code existant, identifie les causes des problèmes et effectue les corrections nécessaires.
 
-Documentation officielle :
-https://developers.paydunya.com/doc/FR/introduction
-https://developers.paydunya.com/doc/FR/http_json
 
-## 1. Commencer par comprendre le paiement existant
 
-J'ai déjà réalisé un paiement de test de 15 000 XOF pour « Licence Pro PitchFlow ». PayDunya a enregistré la facture, le client fictif, la référence PichFlow et les URL de redirection. Mon application affiche également un message de paiement confirmé.
 
-Ne casse pas cette partie qui semble déjà fonctionner.
 
-Inspecte précisément :
 
-- La route qui crée un lien de paiement.
-- La page publique qui reçoit le client.
-- La route backend qui crée la facture PayDunya.
-- Le service ou module qui utilise les clés PayDunya.
-- Le callback `/api/webhooks/paydunya`.
-- La route ou la page de retour qui vérifie le paiement.
-- La manière dont le statut, la référence, le montant, la devise et l'application sont enregistrés en base.
-- Les erreurs actuellement visibles dans le terminal et dans le navigateur.
 
-Reproduis les problèmes avant de les corriger. Ne remplace pas une intégration qui fonctionne partiellement par une intégration entièrement nouvelle sans raison technique démontrée.
 
-## 2. Corriger la création du lien de paiement
+# PICHFLOW — CORRECTION DU CHECKOUT À PARTIR DE MES CAPTURES D'ÉCRAN ET DE LA DOCUMENTATION OFFICIELLE PAYDUNYA
 
-Dans la page « Liens de paiement », supprime complètement l'aperçu simulé ordinateur/téléphone et les options de prévisualisation ajoutées précédemment.
+Tu travailles sur le dépôt existant de mon projet PichFlow. Je veux une correction réelle du parcours de paiement, pas une nouvelle maquette et pas une simple modification visuelle.
 
-Le formulaire de création doit contenir :
+**RÈGLE NUMÉRO 1 : tu dois examiner les captures d'écran que je joins avant de modifier le code.**
 
-- Nom du produit ou du service, obligatoire.
-- Description, facultative.
-- Choix du type de montant : **montant fixe** ou **montant libre**.
-- Si le montant est fixe : afficher le champ montant et le sélecteur de devise.
-- Si le montant est libre : ne pas demander de montant à la création ; le client le saisira sur la page publique.
-- Pays par défaut, facultatif.
-- Date d'expiration, facultative.
-- Case facultative : demander le numéro de téléphone du client dès la première étape du checkout.
+## 1. Examiner obligatoirement mes captures d'écran
 
-Lorsque le type de montant change, adapte les champs affichés et les validations. Un lien à montant libre ne doit pas être enregistré avec un montant fixe fictif. Un lien à montant fixe doit refuser un montant nul, négatif ou invalide.
+Avant toute modification :
 
-La devise proposée doit être cohérente avec les devises prises en charge par le produit et les moyens de paiement configurés. Ne déduis pas automatiquement qu'une devise est disponible simplement parce qu'un pays est sélectionnable.
+1. Ouvre et examine chaque capture d'écran jointe à cette demande.
+2. Identifie les pages représentées, les champs, les boutons, les étapes, les menus déroulants, les drapeaux, les textes et leur ordre.
+3. Compare les captures à l'interface actuelle du projet.
+4. Utilise les captures comme référence visuelle principale pour les éléments qu'elles montrent.
+5. Établis la correspondance entre chaque élément visible et le composant, la page et la route API existants.
 
-À la création :
+Si une capture n'est pas accessible ou n'a pas été transmise correctement, dis-le explicitement et demande-la. **N'affirme jamais avoir examiné une image que tu n'as pas pu ouvrir.**
 
-1. Enregistre correctement le lien.
-2. Génère un identifiant public unique.
-3. Affiche l'URL finale, avec un bouton pour la copier.
-4. Permets de retrouver et d'ouvrir le lien.
-5. Vérifie l'expiration côté serveur.
-6. Empêche toute modification du montant ou de la devise par le client lorsque le lien est à montant fixe.
+Ne commence pas par remplacer l'interface. Comprends d'abord ce qui existe, puis modifie les composants concernés pour reproduire fidèlement le parcours attendu.
 
-## 3. URLs publiques : local et production
+## 2. Objectif : faire fonctionner les paiements, pas seulement leur apparence
 
-Les liens doivent utiliser une structure claire, par exemple :
+Mon site est PichFlow : https://pichflow.vercel.app/
 
-- Local : `http://localhost:3000/pay/IDENTIFIANT_PUBLIC`
-- Production : `https://pichflow.vercel.app/pay/IDENTIFIANT_PUBLIC`
+PayDunya est déjà configuré dans mon environnement avec mes clés de test. J'ai déjà réalisé des essais avec un compte client fictif. Ne remplace pas mes clés et ne suppose pas qu'elles sont invalides sans preuve.
 
-Adapte ces exemples à la structure de routes réellement présente dans le projet. Le format définitif doit être uniforme, stable et sans doubles barres inutiles.
+Documentation officielle à examiner :
 
-Centralise la construction de l'URL dans une configuration serveur fondée sur une variable d'environnement appropriée, telle que `APP_URL` ou le nom de variable déjà utilisé dans le projet.
+- HTTP/JSON : https://developers.paydunya.com/doc/FR/http_json
+- SoftPay : https://developers.paydunya.com/doc/FR/softpay
+- Liste des méthodes SoftPay : https://developers.paydunya.com/doc/FR/api_softpay_index
+- Sandbox SoftPay : https://developers.paydunya.com/doc/FR/sandbox_softpay
 
-N'inscris jamais `localhost` en dur dans les URL utilisées en production.
+Compare chaque appel API réellement présent dans le code à la documentation officielle.
 
-Pour chaque transaction, génère les URL `return_url`, `cancel_url` et `callback_url` selon l'environnement réel. En local, utilise les URL locales pour les retours navigateur. Pour le callback serveur, utilise une URL réellement joignable par PayDunya, par exemple un tunnel HTTPS temporaire pendant les tests locaux si nécessaire. En production, utilise l'URL HTTPS publique du site déployé.
+La mission est réussie uniquement si un lien PichFlow permet de créer une véritable transaction sandbox, de déclencher le paiement correspondant et d'obtenir son statut réel.
 
-Ne considère pas un callback vers `localhost` comme fonctionnel pour un paiement initié depuis Internet.
+## 3. Corriger les blocages de création existants
 
-## 4. Construire le checkout public en trois étapes
+Les erreurs connues sont :
 
-Le client ne doit pas avoir à se connecter à PichFlow. Il ouvre le lien et suit les étapes ci-dessous.
+`SQLITE_UNKNOWN: SQLite error: table payment_links has no column named max_payments`
 
-### Étape 1 — Informations personnelles
+`SQLITE_UNKNOWN: SQLite error: table api_credentials has no column named key_prefix`
 
-Afficher :
+Inspecte les schémas réels, les migrations et les requêtes. Corrige ces erreurs par des migrations sûres si nécessaire, sans supprimer les tables ni perdre les données.
+
+Teste ensuite la création d'un lien, son enregistrement, son ouverture dans un nouvel onglet et sa persistance après actualisation.
+
+Ne prétends pas que le checkout est réparé tant que ces blocages empêchent encore son utilisation.
+
+## 4. Corriger le formulaire de création du lien
+
+Dans le dashboard, supprime la prévisualisation de la page de paiement sur ordinateur et téléphone. Je ne veux plus de cette fonctionnalité.
+
+Le formulaire doit comprendre :
+
+- Nom du produit ou du service.
+- Description facultative.
+- Choix entre montant fixe et montant libre.
+- Montant, uniquement lorsque le mode choisi le nécessite.
+- Devise compatible.
+- Pays par défaut facultatif.
+- Date d'expiration facultative.
+- Option permettant de demander ou non le numéro de contact du client à la première étape.
+
+Pour un montant fixe, le client ne peut pas modifier le montant. Pour un montant libre, il doit saisir un montant valide.
+
+Les pays et les devises proposés lors de la création doivent provenir d'une configuration cohérente avec les méthodes de paiement réellement supportées. Ne limite pas arbitrairement le formulaire au Bénin.
+
+À la création, enregistre le lien et génère son URL publique. Affiche le succès uniquement après confirmation de l'enregistrement.
+
+## 5. Reproduire le checkout en trois étapes
+
+### Étape 1 — Identité du client
+
+Afficher les informations dans l'ordre prévu par mes captures :
 
 - Prénom.
 - Nom.
-- Adresse e-mail.
-- Numéro de téléphone de contact si la collecte est activée pour ce lien.
+- E-mail.
+- Numéro de contact, uniquement si le marchand a activé l'option correspondante.
 
-Le numéro de contact est facultatif lorsque le créateur n'a pas activé cette option. Il ne faut pas le confondre avec le numéro qui sera utilisé ensuite pour le paiement Mobile Money.
+Pour un montant fixe, afficher le montant du lien. Pour un montant libre, demander le montant.
 
-Le nom, le prénom et l'e-mail sont validés avant de poursuivre. Si le numéro de contact est obligatoire pour ce lien, bloque la progression tant qu'il n'est pas valide.
+Quand le client valide cette étape, conserve les informations saisies et affiche l'étape suivante sans recharger inutilement toute la page.
 
-Conserve les informations de l'étape 1 pendant le parcours, sans les exposer dans l'URL ni les enregistrer inutilement dans le navigateur.
+### Étape 2 — Pays et moyen de paiement
 
-### Étape 2 — Choix du pays et du moyen de paiement
+Afficher une liste déroulante de pays avec :
 
-Afficher un sélecteur de pays avec :
+- Les drapeaux.
+- Les noms des pays.
+- Une barre de recherche fonctionnelle.
+- Une sélection accessible sur mobile et ordinateur.
 
-- Drapeau.
-- Nom du pays.
-- Barre de recherche.
-- Liste déroulante accessible sur mobile et ordinateur.
+La recherche doit réellement filtrer les pays, sans se limiter à changer le texte d'un champ.
 
-Utilise uniquement les pays et méthodes de paiement réellement disponibles dans la configuration PayDunya que nous utilisons.
+La liste doit inclure les pays réellement couverts par les méthodes SoftPay utilisables dans mon compte. La documentation décrit notamment les méthodes suivantes :
 
-Les pays et moyens à configurer ou vérifier en priorité sont :
+- Bénin : MTN, Moov, Celtis Cash.
+- Sénégal : Orange Money, Free Money, Expresso, Wave, Wizall, Djamo.
+- Côte d'Ivoire : Orange Money, MTN, Moov, Wave, Djamo.
+- Burkina Faso : Orange Money, Moov.
+- Togo : T-Money, Moov.
+- Mali : Orange Money, Moov.
+- Cameroun : MTN.
+- International : carte bancaire, sous réserve des conditions d'accès applicables.
 
-**Sénégal**
-- Carte bancaire, lorsque prise en charge.
-- Orange Money Sénégal.
-- Expresso SN.
-- Free Money Sénégal.
-- Wave Sénégal.
-- Djamo SN.
+Cette liste est une référence documentaire, pas la preuve que chaque méthode est activée dans mon compte sandbox. Vérifie chaque méthode, son endpoint, sa devise, ses paramètres et sa disponibilité réelle avant de la proposer comme opérationnelle.
 
-**Bénin**
-- Carte bancaire, lorsque prise en charge.
-- Moov Bénin.
-- Celtiis Cash.
+Quand le client choisit un pays, affiche uniquement les moyens de paiement configurés pour ce pays. Par exemple, les options du Bénin ne doivent pas être remplacées par celles du Sénégal.
 
-**Burkina Faso**
-- Carte bancaire, lorsque prise en charge.
-- Orange Money Burkina.
-- Moov Burkina Faso.
+Si la liste officielle des pays ou des moyens disponibles n'est pas fournie automatiquement par l'API, utilise une configuration centrale vérifiée et documentée. Ne prétends pas qu'une liste est récupérée dynamiquement si ce n'est pas le cas.
 
-**Côte d'Ivoire**
-- Carte bancaire, lorsque prise en charge.
-- Orange Money CI.
-- MTN CI.
-- Moov CI.
-- Wave CI.
-- Djamo CI.
+Le champ de recherche doit fonctionner avec le nom du pays, et les sélections doivent être conservées lors du passage à l'étape suivante.
 
-**Mali**
-- Carte bancaire, lorsque prise en charge.
-- Orange Money Mali.
+### Étape 3 — Numéro de paiement et confirmation
 
-**Togo**
-- Carte bancaire, lorsque prise en charge.
-- TMoney Togo.
-- Moov Togo.
+Après le choix du pays et de la méthode, demande le numéro utilisé pour effectuer le paiement lorsque cette méthode le nécessite.
 
-**Cameroun**
-- Carte bancaire, lorsque prise en charge.
-- MTN Cameroun.
+Ce numéro est distinct du numéro de contact éventuellement demandé à l'étape 1.
 
-Les noms ci-dessus sont les libellés d'interface souhaités. Vérifie les identifiants techniques exacts attendus par PayDunya dans la documentation officielle. Ne transmets pas directement les libellés français à l'API si PayDunya attend des codes différents.
+Le bouton « Payer » doit lancer le véritable flux de paiement correspondant à la méthode sélectionnée.
 
-Vérifie également si certains moyens nécessitent une configuration ou une activation sur le compte PayDunya. N'affiche pas comme disponible un moyen qui n'est pas utilisable dans notre configuration de test.
+Affiche un dialogue de confirmation avec un indicateur de progression. Donne au client des instructions adaptées : validation sur son téléphone, code de confirmation ou redirection sécurisée, selon le protocole officiel de la méthode.
 
-Quand le pays est sélectionné, filtre les moyens compatibles. Quand le pays change, efface un moyen précédemment sélectionné s'il n'est plus compatible.
+Ne demande jamais de code PIN Mobile Money ou de mot de passe bancaire dans un formulaire PichFlow non prévu à cet effet.
 
-Après le choix du moyen, affiche le champ correspondant aux informations nécessaires. Pour Mobile Money, il peut s'agir du numéro de paiement. Ce numéro est distinct du numéro de contact de l'étape 1.
+## 6. Corriger la logique PayDunya pour chaque méthode
 
-Pour la carte bancaire, utilise le parcours sécurisé pris en charge par PayDunya. Ne collecte pas le numéro complet de carte ni son cryptogramme dans les formulaires PichFlow si le flux officiel de redirection est utilisé.
+Ne crée pas un endpoint générique supposant que toutes les méthodes fonctionnent de la même façon.
 
-Si PayDunya impose que le client sélectionne son moyen de paiement directement sur sa page hébergée, conserve cette redirection sécurisée plutôt que de simuler une intégration directe.
+Pour chaque moyen de paiement :
 
-### Étape 3 — Récapitulatif et bouton Payer
+1. Vérifie l'endpoint exact dans la documentation officielle.
+2. Vérifie le nom de chaque champ requis.
+3. Vérifie les en-têtes et le jeton de facture attendu.
+4. Vérifie le format du numéro de téléphone.
+5. Vérifie les éventuels paramètres supplémentaires.
+6. Vérifie si la réponse signifie « paiement terminé » ou seulement « paiement initié ».
+7. Gère correctement les redirections et les confirmations complémentaires.
+8. Enregistre la référence PayDunya et la référence interne PichFlow.
+9. Vérifie le statut final côté serveur.
 
-Afficher le produit, la description, le montant, la devise, le pays, le moyen sélectionné et les informations du client nécessaires à la confirmation.
+N'utilise pas le même corps JSON pour MTN Bénin, Wave Sénégal et les autres méthodes si leurs contrats API diffèrent.
 
-Pour un lien à montant fixe, afficher le montant du lien et interdire sa modification.
+La carte bancaire SoftPay doit être proposée uniquement si les conditions de certification et d'activation sont satisfaites. Sinon, indique clairement le blocage et utilise uniquement une solution sécurisée effectivement autorisée.
 
-Pour un lien à montant libre, demander le montant au client, valider la valeur côté serveur et empêcher tout montant nul, négatif ou invalide.
+Si une méthode ne peut pas être testée dans mon sandbox, conserve son état comme non vérifié et indique la raison.
 
-Le bouton **Payer** doit déclencher une vraie transaction. Il ne doit pas simplement afficher une animation ou un message de succès simulé.
+## 7. Frais : afficher les montants réels
 
-## 5. Intégration PayDunya : préserver ce qui marche et corriger le reste
+Je souhaite que le client puisse supporter les frais applicables lorsque la méthode PayDunya le permet.
 
-Inspecte les noms et les usages des variables d'environnement PayDunya déjà présentes. Ne remplace pas mes clés et ne les affiche jamais.
+Examine la documentation de chaque méthode pour vérifier si les frais sont retournés dans la réponse et si le payeur les prend effectivement en charge.
 
-Vérifie le mode test et l'endpoint correspondant. Pour le paiement par redirection, compare l'implémentation avec le flux officiel de création de facture et de vérification du statut.
+Le checkout doit distinguer :
 
-Le backend doit :
+- Le montant du produit ou service.
+- Les frais connus.
+- Le total demandé au client.
+- La devise.
 
-1. Vérifier le lien et son application propriétaire.
-2. Vérifier le montant et la devise.
-3. Créer une transaction interne en attente.
-4. Construire la facture PayDunya.
-5. Envoyer les données requises et les informations client autorisées.
-6. Envoyer les URL de retour et de callback correctes.
-7. Vérifier `response_code` et les autres champs nécessaires de la réponse.
-8. Enregistrer le jeton PayDunya et la référence PichFlow.
-9. Rediriger le client vers l'URL de paiement effectivement retournée par PayDunya.
-10. Gérer les erreurs et les délais d'attente sans perdre l'état de la transaction.
+N'invente aucun taux et n'ajoute pas une surcharge arbitraire. Ne déduis pas les frais deux fois.
 
-Ne suppose pas qu'une facture est payée parce qu'elle a été créée avec succès. La création de facture et la confirmation du paiement sont deux étapes différentes.
+Si le fournisseur ne retourne les frais qu'après une étape donnée, adapte le parcours en fonction de ce qui est techniquement possible. N'affiche pas de frais fictifs pour donner l'impression que la fonctionnalité est terminée.
 
-## 6. Statuts de paiement fiables
+## 8. Corriger les statuts de paiement
 
-Après le paiement, affiche un écran de résultat clair :
+Le client doit voir un statut compréhensible :
 
-- Paiement confirmé.
-- Paiement en attente de confirmation.
+- Paiement en cours.
+- Paiement réussi.
 - Paiement échoué.
 - Paiement annulé.
 
-Ne marque la transaction comme payée qu'après confirmation serveur fiable.
+Le simple succès de la requête d'initialisation ne signifie pas que le paiement est terminé.
 
-Lors du retour du client, récupère le jeton retourné par PayDunya et vérifie le statut depuis le backend. Le callback doit également vérifier les données reçues conformément à la documentation officielle, y compris la validation du hash si elle s'applique au flux utilisé.
+Le backend doit vérifier le statut réel auprès de PayDunya ou traiter une notification serveur dont l'authenticité a été vérifiée. Une page de retour navigateur ne suffit pas.
 
-Le callback PayDunya reçoit une requête POST au format documenté. Vérifie son traitement réel, notamment le champ `data` lorsque ce format est utilisé.
+Empêche les doubles soumissions et les doubles comptabilisations. Si le client revient sur la page, ne crée pas une nouvelle transaction payée automatiquement.
 
-Protège les mises à jour de statut contre les doublons et les appels concurrents. Une même transaction ne doit pas être comptabilisée plusieurs fois.
+## 9. Vérifier l'isolation des applications
 
-Le statut affiché au client, celui enregistré en base et celui visible dans le dashboard doivent rester cohérents.
+Chaque lien, checkout et transaction doit appartenir à l'application qui l'a créé.
 
-## 7. Frais de transaction
+Les données d'une application ne doivent jamais apparaître dans une autre. Le backend doit contrôler cette propriété dans les requêtes, et pas uniquement dans l'interface.
 
-Je souhaite que les frais applicables au paiement soient pris en compte, et non absorbés arbitrairement par PichFlow.
+Teste au moins deux applications et vérifie que les liens, transactions, clients et statistiques restent indépendants.
 
-Cependant, vérifie d'abord ce que PayDunya facture réellement et ce que son API renvoie.
+## 10. Tests réels et rapport
 
-- Si le flux PayDunya utilisé fournit un montant de frais vérifiable et un montant net, enregistre ces valeurs.
-- Si les frais ne sont pas exposés par l'API, ne les invente pas.
-- Si une surcharge doit être ajoutée au montant payé par le client, elle doit être explicitement définie, autorisée et affichée avant confirmation.
-- Ne déduis jamais deux fois les frais.
-- Ne présente pas un montant net estimé comme un montant officiel reçu.
+Exécute les tests automatisés, le build et les tests sandbox accessibles.
 
-Vérifie si PayDunya permet réellement de faire supporter les frais au payeur dans notre configuration. Si cette possibilité n'est pas fournie par le flux standard, indique la limite et propose une solution techniquement compatible sans inventer une fonctionnalité.
+Teste au minimum :
+- La création des liens fixes et libres.
+- La recherche de pays.
+- Le filtrage des méthodes selon le pays.
+- Le paiement avec chaque méthode effectivement testable.
+- Les réponses d'échec et les paiements en attente.
+- Les frais lorsque PayDunya les fournit.
+- Les confirmations et les doubles notifications.
+- L'isolation de deux applications.
+- Les deux erreurs SQLite initiales.
 
-## 8. Isolation des applications
+Dans ton rapport, indique précisément :
 
-Tous les liens et toutes les transactions doivent appartenir à une application PichFlow précise.
+- Les captures que tu as effectivement examinées.
+- Les composants et fichiers modifiés.
+- Les méthodes de paiement réellement testées.
+- Les résultats obtenus auprès du sandbox.
+- Les erreurs restantes et leur cause.
+- Les configurations manquantes, si nécessaire.
 
-Lors de la création d'un lien, vérifie que l'utilisateur authentifié possède l'application sélectionnée.
+Ne divulgue aucune clé ou valeur secrète.
 
-Lors du checkout public, retrouve le lien par son identifiant public, puis récupère son application propriétaire. Toutes les transactions, les clients, les statuts et les statistiques associés doivent utiliser cette application.
-
-Ne fais pas confiance à un `appId` fourni par le navigateur sans vérification serveur.
-
-Les pages de clients, de transactions et de soldes doivent afficher uniquement les données de l'application sélectionnée. Une transaction d'une application A ne doit jamais apparaître dans B.
-
-Ajoute au minimum un test d'intégration avec deux applications et des liens différents pour vérifier l'absence de fuite de données.
-
-## 9. Interface de paiement
-
-Je veux une interface PichFlow simple, professionnelle et cohérente sur mobile et ordinateur.
-
-- N'affiche pas « PayDunya » comme marque ou fournisseur dans l'interface publique destinée au client.
-- Le client doit voir l'identité du marchand, le produit ou service, le montant et les étapes nécessaires au paiement.
-- Ne masque pas les informations légalement requises ni les mentions de sécurité nécessaires.
-- N'invente pas de méthode de paiement ou de logo d'opérateur.
-- Affiche un indicateur de progression pendant la création de facture ou la redirection.
-- Désactive temporairement le bouton Payer pendant la soumission pour éviter les doublons.
-- Affiche des messages compréhensibles en cas d'erreur.
-- Supprime l'aperçu ordinateur/téléphone du formulaire de création de lien.
-
-## 10. Tests obligatoires
-
-Effectue les corrections dans le dépôt et exécute les tests réels disponibles.
-
-Teste les cas suivants :
-
-1. Création d'un lien à montant fixe.
-2. Création d'un lien à montant libre.
-3. Création avec pays par défaut.
-4. Création sans pays par défaut.
-5. Expiration d'un lien.
-6. Numéro de contact facultatif et obligatoire selon le paramètre.
-7. Choix du pays et filtrage des moyens de paiement.
-8. Création d'une facture PayDunya en sandbox.
-9. Redirection vers la page de paiement.
-10. Paiement confirmé.
-11. Paiement en attente.
-12. Paiement échoué ou annulé.
-13. Callback valide et callback invalide.
-14. Double soumission du bouton Payer.
-15. Vérification de l'isolation entre deux applications.
-16. URLs locales correctes et URLs de production sans référence à `localhost`.
-
-Distingue clairement les tests unitaires, les tests simulés et les tests effectués réellement contre le sandbox PayDunya.
-
-Ne bascule pas en production. Ne réalise aucun paiement réel. Ne révèle aucun secret.
-
-## 11. Résultat attendu
-
-Effectue les modifications dans le code, puis donne-moi un rapport concis comprenant :
-
-- Les causes précises des problèmes.
-- Les fichiers modifiés.
-- Le fonctionnement du checkout avant et après correction.
-- Les méthodes de paiement réellement validées.
-- Les tests exécutés et leurs résultats.
-- Les points encore bloqués.
-- Les variables d'environnement manquantes, uniquement par leur nom.
-
-Ne me réponds pas simplement avec une proposition de code ou une liste de recommandations. Corrige le projet existant et démontre ce qui fonctionne.
-
-Ne prétends jamais qu'un paiement est fonctionnel si tu n'as pas vérifié le flux correspondant. La priorité absolue est d'obtenir un paiement sandbox fiable, puis de garantir le bon fonctionnement des liens en local et en production.
+**Ne termine pas par « tout fonctionne » sans preuve. Je veux voir des résultats de tests réels et une interface qui respecte mes captures.**

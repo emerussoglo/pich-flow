@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Application } from '../../types';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useState } from "react";
+import { Application } from "../../types";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faHouse,
   faWallet,
@@ -25,7 +25,7 @@ import {
   faBars,
   faAnglesLeft,
   faAnglesRight,
-} from '@fortawesome/free-solid-svg-icons';
+} from "@fortawesome/free-solid-svg-icons";
 
 interface SidebarProps {
   currentTab: string;
@@ -58,20 +58,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   const navItems = [
-    { id: 'overview', label: 'Accueil', icon: faHouse },
-    { id: 'wallets', label: 'Portefeuille', icon: faWallet },
-    { id: 'transactions', label: 'Historique', icon: faListUl },
-    { id: 'payment-links', label: 'Liens de paiement', icon: faArrowUpRightFromSquare },
-    { id: 'checkout-sessions', label: 'Checkouts', icon: faLink },
-    { id: 'customers', label: 'Clients', icon: faUsers },
-    { id: 'statistics', label: 'Stats', icon: faChartLine },
-    { id: 'withdrawals', label: 'Retraits', icon: faCircleArrowDown },
-    { id: 'developers', label: 'Clés API', icon: faCode },
-    { id: 'webhooks', label: 'Webhooks', icon: faCircleNodes },
-    { id: 'webhook-logs', label: 'Historique des requêtes', icon: faClock },
-    { id: 'pricing', label: 'Tarifs', icon: faCreditCard },
-    { id: 'support', label: 'Aide', icon: faCircleQuestion },
-    { id: 'settings', label: 'Réglages', icon: faGear },
+    { id: "overview", label: "Accueil", icon: faHouse },
+    { id: "wallets", label: "Portefeuille", icon: faWallet },
+    { id: "transactions", label: "Historique", icon: faListUl },
+    {
+      id: "payment-links",
+      label: "Liens de paiement",
+      icon: faArrowUpRightFromSquare,
+    },
+    { id: "checkout-sessions", label: "Checkouts", icon: faLink },
+    { id: "customers", label: "Clients", icon: faUsers },
+    { id: "statistics", label: "Stats", icon: faChartLine },
+    { id: "withdrawals", label: "Retraits", icon: faCircleArrowDown },
+    { id: "developers", label: "Clés API", icon: faCode },
+    { id: "webhooks", label: "Webhooks", icon: faCircleNodes },
+    { id: "webhook-logs", label: "Historique des requêtes", icon: faClock },
+    { id: "pricing", label: "Tarifs", icon: faCreditCard },
+    { id: "support", label: "Aide", icon: faCircleQuestion },
+    { id: "settings", label: "Réglages", icon: faGear },
   ];
 
   const handleNavClick = (tabId: string) => {
@@ -79,7 +83,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onCloseMobile();
   };
 
-  const appInitial = (activeApp?.name || 'P').charAt(0).toUpperCase();
+  const appInitial = (activeApp?.name || "P").charAt(0).toUpperCase();
 
   return (
     <>
@@ -92,9 +96,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
       )}
 
-      <aside className={`pf-saspay-sidebar ${isOpenMobile ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
+      <aside
+        className={`pf-saspay-sidebar ${isOpenMobile ? "open" : ""} ${isCollapsed ? "collapsed" : ""}`}
+      >
         {/* Desktop Header with Collapse Button */}
-        
+
         {/* Mobile Header: MENU + Close X button */}
         <div className="pf-sidebar-mobile-head">
           <span className="pf-sidebar-menu-title">MENU</span>
@@ -109,7 +115,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Top App Selector Card (Exact screenshot style) */}
         <div className="pf-sidebar-app-box">
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: "relative" }}>
             <button
               onClick={() => {
                 setAppDropdownOpen(!appDropdownOpen);
@@ -117,20 +123,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
               className="pf-app-card-btn"
               aria-expanded={appDropdownOpen}
-              title={activeApp ? `${activeApp.name} (${activeApp.category})` : 'Sélectionner une application'}
+              title={
+                activeApp
+                  ? `${activeApp.name} (${activeApp.category})`
+                  : "Sélectionner une application"
+              }
             >
               <div className="pf-app-card-left">
-                <div className="pf-app-card-avatar">
-                  {appInitial}
-                </div>
+                <div className="pf-app-card-avatar">{appInitial}</div>
                 <div className="pf-app-card-info">
-                  <div className="pf-app-card-name">{activeApp?.name || 'Aucune application'}</div>
-                  <div className="pf-app-card-category">{activeApp?.category || 'Créer une app'}</div>
+                  <div className="pf-app-card-name">
+                    {activeApp?.name || "Aucune application"}
+                  </div>
+                  <div className="pf-app-card-category">
+                    {activeApp?.category || "Créer une app"}
+                  </div>
                 </div>
               </div>
               <FontAwesomeIcon
                 icon={faChevronDown}
-                className={`pf-app-card-chevron ${appDropdownOpen ? 'rotated' : ''}`}
+                className={`pf-app-card-chevron ${appDropdownOpen ? "rotated" : ""}`}
               />
             </button>
 
@@ -145,17 +157,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onSelectApp(app);
                       setAppDropdownOpen(false);
                     }}
-                    className={`pf-app-popup-row ${app.id === activeApp?.id ? 'active' : ''}`}
+                    className={`pf-app-popup-row ${app.id === activeApp?.id ? "active" : ""}`}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.65rem",
+                      }}
+                    >
                       <div className="pf-app-card-avatar sm">
                         {app.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#1E293B' }}>
+                        <div
+                          style={{
+                            fontSize: "0.8125rem",
+                            fontWeight: 700,
+                            color: "#1E293B",
+                          }}
+                        >
                           {app.name}
                         </div>
-                        <div style={{ fontSize: '0.6875rem', color: '#94A3B8' }}>
+                        <div
+                          style={{ fontSize: "0.6875rem", color: "#94A3B8" }}
+                        >
                           {app.category}
                         </div>
                       </div>
@@ -175,11 +201,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }}
                   className="pf-app-popup-row action"
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.65rem",
+                    }}
+                  >
                     <div className="pf-app-popup-add-icon">
                       <FontAwesomeIcon icon={faPlus} />
                     </div>
-                    <span style={{ fontWeight: 600, color: '#2563EB', fontSize: '0.8125rem' }}>
+                    <span
+                      style={{
+                        fontWeight: 600,
+                        color: "#2563EB",
+                        fontSize: "0.8125rem",
+                      }}
+                    >
                       Créer une nouvelle application
                     </span>
                   </div>
@@ -188,12 +226,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div
                   onClick={() => {
                     setAppDropdownOpen(false);
-                    handleNavClick('apps-selection');
+                    handleNavClick("apps-selection");
                   }}
                   className="pf-app-popup-row"
-                  style={{ borderTop: '1px solid #F1F5F9' }}
+                  style={{ borderTop: "1px solid #F1F5F9" }}
                 >
-                  <div style={{ fontSize: '0.8125rem', color: '#64748B', fontWeight: 600 }}>
+                  <div
+                    style={{
+                      fontSize: "0.8125rem",
+                      color: "#64748B",
+                      fontWeight: 600,
+                    }}
+                  >
                     Voir toutes les applications
                   </div>
                 </div>
@@ -205,13 +249,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation items list (Scrollable, exact 15 items from screenshots) */}
         <nav className="pf-sidebar-nav-scroll">
           {navItems.map((item) => {
-            const isActive = currentTab === item.id || (item.id === 'overview' && currentTab === '');
+            const isActive =
+              currentTab === item.id ||
+              (item.id === "overview" && currentTab === "");
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => handleNavClick(item.id)}
-                className={`pf-saspay-nav-link ${isActive ? 'active' : ''}`}
+                className={`pf-saspay-nav-link ${isActive ? "active" : ""}`}
                 title={item.label}
                 aria-label={item.label}
               >
@@ -226,7 +272,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Bottom User Profile Card (Exact screenshot style) */}
         <div className="pf-sidebar-user-box">
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: "relative" }}>
             <button
               type="button"
               onClick={() => {
@@ -240,7 +286,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="pf-user-avatar-circle">SJ</div>
               <div className="pf-user-card-info">
                 <div className="pf-user-card-name">SOGLO Julsido Emérus</div>
-                <div className="pf-user-card-app">{activeApp?.name || 'Mon Application'}</div>
+                <div className="pf-user-card-app">
+                  {activeApp?.name || "Mon Application"}
+                </div>
               </div>
             </button>
 
@@ -250,8 +298,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="pf-user-popup-head">
                   <div className="pf-user-avatar-circle md">SJ</div>
                   <div style={{ minWidth: 0 }}>
-                    <div className="pf-user-popup-name">SOGLO Julsido Em...</div>
-                    <div className="pf-user-popup-email">emerussoglo@gmail.com</div>
+                    <div className="pf-user-popup-name">
+                      SOGLO Julsido Em...
+                    </div>
+                    <div className="pf-user-popup-email">
+                      emerussoglo@gmail.com
+                    </div>
                   </div>
                 </div>
 
@@ -260,7 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div
                   onClick={() => {
                     setUserDropdownOpen(false);
-                    handleNavClick('apps-selection');
+                    handleNavClick("apps-selection");
                   }}
                   className="pf-user-popup-row"
                 >
@@ -271,7 +323,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div
                   onClick={() => {
                     setUserDropdownOpen(false);
-                    handleNavClick('settings');
+                    handleNavClick("settings");
                   }}
                   className="pf-user-popup-row"
                 >
@@ -282,7 +334,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div
                   onClick={() => {
                     setUserDropdownOpen(false);
-                    handleNavClick('support');
+                    handleNavClick("support");
                   }}
                   className="pf-user-popup-row"
                 >

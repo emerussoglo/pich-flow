@@ -94,37 +94,30 @@ function AppContent() {
   }, [navigate]);
 
   // Function to load all isolated data for a specific application
-  const loadAppData = useCallback(async (appId?: string) => {
+  const loadAppData = useCallback(async (appId: string) => {
     const generation = ++appDataLoadGeneration.current;
+    setDashboardLoadError('');
+    setTransactions([]);
+    setWallets([]);
+    setPaymentLinks([]);
+    setWithdrawals([]);
+    setApiKeys([]);
+    setWebhooks([]);
     try {
-      const withFallback = <T,>(request: Promise<T>, fallback: T): Promise<T> =>
-        request.catch((error: unknown) => {
-          if (error instanceof ApiResponseError && error.status === 401) {
-            throw error;
-          }
-          return fallback;
-        });
-
-      const [wals, txs, links, wdrs, keys, whs] = await Promise.all([
-        withFallback(apiClient.wallets.getAll(appId), []),
-        withFallback(apiClient.transactions.getAll(appId), []),
-        withFallback(apiClient.paymentLinks.getAll(appId), []),
-        withFallback(apiClient.withdrawals.getAll(appId), []),
-        withFallback(apiClient.developer.getKeys(appId), []),
-        withFallback(apiClient.developer.getWebhooks(appId), []),
+      const [wals, txs] = await Promise.all([
+        apiClient.wallets.getAll(appId),
+        apiClient.transactions.getAll(appId),
       ]);
       if (generation !== appDataLoadGeneration.current) return;
       if (wals) setWallets(wals);
       if (txs) setTransactions(txs);
-      if (links) setPaymentLinks(links);
-      if (wdrs) setWithdrawals(wdrs);
-      if (keys) setApiKeys(keys);
-      if (whs) setWebhooks(whs);
     } catch (err) {
+      if (generation !== appDataLoadGeneration.current) return;
       if (err instanceof ApiResponseError && err.status === 401) {
         handleUnauthorized();
       } else {
         console.warn('App data sync error:', err);
+        setDashboardLoadError('Impossible de charger les données de cette application. Vérifiez la connexion et réessayez.');
       }
     }
   }, [handleUnauthorized]);
@@ -153,6 +146,7 @@ function AppContent() {
         handleUnauthorized();
       } else {
         console.warn('Sync apps error:', error);
+        setDashboardLoadError('Impossible de synchroniser les applications ou leurs données. Réessayez.');
       }
     }
   }, [loadAppData, handleUnauthorized]);
@@ -259,9 +253,10 @@ function AppContent() {
 
   const handleCreateWithdrawal = async (newWdr: Withdrawal) => {
     try {
-      const created = await apiClient.withdrawals.create(newWdr);
+      if (!activeApp?.id) throw new Error('Sélectionnez une application avant de créer un retrait.');
+      const created = await apiClient.withdrawals.create({ ...newWdr, applicationId: activeApp.id });
       setWithdrawals((prev) => [created, ...prev]);
-      const updatedWallets = await apiClient.wallets.getAll(activeApp?.id).catch(() => null);
+      const updatedWallets = await apiClient.wallets.getAll(activeApp.id).catch(() => null);
       if (updatedWallets) setWallets(updatedWallets);
     } catch (err: any) {
       console.error('Create withdrawal error:', err);
@@ -378,7 +373,7 @@ function AppContent() {
           <main role="alert" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '2rem', textAlign: 'center' }}>
             <div>
               <p>{dashboardLoadError}</p>
-              <button type="button" onClick={() => { lastSessionVerifiedAt.current = 0; setDashboardLoadError(''); }}>
+              <button type="button" onClick={() => { lastSessionVerifiedAt.current = 0; setDashboardLoadError(''); void syncApplications(); }}>
                 Réessayer
               </button>
             </div>
@@ -479,6 +474,7 @@ function AppContent() {
               {dashboardTab === 'withdrawals' && (
                 <WithdrawalsPage
                   withdrawals={withdrawals}
+                  activeApp={activeApp || undefined}
                 />
               )}
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '@/src/config/payments';
+import { CHECKOUT_COUNTRIES, isSupportedPaymentCurrency } from '@/src/config/countries';
 import { getDb } from '@/src/server/db';
 import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 import { getPaymentLinkUrl } from '@/src/server/urls';
@@ -108,8 +109,11 @@ export async function POST(request: NextRequest) {
     if (!isFixedAmount && amount !== null) {
       return NextResponse.json({ success: false, error: 'Un lien à montant libre ne peut pas définir de montant fixe.' }, { status: 400 });
     }
-    if (currency !== 'XOF' || (country && country !== 'BJ')) {
-      return NextResponse.json({ success: false, error: 'La configuration PayDunya vérifiée ici prend en charge les paiements en XOF au Bénin.' }, { status: 400 });
+    if (!isSupportedPaymentCurrency(currency)) {
+      return NextResponse.json({ success: false, error: 'Cette devise n’est pas prise en charge par le flux PayDunya actuellement configuré.' }, { status: 400 });
+    }
+    if (country && !CHECKOUT_COUNTRIES.some((supportedCountry) => supportedCountry.code === country && supportedCountry.currency === currency)) {
+      return NextResponse.json({ success: false, error: 'Ce pays n’est pas disponible pour la devise sélectionnée dans le flux PayDunya actuellement configuré.' }, { status: 400 });
     }
     if (expiresAtInput && (!expiresAt || Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now())) {
       return NextResponse.json({ success: false, error: 'La date d’expiration doit être une date future valide.' }, { status: 400 });

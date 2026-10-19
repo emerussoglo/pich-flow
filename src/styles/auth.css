@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #F8FAFC;
+  background: #f8fafc;
   padding: 2.5rem 1.5rem;
   box-sizing: border-box;
 }
@@ -17,36 +17,47 @@
   display: flex;
   width: 100%;
   max-width: 980px;
-  background: #FFFFFF;
+  background: #ffffff;
   border-radius: 24px;
   overflow: hidden;
   box-shadow: 0 20px 50px -12px rgba(15, 23, 42, 0.08);
-  border: 1px solid #E2E8F0;
+  border: 1px solid #e2e8f0;
   min-height: 580px;
 }
 
 /* --- Côté Gauche : Arrière-plan Multicolore --- */
 .pf-auth-visual-side {
   flex: 1.05;
-  background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 35%, #2563EB 70%, #4F46E5 100%);
+  background: linear-gradient(
+    135deg,
+    #0f172a 0%,
+    #1e1b4b 35%,
+    #2563eb 70%,
+    #4f46e5 100%
+  );
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   padding: 3.5rem 3rem;
-  color: #FFFFFF;
+  color: #ffffff;
   overflow: hidden;
 }
 
 /* Texture lumineuse multicolore en overlay */
 .pf-auth-visual-side::before {
-  content: '';
+  content: "";
   position: absolute;
   top: -20%;
   left: -20%;
   width: 140%;
   height: 140%;
-  background: radial-gradient(circle, rgba(147, 197, 253, 0.25) 0%, rgba(99, 102, 241, 0.15) 40%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(147, 197, 253, 0.25) 0%,
+    rgba(99, 102, 241, 0.15) 40%,
+    transparent 70%
+  );
   pointer-events: none;
 }
 
@@ -66,7 +77,7 @@
   border-radius: 9999px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #93C5FD;
+  color: #93c5fd;
   margin-bottom: 1.5rem;
 }
 
@@ -76,7 +87,7 @@
   line-height: 1.2;
   letter-spacing: -0.03em;
   margin-bottom: 1rem;
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .pf-visual-desc {
@@ -93,7 +104,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: #FFFFFF;
+  background: #ffffff;
 }
 
 .pf-auth-header {
@@ -104,14 +115,14 @@
 .pf-auth-title {
   font-size: 1.65rem;
   font-weight: 800;
-  color: #0F172A;
+  color: #0f172a;
   letter-spacing: -0.025em;
   margin-bottom: 0.35rem;
 }
 
 .pf-auth-subtitle {
   font-size: 0.875rem;
-  color: #64748B;
+  color: #64748b;
 }
 
 .pf-auth-form {
@@ -150,7 +161,7 @@
   padding: 0;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #2563EB;
+  color: #2563eb;
   cursor: pointer;
 }
 
@@ -168,7 +179,7 @@
 .pf-input-icon {
   position: absolute;
   left: 1rem;
-  color: #94A3B8;
+  color: #94a3b8;
   font-size: 0.9rem;
   pointer-events: none;
 }
@@ -178,11 +189,11 @@
   width: 100%;
   height: 46px;
   padding: 0 1rem 0 2.75rem;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   font-size: 0.875rem;
-  color: #0F172A;
+  color: #0f172a;
   outline: none;
   transition: all 180ms ease;
   box-sizing: border-box;
@@ -190,8 +201,8 @@
 
 .pf-input:focus,
 .pf-select:focus {
-  background: #FFFFFF;
-  border-color: #2563EB;
+  background: #ffffff;
+  border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
@@ -200,22 +211,22 @@
   align-items: flex-start;
   gap: 0.6rem;
   font-size: 0.78rem;
-  color: #64748B;
+  color: #64748b;
   line-height: 1.45;
   cursor: pointer;
 }
 
 .pf-checkbox-label input {
   margin-top: 0.15rem;
-  accent-color: #2563EB;
+  accent-color: #2563eb;
 }
 
 /* Bouton principal de soumission (#2563EB) */
 .pf-auth-submit-btn {
   width: 100%;
   height: 48px;
-  background: #2563EB;
-  color: #FFFFFF;
+  background: #2563eb;
+  color: #ffffff;
   font-weight: 700;
   font-size: 0.925rem;
   border-radius: 12px;
@@ -231,7 +242,7 @@
 }
 
 .pf-auth-submit-btn:hover {
-  background: #1D4ED8;
+  background: #1d4ed8;
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
 }
@@ -247,7 +258,7 @@
   text-align: center;
   margin-top: 1rem;
   font-size: 0.85rem;
-  color: #64748B;
+  color: #64748b;
 }
 
 .pf-auth-switch-btn {
@@ -256,7 +267,7 @@
   padding: 0;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #2563EB;
+  color: #2563eb;
   cursor: pointer;
 }
 
@@ -268,17 +279,17 @@
   background: none;
   border: none;
   font-size: 0.825rem;
-  color: #64748B;
+  color: #64748b;
   cursor: pointer;
 }
 
 .pf-auth-back-btn:hover {
-  color: #0F172A;
+  color: #0f172a;
 }
 
 .pf-verify-text {
   font-size: 0.85rem;
-  color: #64748B;
+  color: #64748b;
   text-align: center;
   line-height: 1.6;
   margin-bottom: 1.5rem;
@@ -286,9 +297,9 @@
 
 /* Alerts */
 .pf-auth-alert-success {
-  background: #ECFDF5;
+  background: #ecfdf5;
   color: #047857;
-  border: 1px solid #A7F3D0;
+  border: 1px solid #a7f3d0;
   padding: 0.85rem 1rem;
   border-radius: 12px;
   font-size: 0.825rem;

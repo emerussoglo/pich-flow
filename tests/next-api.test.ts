@@ -31,8 +31,11 @@ const { GET: getStats } = await import('../src/app/api/stats/overview/route');
 const { GET: listCustomers, POST: createCustomer } = await import('../src/app/api/customers/route');
 const { PUT: updateCustomer } = await import('../src/app/api/customers/[id]/route');
 const { POST: createPayoutMethod } = await import('../src/app/api/payout-methods/route');
+const { GET: listPayoutMethods } = await import('../src/app/api/payout-methods/route');
+const { GET: listWithdrawals } = await import('../src/app/api/withdrawals/route');
 const { GET: listWallets, POST: createWallet } = await import('../src/app/api/wallets/route');
 const { GET: listWebhooks, POST: createWebhook } = await import('../src/app/api/developer/webhooks/route');
+const { GET: listWebhookLogs } = await import('../src/app/api/developer/webhooks/logs/route');
 const { handleApiRequest } = await import('../src/server/adapter');
 
 function makeRequest(
@@ -181,11 +184,37 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
           ) VALUES (?, ?, ?, 'XOF', 'FCFA', ?, 0, 0, 'BJ', 1, ?, ?)`,
     args: ['wallet-app-b', testUser.rows[0].id, applicationB.id, 2100, walletCreatedAt, walletCreatedAt],
   });
+  await getDb().execute({
+    sql: `INSERT INTO payout_requests (
+            id, user_id, application_id, reference, amount, currency, fee, net_amount,
+            method_type, recipient_name, recipient_phone_or_iban, operator_or_bank,
+            country, status, created_at
+          ) VALUES
+            ('withdrawal-app-a', ?, ?, 'WDR-APP-A', 500, 'XOF', 0, 500, 'mobile_money', 'Merchant A', '+22990000000', 'MTN', 'BJ', 'pending', ?),
+            ('withdrawal-app-b', ?, ?, 'WDR-APP-B', 700, 'XOF', 0, 700, 'mobile_money', 'Merchant B', '+22990000001', 'MTN', 'BJ', 'pending', ?)`,
+    args: [
+      testUser.rows[0].id, applicationA.id, walletCreatedAt,
+      testUser.rows[0].id, applicationB.id, walletCreatedAt,
+    ],
+  });
 
   const selectApplication = async (applicationId: string) => selectApp(
     makeRequest('/api/apps/active', 'POST', { applicationId }, undefined, sessionCookie),
   );
   assert.equal((await selectApplication(applicationA.id)).status, 200);
+  const missingApplicationWithdrawals = await listWithdrawals(
+    makeRequest('/api/withdrawals', 'GET', undefined, undefined, sessionCookie),
+  );
+  assert.equal(missingApplicationWithdrawals.status, 404);
+  const scopedWithdrawals = await listWithdrawals(
+    makeRequest(`/api/withdrawals?applicationId=${applicationA.id}`, 'GET', undefined, undefined, sessionCookie),
+  );
+  assert.equal(scopedWithdrawals.status, 200);
+  assert.deepEqual(
+    (await scopedWithdrawals.json()).withdrawals.map((withdrawal: { reference: string }) => withdrawal.reference),
+    ['WDR-APP-A'],
+  );
+
   const belowPayDunyaMinimum = await createPaymentLink(
     makeRequest('/api/payment-links', 'POST', {
       title: 'Below provider minimum',
@@ -206,6 +235,11 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   );
   assert.equal(payoutMethodResponse.status, 200);
   assert.equal((await payoutMethodResponse.json()).payoutMethod.isVerified, false);
+  const payoutMethods = await listPayoutMethods(
+    makeRequest('/api/payout-methods', 'GET', undefined, undefined, sessionCookie),
+  );
+  assert.equal(payoutMethods.status, 200);
+  assert.equal((await payoutMethods.json()).payoutMethods.length, 1);
   const walletListA = await listWallets(
     makeRequest(`/api/wallets?applicationId=${applicationA.id}`, 'GET', undefined, undefined, sessionCookie),
   );
@@ -223,6 +257,22 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
     }, undefined, sessionCookie),
   );
   assert.equal(webhookAResponse.status, 200);
+  const webhookA = (await webhookAResponse.json()).webhook;
+  const webhookALogAt = new Date().toISOString();
+  await getDb().execute({
+    sql: `INSERT INTO webhook_logs
+          (id, webhook_id, user_id, event, payload, status_code, response_body, success, attempts, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      'webhook-log-app-a', webhookA.id, testUser.rows[0].id, 'payment.success',
+      JSON.stringify({ reference: 'WEBHOOK-APP-A' }), 200, 'accepted', 1, 1, webhookALogAt,
+    ],
+  });
+  const webhookLogsA = await listWebhookLogs(
+    makeRequest(`/api/developer/webhooks/logs?applicationId=${applicationA.id}`, 'GET', undefined, undefined, sessionCookie),
+  );
+  assert.equal(webhookLogsA.status, 200);
+  assert.deepEqual((await webhookLogsA.json()).logs.map((log: { id: string }) => log.id), ['webhook-log-app-a']);
 
   const linkAResponse = await createPaymentLink(
     makeRequest('/api/payment-links', 'POST', {
@@ -250,6 +300,16 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   const freeAmountLink = (await freeAmountLinkResponse.json()).paymentLink;
   assert.equal(freeAmountLink.amount, null);
   assert.equal(freeAmountLink.country, '');
+  assert.equal(freeAmountLink.currency, 'XOF');
+  const unsupportedCurrencyLink = await createPaymentLink(
+    makeRequest('/api/payment-links', 'POST', {
+      title: 'Unsupported XAF link',
+      isFixedAmount: false,
+      currency: 'XAF',
+      applicationId: applicationA.id,
+    }, undefined, sessionCookie),
+  );
+  assert.equal(unsupportedCurrencyLink.status, 400);
 
   const invalidFixedAmount = await createPaymentLink(
     makeRequest('/api/payment-links', 'POST', {
@@ -418,6 +478,10 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
     makeRequest(`/api/developer/keys?applicationId=${applicationB.id}`, 'GET', undefined, undefined, sessionCookie),
   );
   assert.equal(crossAppKeyRead.status, 404);
+  const crossAppWalletRead = await listWallets(
+    makeRequest(`/api/wallets?applicationId=${applicationB.id}`, 'GET', undefined, undefined, sessionCookie),
+  );
+  assert.equal(crossAppWalletRead.status, 404);
 
   assert.equal((await selectApplication(applicationB.id)).status, 200);
   const walletListB = await listWallets(
@@ -427,6 +491,13 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   const walletB = (await walletListB.json()).wallets[0];
   assert.notEqual(walletA.id, walletB.id);
   assert.equal(walletB.balance, 2100);
+  const withdrawalsForB = await listWithdrawals(
+    makeRequest(`/api/withdrawals?applicationId=${applicationB.id}`, 'GET', undefined, undefined, sessionCookie),
+  );
+  assert.deepEqual(
+    (await withdrawalsForB.json()).withdrawals.map((withdrawal: { reference: string }) => withdrawal.reference),
+    ['WDR-APP-B'],
+  );
   const walletCreation = await createWallet(
     makeRequest('/api/wallets', 'POST', {
       countryCode: 'BJ',
@@ -439,6 +510,10 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
     makeRequest(`/api/developer/webhooks?applicationId=${applicationB.id}`, 'GET', undefined, undefined, sessionCookie),
   );
   assert.deepEqual((await webhooksForB.json()).webhooks, []);
+  const webhookLogsForB = await listWebhookLogs(
+    makeRequest(`/api/developer/webhooks/logs?applicationId=${applicationB.id}`, 'GET', undefined, undefined, sessionCookie),
+  );
+  assert.deepEqual((await webhookLogsForB.json()).logs, []);
   const crossAppWebhooks = await listWebhooks(
     makeRequest(`/api/developer/webhooks?applicationId=${applicationA.id}`, 'GET', undefined, undefined, sessionCookie),
   );
@@ -569,6 +644,10 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   assert.equal(keyACrossAppDetail.status, 404);
 
   assert.equal((await selectApplication(applicationA.id)).status, 200);
+  const sessionsForA = await listCheckoutSessions(
+    makeRequest(`/api/checkout-sessions?applicationId=${applicationA.id}`, 'GET', undefined, undefined, sessionCookie),
+  );
+  assert.deepEqual((await sessionsForA.json()).checkoutSessions.map((session: { reference: string }) => session.reference), ['REF-APP-A']);
   const transactionsForA = await listTransactions(
     makeRequest(`/api/transactions?applicationId=${applicationA.id}`, 'GET', undefined, undefined, sessionCookie),
   );

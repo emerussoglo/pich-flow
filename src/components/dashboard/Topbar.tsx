@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBars,
   faSearch,
@@ -9,9 +9,9 @@ import {
   faCircleQuestion,
   faRightFromBracket,
   faCheck,
-} from '@fortawesome/free-solid-svg-icons';
-import { useRouter } from '../../lib/router';
-import { Application } from '../../types';
+} from "@fortawesome/free-solid-svg-icons";
+import { useRouter } from "../../lib/router";
+import { Application } from "../../types";
 
 interface TopbarProps {
   onOpenMobileSidebar: () => void;
@@ -30,7 +30,7 @@ export const Topbar: React.FC<TopbarProps> = ({
 
   const handleLogout = () => {
     if (onLogout) onLogout();
-    else navigate('/');
+    else navigate("/");
   };
 
   return (
@@ -46,12 +46,11 @@ export const Topbar: React.FC<TopbarProps> = ({
         </button>
 
         {/* Search input (Exact placeholder from screenshots: Recherche (bientôt)) */}
-        
       </div>
 
       <div className="pf-topbar-right-zone">
         {/* Notification Bell Icon */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: "relative" }}>
           <button
             onClick={() => {
               setNotificationsOpen(!notificationsOpen);
@@ -66,18 +65,82 @@ export const Topbar: React.FC<TopbarProps> = ({
           {/* Notifications Dropdown */}
           {notificationsOpen && (
             <div className="pf-topbar-notif-menu">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', borderBottom: '1px solid #F1F5F9' }}>
-                <strong style={{ fontSize: '0.8125rem', color: '#1E293B' }}>Notifications</strong>
-                <span style={{ fontSize: '0.75rem', color: '#2563EB', cursor: 'pointer', fontWeight: 600 }}>Tout marquer comme lu</span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "0.75rem 1rem",
+                  borderBottom: "1px solid #F1F5F9",
+                }}
+              >
+                <strong style={{ fontSize: "0.8125rem", color: "#1E293B" }}>
+                  Notifications
+                </strong>
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#2563EB",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  Tout marquer comme lu
+                </span>
               </div>
-              <div style={{ padding: '0.5rem' }}>
-                <div style={{ padding: '0.65rem', borderRadius: '8px', background: '#F8FAFC', marginBottom: '0.5rem' }}>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#1E293B' }}>Paiement reçu : 1 000 XOF</div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: '0.2rem' }}>MTN MoMo Bénin · Il y a 2h</div>
+              <div style={{ padding: "0.5rem" }}>
+                <div
+                  style={{
+                    padding: "0.65rem",
+                    borderRadius: "8px",
+                    background: "#F8FAFC",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.8125rem",
+                      fontWeight: 700,
+                      color: "#1E293B",
+                    }}
+                  >
+                    Paiement reçu : 1 000 XOF
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "#64748B",
+                      marginTop: "0.2rem",
+                    }}
+                  >
+                    MTN MoMo Bénin · Il y a 2h
+                  </div>
                 </div>
-                <div style={{ padding: '0.65rem', borderRadius: '8px', background: '#F8FAFC' }}>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#1E293B' }}>Webhook délivré</div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748B', marginTop: '0.2rem' }}>Code HTTP 200 OK · Il y a 5h</div>
+                <div
+                  style={{
+                    padding: "0.65rem",
+                    borderRadius: "8px",
+                    background: "#F8FAFC",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.8125rem",
+                      fontWeight: 700,
+                      color: "#1E293B",
+                    }}
+                  >
+                    Webhook délivré
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.7rem",
+                      color: "#64748B",
+                      marginTop: "0.2rem",
+                    }}
+                  >
+                    Code HTTP 200 OK · Il y a 5h
+                  </div>
                 </div>
               </div>
             </div>
@@ -85,7 +148,7 @@ export const Topbar: React.FC<TopbarProps> = ({
         </div>
 
         {/* User Pill Button (Exact Screenshot 7) */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: "relative" }}>
           <button
             onClick={() => {
               setUserDropdownOpen(!userDropdownOpen);
@@ -94,11 +157,11 @@ export const Topbar: React.FC<TopbarProps> = ({
             className="pf-topbar-user-btn"
             aria-expanded={userDropdownOpen}
           >
-            <div className="pf-user-avatar-circle sm">SJ</div>
-            <span className="pf-topbar-user-text">SOGLO Julsido Emérus</span>
+            <div className="pf-user-avatar-circle sm">SJ</div>  
+            <span className="pf-topbar-user-text">SOGLO Emérus</span>
             <FontAwesomeIcon
               icon={faChevronDown}
-              className={`pf-topbar-chevron ${userDropdownOpen ? 'rotated' : ''}`}
+              className={`pf-topbar-chevron ${userDropdownOpen ? "rotated" : ""}`}
             />
           </button>
 
@@ -108,8 +171,12 @@ export const Topbar: React.FC<TopbarProps> = ({
               <div className="pf-user-popover-header">
                 <div className="pf-user-avatar-circle md">SJ</div>
                 <div style={{ minWidth: 0 }}>
-                  <div className="pf-user-popover-name">SOGLO Julsido Em...</div>
-                  <div className="pf-user-popover-email">emerussoglo@gmail.com</div>
+                  <div className="pf-user-popover-name">
+                    SOGLO Julsido Em...
+                  </div>
+                  <div className="pf-user-popover-email">
+                    emerussoglo@gmail.com
+                  </div>
                 </div>
               </div>
 
@@ -118,7 +185,7 @@ export const Topbar: React.FC<TopbarProps> = ({
               <div
                 onClick={() => {
                   setUserDropdownOpen(false);
-                  navigate('/dashboard/apps');
+                  navigate("/dashboard/apps");
                 }}
                 className="pf-user-popover-row"
               >
@@ -129,7 +196,7 @@ export const Topbar: React.FC<TopbarProps> = ({
               <div
                 onClick={() => {
                   setUserDropdownOpen(false);
-                  navigate('/dashboard/settings');
+                  navigate("/dashboard/settings");
                 }}
                 className="pf-user-popover-row"
               >
@@ -140,7 +207,7 @@ export const Topbar: React.FC<TopbarProps> = ({
               <div
                 onClick={() => {
                   setUserDropdownOpen(false);
-                  navigate('/dashboard/support');
+                  navigate("/dashboard/support");
                 }}
                 className="pf-user-popover-row"
               >

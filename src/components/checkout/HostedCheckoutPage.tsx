@@ -13,7 +13,11 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { apiClient } from '../../lib/api';
 import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../../config/payments';
-import { SUPPORTED_COUNTRIES } from '../../config/countries';
+import {
+  CHECKOUT_COUNTRIES,
+  filterCountriesBySearch,
+  SUPPORTED_PAYMENT_CURRENCIES,
+} from '../../config/countries';
 
 interface HostedCheckoutPageProps {
   onBack: () => void;
@@ -23,10 +27,6 @@ interface HostedCheckoutPageProps {
 }
 
 type CheckoutStatus = 'idle' | 'loading' | 'pending' | 'success' | 'failed' | 'cancelled';
-
-const VERIFIED_COUNTRIES = SUPPORTED_COUNTRIES
-  .filter((country) => country.code === 'BJ')
-  .map(({ code, name, flag, dialCode, currency }) => ({ code, name, flag, dialCode, currency }));
 
 export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   onBack,
@@ -57,7 +57,10 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const submitLock = useRef(false);
-  const selectedCountry = VERIFIED_COUNTRIES.find((country) => country.code === selectedCountryCode);
+  const availableCountries = CHECKOUT_COUNTRIES.filter((country) => country.currency === currency);
+  const selectedCountry = availableCountries.find((country) => country.code === selectedCountryCode);
+  const minimumAmount = SUPPORTED_PAYMENT_CURRENCIES.find((supported) => supported.code === currency)?.minimumAmount
+    ?? PAYDUNYA_MINIMUM_AMOUNT_XOF;
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -85,7 +88,9 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
         setIsFixedAmount(link.isFixedAmount !== false);
         setRequirePhone(Boolean(link.requirePhone));
         if (link.amount !== undefined && link.amount !== null) setAmount(Number(link.amount));
-        const configuredCountry = VERIFIED_COUNTRIES.find((country) => country.code === link.country);
+        const configuredCountry = CHECKOUT_COUNTRIES.find(
+          (country) => country.code === link.country && country.currency === link.currency,
+        );
         if (configuredCountry) setSelectedCountryCode(configuredCountry.code);
         else if (link.country) setLinkError('Ce lien utilise un pays qui n’est pas disponible dans la configuration de paiement vérifiée.');
       })
@@ -165,9 +170,17 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
     return true;
   };
 
+  const validateAmount = (): boolean => {
+    if (!Number.isSafeInteger(amount) || amount < minimumAmount) {
+      setErrorMessage(`Saisissez un montant ${currency} entier d’au moins ${minimumAmount}.`);
+      return false;
+    }
+    return true;
+  };
+
   const continueToNextStep = () => {
     if (step === 1) {
-      if (validateCustomer()) setStep(2);
+      if (validateCustomer() && validateAmount()) setStep(2);
       return;
     }
     if (step === 2) {
@@ -192,8 +205,8 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
       setErrorMessage('Sélectionnez un pays pris en charge.');
       return;
     }
-    if (!Number.isSafeInteger(amount) || amount < PAYDUNYA_MINIMUM_AMOUNT_XOF) {
-      setErrorMessage(`Saisissez un montant XOF entier d’au moins ${PAYDUNYA_MINIMUM_AMOUNT_XOF}.`);
+    if (!validateAmount()) {
+      setStep(1);
       return;
     }
 
@@ -235,9 +248,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   };
 
   const formatAmount = (value: number) => new Intl.NumberFormat('fr-FR').format(value);
-  const visibleCountries = VERIFIED_COUNTRIES.filter((country) =>
-    `${country.name} ${country.code}`.toLowerCase().includes(countrySearch.trim().toLowerCase()),
-  );
+  const visibleCountries = filterCountriesBySearch(availableCountries, countrySearch);
 
   return (
     <main className="pf-saspay-checkout-page">
@@ -285,6 +296,31 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                 {step === 1 && (
                   <section aria-labelledby="checkout-customer-title">
                     <h1 id="checkout-customer-title">Informations du client</h1>
+                    {!isFixedAmount ? (
+                      <label className="pf-saspay-form-group">
+                        <span className="pf-saspay-label">Montant ({currency}) *</span>
+                        <input
+                          className="pf-saspay-input"
+                          type="number"
+                          min={minimumAmount}
+                          step="1"
+                          required
+                          value={amount || ''}
+                          onChange={(event) => {
+                            setAmount(Number(event.target.value));
+                            setErrorMessage('');
+                          }}
+                        />
+                        <small>Minimum {formatAmount(minimumAmount)} {currency}</small>
+                      </label>
+                    ) : (
+                      <div className="pf-saspay-summary-box" aria-label="Montant fixe du paiement">
+                        <div className="pf-saspay-summary-row">
+                          <span>Montant fixe</span>
+                          <strong>{formatAmount(amount)} {currency}</strong>
+                        </div>
+                      </div>
+                    )}
                     <div className="pf-saspay-form-row">
                       <label className="pf-saspay-form-group">
                         <span className="pf-saspay-label">Prénom *</span>
@@ -322,25 +358,41 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                       <span className="pf-saspay-label">Rechercher un pays</span>
                       <input className="pf-saspay-input" type="search" value={countrySearch} onChange={(event) => setCountrySearch(event.target.value)} placeholder="Rechercher un pays" />
                     </label>
-                    <div role="listbox" aria-label="Pays pris en charge">
-                      {visibleCountries.map((country) => (
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={selectedCountryCode === country.code}
-                          key={country.code}
-                          onClick={() => setSelectedCountryCode(country.code)}
-                          className="pf-saspay-method-card"
-                        >
-                          <span aria-hidden="true">{country.flag}</span>
-                          <span>{country.name} ({country.code})</span>
-                          <span>{country.currency}</span>
-                        </button>
-                      ))}
-                      {visibleCountries.length === 0 && <p>Aucun pays de paiement actuellement configuré ne correspond à votre recherche.</p>}
-                    </div>
+                    <label className="pf-saspay-form-group">
+                      <span className="pf-saspay-label">Pays</span>
+                      <select
+                        className="pf-saspay-select"
+                        value={selectedCountryCode}
+                        disabled={visibleCountries.length === 0}
+                        onChange={(event) => {
+                          setSelectedCountryCode(event.target.value);
+                          setErrorMessage('');
+                        }}
+                      >
+                        <option value="" disabled>Choisir un pays</option>
+                        {visibleCountries.map((country) => (
+                          <option key={country.code} value={country.code}>
+                            {country.flag} {country.name} ({country.dialCode}) · {country.currency}
+                          </option>
+                        ))}
+                      </select>
+                      {visibleCountries.length === 0 && (
+                        <span role="status">Aucun pays de paiement actuellement configuré ne correspond à votre recherche.</span>
+                      )}
+                    </label>
+                    {selectedCountry && (
+                      <div className="pf-saspay-method-card" aria-label="Moyen de paiement">
+                        <FontAwesomeIcon icon={faLock} />
+                        <span>
+                          Paiement sécurisé
+                          <small style={{ display: 'block', color: '#64748B', fontWeight: 400 }}>
+                            Les moyens disponibles et, si nécessaire, le numéro de paiement seront demandés sur la page sécurisée.
+                          </small>
+                        </span>
+                      </div>
+                    )}
                     <div className="pf-saspay-notice-chip" style={{ marginTop: 16 }}>
-                      <FontAwesomeIcon icon={faShieldHalved} /> Choisissez le moyen de paiement disponible pour ce pays sur la page de paiement sécurisée. PichFlow ne collecte pas les données de carte ou de portefeuille mobile.
+                      <FontAwesomeIcon icon={faShieldHalved} /> PichFlow ne collecte ni numéro de carte, ni code PIN, ni mot de passe Mobile Money. Aucun canal SoftPay par opérateur n’est déclaré actif sans validation du compte.
                     </div>
                   </section>
                 )}
@@ -348,32 +400,21 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                 {step === 3 && (
                   <section aria-labelledby="checkout-confirm-title">
                     <h1 id="checkout-confirm-title">Confirmer et payer</h1>
-                    {!isFixedAmount && (
-                      <label className="pf-saspay-form-group">
-                        <span className="pf-saspay-label">Montant à payer ({currency}) *</span>
-                        <input
-                          className="pf-saspay-input"
-                          type="number"
-                          min={PAYDUNYA_MINIMUM_AMOUNT_XOF}
-                          step="1"
-                          required
-                          value={amount || ''}
-                          onChange={(event) => setAmount(Number(event.target.value))}
-                        />
-                      </label>
-                    )}
                     <div className="pf-saspay-summary-box">
                       <div className="pf-saspay-summary-row"><span>Produit</span><strong>{title}</strong></div>
+                      {description && <div className="pf-saspay-summary-row"><span>Description</span><strong>{description}</strong></div>}
+                      <div className="pf-saspay-summary-row"><span>Montant du produit</span><strong>{formatAmount(amount)} {currency}</strong></div>
                       <div className="pf-saspay-summary-row"><span>Pays</span><strong>{selectedCountry?.flag} {selectedCountry?.name}</strong></div>
-                      <div className="pf-saspay-summary-row"><span>Moyen de paiement</span><strong>À choisir sur la page sécurisée</strong></div>
+                      <div className="pf-saspay-summary-row"><span>Moyen de paiement</span><strong>Choix sur la page sécurisée</strong></div>
                       <div className="pf-saspay-summary-row"><span>Client</span><strong>{firstName} {lastName}</strong></div>
                       <div className="pf-saspay-summary-row"><span>E-mail</span><strong>{customerEmail}</strong></div>
                       {phone && <div className="pf-saspay-summary-row"><span>Téléphone de contact</span><strong>{phone}</strong></div>}
+                      <div className="pf-saspay-summary-row"><span>Frais fournisseur</span><strong>Non connus avant le paiement</strong></div>
                       <div className="pf-saspay-summary-divider" />
                       <div className="pf-saspay-summary-total">
-                        <span>Montant à payer</span><span>{formatAmount(amount)} {currency}</span>
+                        <span>Montant de la facture</span><span>{formatAmount(amount)} {currency}</span>
                       </div>
-                      <small>Les frais éventuels du prestataire ne sont pas ajoutés par PichFlow.</small>
+                      <small>Le checkout sécurisé du fournisseur affichera le montant final et les éventuels frais applicables. PichFlow n’ajoute pas de frais estimés.</small>
                     </div>
                   </section>
                 )}

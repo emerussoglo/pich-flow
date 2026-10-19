@@ -1,9 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faEye, faTrash, faUser, faXmark, faRotate, faCheck, faPen } from '@fortawesome/free-solid-svg-icons';
-import { useToast } from '../ui/ToastContext';
-import { apiClient } from '../../lib/api';
-import { Application, Customer } from '../../types';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  faPlus,
+  faEye,
+  faTrash,
+  faUser,
+  faXmark,
+  faRotate,
+  faCheck,
+  faPen,
+} from "@fortawesome/free-solid-svg-icons";
+import { useToast } from "../ui/ToastContext";
+import { DashboardLoadError } from "../ui/DashboardLoadError";
+import { apiClient } from "../../lib/api";
+import { Application, Customer } from "../../types";
 
 interface CustomersViewProps {
   appName?: string;
@@ -12,47 +22,68 @@ interface CustomersViewProps {
 }
 
 export const CustomersView: React.FC<CustomersViewProps> = ({
-  appName = 'Mon Application',
+  appName = "Mon Application",
   activeApp,
   customers: initialCustomers,
 }) => {
   const { showToast } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const customerLoadId = useRef(0);
 
   // Modals
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null,
+  );
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form states
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [country, setCountry] = useState('BJ');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState("BJ");
 
   const loadCustomers = useCallback(async () => {
+    const loadId = ++customerLoadId.current;
+    const applicationId = activeApp?.id;
+    if (!applicationId) {
+      setCustomers([]);
+      setLoadError("");
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
+    setCustomers([]);
+    setLoadError("");
     try {
-      const data = await apiClient.customers.getAll(activeApp?.id);
+      const data = await apiClient.customers.getAll(applicationId);
+      if (loadId !== customerLoadId.current) return;
       setCustomers(data || []);
     } catch {
-      showToast('Impossible de charger les clients.', 'error');
+      if (loadId === customerLoadId.current) {
+        setLoadError("Impossible de charger les clients.");
+        showToast("Impossible de charger les clients.", "error");
+      }
     } finally {
-      setIsLoading(false);
+      if (loadId === customerLoadId.current) setIsLoading(false);
     }
   }, [activeApp?.id, showToast]);
 
   useEffect(() => {
-    loadCustomers();
+    void loadCustomers();
+    return () => {
+      customerLoadId.current += 1;
+    };
   }, [loadCustomers]);
 
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !email.trim()) {
-      showToast('Le nom et l’adresse email sont obligatoires.', 'error');
+      showToast("Le nom et l’adresse email sont obligatoires.", "error");
       return;
     }
 
@@ -67,12 +98,12 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       });
       setCustomers((prev) => [created, ...prev]);
       setIsAddModalOpen(false);
-      setName('');
-      setEmail('');
-      setPhone('');
-      showToast('Nouveau client ajouté avec succès.', 'success');
+      setName("");
+      setEmail("");
+      setPhone("");
+      showToast("Nouveau client ajouté avec succès.", "success");
     } catch (err: any) {
-      showToast(err.message || 'Erreur lors de l’ajout du client.', 'error');
+      showToast(err.message || "Erreur lors de l’ajout du client.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -94,14 +125,14 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         prev.map((c) =>
           c.id === selectedCustomer.id
             ? { ...c, name: name.trim(), phone: phone.trim(), country }
-            : c
-        )
+            : c,
+        ),
       );
       setIsEditModalOpen(false);
       setSelectedCustomer(null);
-      showToast('Informations du client mises à jour.', 'success');
+      showToast("Informations du client mises à jour.", "success");
     } catch (err: any) {
-      showToast(err.message || 'Erreur lors de la mise à jour.', 'error');
+      showToast(err.message || "Erreur lors de la mise à jour.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -109,16 +140,20 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
   const handleDeleteCustomer = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm('Êtes-vous sûr de vouloir archiver ou supprimer ce client ?')) {
+    if (
+      !window.confirm(
+        "Êtes-vous sûr de vouloir archiver ou supprimer ce client ?",
+      )
+    ) {
       return;
     }
     try {
       await apiClient.customers.delete(id);
       setCustomers((prev) => prev.filter((c) => c.id !== id));
       if (selectedCustomer?.id === id) setSelectedCustomer(null);
-      showToast('Client supprimé avec succès.', 'success');
+      showToast("Client supprimé avec succès.", "success");
     } catch (err: any) {
-      showToast(err.message || 'Impossible de supprimer ce client.', 'error');
+      showToast(err.message || "Impossible de supprimer ce client.", "error");
     }
   };
 
@@ -127,8 +162,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     setSelectedCustomer(c);
     setName(c.name);
     setEmail(c.email);
-    setPhone(c.phone || '');
-    setCountry(c.country || 'BJ');
+    setPhone(c.phone || "");
+    setCountry(c.country || "BJ");
     setIsEditModalOpen(true);
   };
 
@@ -144,15 +179,17 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
   return (
     <div>
+      {loadError && <DashboardLoadError message={loadError} onRetry={() => void loadCustomers()} />}
       {/* Header */}
       <div className="pf-page-head-row">
         <div>
           <h1 className="pf-page-title">Clients & Utilisateurs finaux</h1>
           <p className="pf-page-subtitle">
-            Gérez le carnet d'adresses clients et l'historique de paiement de {appName}.
+            Gérez le carnet d'adresses clients et l'historique de paiement de{" "}
+            {appName}.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
           <button
             onClick={loadCustomers}
             className="pf-btn pf-btn-secondary pf-btn-sm"
@@ -163,9 +200,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           </button>
           <button
             onClick={() => {
-              setName('');
-              setEmail('');
-              setPhone('');
+              setName("");
+              setEmail("");
+              setPhone("");
               setIsAddModalOpen(true);
             }}
             className="pf-btn-action-primary"
@@ -177,11 +214,14 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       </div>
 
       {/* Search Filter */}
-      <div className="pf-saspay-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
+      <div
+        className="pf-saspay-card"
+        style={{ padding: "0.85rem 1.25rem", marginBottom: "1.25rem" }}
+      >
         <input
           type="text"
           className="pf-search-filter-input"
-          style={{ width: '100%', boxSizing: 'border-box' }}
+          style={{ width: "100%", boxSizing: "border-box" }}
           placeholder="Rechercher par nom, email ou numéro de téléphone..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -190,34 +230,54 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
       {/* Empty State vs Real Table */}
       {filteredCustomers.length === 0 ? (
-        <div className="pf-saspay-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+        <div
+          className="pf-saspay-card"
+          style={{ textAlign: "center", padding: "3.5rem 1.5rem" }}
+        >
           <div
             style={{
-              width: '4rem',
-              height: '4rem',
-              borderRadius: '50%',
-              background: '#EFF6FF',
-              color: '#2563EB',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 1.25rem',
-              fontSize: '1.5rem',
+              width: "4rem",
+              height: "4rem",
+              borderRadius: "50%",
+              background: "#EFF6FF",
+              color: "#2563EB",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 1.25rem",
+              fontSize: "1.5rem",
             }}
           >
             <FontAwesomeIcon icon={faUser} />
           </div>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0F172A', marginBottom: '0.5rem' }}>
+          <h3
+            style={{
+              fontSize: "1.125rem",
+              fontWeight: 700,
+              color: "#0F172A",
+              marginBottom: "0.5rem",
+            }}
+          >
             Aucun client pour le moment
           </h3>
-          <p style={{ color: '#64748B', fontSize: '0.875rem', maxWidth: '460px', margin: '0 auto 1.5rem', lineHeight: '1.5' }}>
-            Vos clients apparaîtront ici automatiquement dès qu'ils auront effectué un premier paiement, ou vous pouvez les ajouter manuellement dès maintenant.
+          <p
+            style={{
+              color: "#64748B",
+              fontSize: "0.875rem",
+              maxWidth: "460px",
+              margin: "0 auto 1.5rem",
+              lineHeight: "1.5",
+            }}
+          >
+            Vos clients apparaîtront ici automatiquement dès qu'ils auront
+            effectué un premier paiement, ou vous pouvez les ajouter
+            manuellement dès maintenant.
           </p>
           <button
             onClick={() => {
-              setName('');
-              setEmail('');
-              setPhone('');
+              setName("");
+              setEmail("");
+              setPhone("");
               setIsAddModalOpen(true);
             }}
             className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
@@ -238,68 +298,105 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                   <th>PAYS</th>
                   <th>COMMANDES</th>
                   <th>VOLUME TOTAL</th>
-                  <th style={{ textAlign: 'right' }}>ACTIONS</th>
+                  <th style={{ textAlign: "right" }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredCustomers.map((c) => (
                   <tr key={c.id}>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.65rem",
+                        }}
+                      >
                         <div
                           style={{
-                            width: '2rem',
-                            height: '2rem',
-                            borderRadius: '50%',
-                            background: '#EFF6FF',
-                            color: '#2563EB',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            width: "2rem",
+                            height: "2rem",
+                            borderRadius: "50%",
+                            background: "#EFF6FF",
+                            color: "#2563EB",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                             fontWeight: 700,
-                            fontSize: '0.75rem',
+                            fontSize: "0.75rem",
                           }}
                         >
                           {c.name.slice(0, 2).toUpperCase()}
                         </div>
-                        <span style={{ fontWeight: 600, color: '#0F172A', fontSize: '0.875rem' }}>
+                        <span
+                          style={{
+                            fontWeight: 600,
+                            color: "#0F172A",
+                            fontSize: "0.875rem",
+                          }}
+                        >
                           {c.name}
                         </span>
                       </div>
                     </td>
                     <td>
-                      <span style={{ color: '#475569', fontSize: '0.8125rem' }}>{c.email}</span>
-                    </td>
-                    <td>
-                      <span style={{ fontFamily: 'monospace', color: '#64748B', fontSize: '0.8125rem' }}>
-                        {c.phone || '—'}
+                      <span style={{ color: "#475569", fontSize: "0.8125rem" }}>
+                        {c.email}
                       </span>
                     </td>
                     <td>
-                      <span className="pf-pill-currency">{c.country || 'BJ'}</span>
+                      <span
+                        style={{
+                          fontFamily: "monospace",
+                          color: "#64748B",
+                          fontSize: "0.8125rem",
+                        }}
+                      >
+                        {c.phone || "—"}
+                      </span>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 600, color: '#0F172A', fontSize: '0.875rem' }}>
+                      <span className="pf-pill-currency">
+                        {c.country || "BJ"}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          color: "#0F172A",
+                          fontSize: "0.875rem",
+                        }}
+                      >
                         {c.paymentCount || 0}
                       </span>
                     </td>
                     <td>
-                      <strong style={{ color: '#0F172A', fontSize: '0.875rem' }}>
-                        {(c.totalSpent || 0).toLocaleString('fr-FR')} {c.currency || 'XOF'}
+                      <strong
+                        style={{ color: "#0F172A", fontSize: "0.875rem" }}
+                      >
+                        {(c.totalSpent || 0).toLocaleString("fr-FR")}{" "}
+                        {c.currency || "XOF"}
                       </strong>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                    <td style={{ textAlign: "right" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "0.35rem",
+                          justifyContent: "flex-end",
+                        }}
+                      >
                         <button
                           onClick={() => setSelectedCustomer(c)}
                           title="Consulter la fiche client"
                           style={{
-                            background: '#F1F5F9',
-                            border: 'none',
-                            color: '#475569',
-                            padding: '0.35rem 0.6rem',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
+                            background: "#F1F5F9",
+                            border: "none",
+                            color: "#475569",
+                            padding: "0.35rem 0.6rem",
+                            borderRadius: "6px",
+                            cursor: "pointer",
                           }}
                         >
                           <FontAwesomeIcon icon={faEye} />
@@ -308,12 +405,12 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                           onClick={(e) => openEditModal(c, e)}
                           title="Modifier le client"
                           style={{
-                            background: '#F1F5F9',
-                            border: 'none',
-                            color: '#2563EB',
-                            padding: '0.35rem 0.6rem',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
+                            background: "#F1F5F9",
+                            border: "none",
+                            color: "#2563EB",
+                            padding: "0.35rem 0.6rem",
+                            borderRadius: "6px",
+                            cursor: "pointer",
                           }}
                         >
                           <FontAwesomeIcon icon={faPen} />
@@ -322,12 +419,12 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                           onClick={(e) => handleDeleteCustomer(c.id, e)}
                           title="Supprimer le client"
                           style={{
-                            background: '#F1F5F9',
-                            border: 'none',
-                            color: '#EF4444',
-                            padding: '0.35rem 0.6rem',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
+                            background: "#F1F5F9",
+                            border: "none",
+                            color: "#EF4444",
+                            padding: "0.35rem 0.6rem",
+                            borderRadius: "6px",
+                            cursor: "pointer",
                           }}
                         >
                           <FontAwesomeIcon icon={faTrash} />
@@ -344,39 +441,91 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
       {/* MODAL 1: FICHE DETAILS CLIENT */}
       {selectedCustomer && !isEditModalOpen && (
-        <div className="pf-modal-overlay" onClick={() => setSelectedCustomer(null)}>
-          <div className="pf-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+        <div
+          className="pf-modal-overlay"
+          onClick={() => setSelectedCustomer(null)}
+        >
+          <div
+            className="pf-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "480px" }}
+          >
             <div className="pf-modal-header">
-              <h3 className="pf-card-title">Fiche client : {selectedCustomer.name}</h3>
-              <button onClick={() => setSelectedCustomer(null)} className="pf-modal-close">
+              <h3 className="pf-card-title">
+                Fiche client : {selectedCustomer.name}
+              </h3>
+              <button
+                onClick={() => setSelectedCustomer(null)}
+                className="pf-modal-close"
+              >
                 <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
 
-            <div style={{ background: '#F8FAFC', padding: '1rem', borderRadius: '10px', marginBottom: '1.25rem', lineHeight: '1.7', fontSize: '0.875rem' }}>
-              <div><strong>Nom complet :</strong> {selectedCustomer.name}</div>
-              <div><strong>Adresse email :</strong> {selectedCustomer.email}</div>
-              <div><strong>Téléphone :</strong> {selectedCustomer.phone || 'Non renseigné'}</div>
-              <div><strong>Pays :</strong> {selectedCustomer.country || 'Bénin'}</div>
-              <div><strong>Nombre de transactions :</strong> {selectedCustomer.paymentCount || 0}</div>
-              <div><strong>Volume total dépensé :</strong> {(selectedCustomer.totalSpent || 0).toLocaleString('fr-FR')} {selectedCustomer.currency || 'XOF'}</div>
+            <div
+              style={{
+                background: "#F8FAFC",
+                padding: "1rem",
+                borderRadius: "10px",
+                marginBottom: "1.25rem",
+                lineHeight: "1.7",
+                fontSize: "0.875rem",
+              }}
+            >
+              <div>
+                <strong>Nom complet :</strong> {selectedCustomer.name}
+              </div>
+              <div>
+                <strong>Adresse email :</strong> {selectedCustomer.email}
+              </div>
+              <div>
+                <strong>Téléphone :</strong>{" "}
+                {selectedCustomer.phone || "Non renseigné"}
+              </div>
+              <div>
+                <strong>Pays :</strong> {selectedCustomer.country || "Bénin"}
+              </div>
+              <div>
+                <strong>Nombre de transactions :</strong>{" "}
+                {selectedCustomer.paymentCount || 0}
+              </div>
+              <div>
+                <strong>Volume total dépensé :</strong>{" "}
+                {(selectedCustomer.totalSpent || 0).toLocaleString("fr-FR")}{" "}
+                {selectedCustomer.currency || "XOF"}
+              </div>
               {selectedCustomer.lastTransaction && (
                 <>
-                  <div><strong>Dernière référence :</strong> {selectedCustomer.lastTransaction.reference}</div>
-                  <div><strong>Dernier paiement :</strong> {selectedCustomer.lastTransaction.amount.toLocaleString('fr-FR')} {selectedCustomer.lastTransaction.currency} — {selectedCustomer.lastTransaction.status}</div>
+                  <div>
+                    <strong>Dernière référence :</strong>{" "}
+                    {selectedCustomer.lastTransaction.reference}
+                  </div>
+                  <div>
+                    <strong>Dernier paiement :</strong>{" "}
+                    {selectedCustomer.lastTransaction.amount.toLocaleString(
+                      "fr-FR",
+                    )}{" "}
+                    {selectedCustomer.lastTransaction.currency} —{" "}
+                    {selectedCustomer.lastTransaction.status}
+                  </div>
                   {selectedCustomer.lastTransaction.paymentLinkTitle && (
-                    <div><strong>Lien associé :</strong> {selectedCustomer.lastTransaction.paymentLinkTitle}</div>
+                    <div>
+                      <strong>Lien associé :</strong>{" "}
+                      {selectedCustomer.lastTransaction.paymentLinkTitle}
+                    </div>
                   )}
                 </>
               )}
               <div>
-                <strong>Dernière activité :</strong>{' '}
-                {new Date(selectedCustomer.lastTransactionAt).toLocaleDateString('fr-FR', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
+                <strong>Dernière activité :</strong>{" "}
+                {new Date(
+                  selectedCustomer.lastTransactionAt,
+                ).toLocaleDateString("fr-FR", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
                 })}
               </div>
             </div>
@@ -384,7 +533,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
             <button
               onClick={() => setSelectedCustomer(null)}
               className="pf-btn pf-btn-secondary pf-btn-md"
-              style={{ width: '100%' }}
+              style={{ width: "100%" }}
             >
               Fermer
             </button>
@@ -394,11 +543,21 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
       {/* MODAL 2: AJOUTER UN CLIENT */}
       {isAddModalOpen && (
-        <div className="pf-modal-overlay" onClick={() => setIsAddModalOpen(false)}>
-          <div className="pf-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+        <div
+          className="pf-modal-overlay"
+          onClick={() => setIsAddModalOpen(false)}
+        >
+          <div
+            className="pf-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "480px" }}
+          >
             <div className="pf-modal-header">
               <h3 className="pf-card-title">Ajouter un nouveau client</h3>
-              <button onClick={() => setIsAddModalOpen(false)} className="pf-modal-close">
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="pf-modal-close"
+              >
                 <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
@@ -455,7 +614,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <div
+                style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem" }}
+              >
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
@@ -470,7 +631,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                   className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
                   style={{ flex: 1 }}
                 >
-                  <span>{isSubmitting ? 'Enregistrement...' : 'Créer le client'}</span>
+                  <span>
+                    {isSubmitting ? "Enregistrement..." : "Créer le client"}
+                  </span>
                   <FontAwesomeIcon icon={faCheck} />
                 </button>
               </div>
@@ -481,11 +644,21 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
       {/* MODAL 3: MODIFIER LE CLIENT */}
       {isEditModalOpen && (
-        <div className="pf-modal-overlay" onClick={() => setIsEditModalOpen(false)}>
-          <div className="pf-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+        <div
+          className="pf-modal-overlay"
+          onClick={() => setIsEditModalOpen(false)}
+        >
+          <div
+            className="pf-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "480px" }}
+          >
             <div className="pf-modal-header">
               <h3 className="pf-card-title">Modifier le client</h3>
-              <button onClick={() => setIsEditModalOpen(false)} className="pf-modal-close">
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="pf-modal-close"
+              >
                 <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
@@ -503,13 +676,15 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               </div>
 
               <div className="pf-form-group">
-                <label className="pf-label">Adresse email (non modifiable)</label>
+                <label className="pf-label">
+                  Adresse email (non modifiable)
+                </label>
                 <input
                   type="email"
                   className="pf-input"
                   value={email}
                   disabled
-                  style={{ background: '#F1F5F9', color: '#64748B' }}
+                  style={{ background: "#F1F5F9", color: "#64748B" }}
                 />
               </div>
 
@@ -539,7 +714,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <div
+                style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem" }}
+              >
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
@@ -554,7 +731,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                   className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
                   style={{ flex: 1 }}
                 >
-                  <span>{isSubmitting ? 'Mise à jour...' : 'Sauvegarder'}</span>
+                  <span>{isSubmitting ? "Mise à jour..." : "Sauvegarder"}</span>
                   <FontAwesomeIcon icon={faCheck} />
                 </button>
               </div>

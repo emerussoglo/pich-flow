@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faPlus,
   faBuildingColumns,
@@ -13,25 +13,34 @@ import {
   faCircleCheck,
   faRotate,
   faMoneyBillTransfer,
-} from '@fortawesome/free-solid-svg-icons';
-import { useToast } from '../ui/ToastContext';
-import { apiClient } from '../../lib/api';
-import { Withdrawal, PayoutMethod } from '../../types';
+} from "@fortawesome/free-solid-svg-icons";
+import { useToast } from "../ui/ToastContext";
+import { DashboardLoadError } from "../ui/DashboardLoadError";
+import { apiClient } from "../../lib/api";
+import { Application, Withdrawal, PayoutMethod } from "../../types";
 
 interface WithdrawalsViewProps {
   appName?: string;
+  activeApp?: Application;
   withdrawals?: Withdrawal[];
 }
 
-export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon Application' }) => {
+export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({
+  appName = "Mon Application",
+  activeApp,
+}) => {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'retraits' | 'methodes'>('retraits');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<"retraits" | "methodes">(
+    "retraits",
+  );
+  const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   // Real data from database
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [payoutMethods, setPayoutMethods] = useState<PayoutMethod[]>([]);
+  const loadRequestId = useRef(0);
 
   // Modals
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
@@ -39,54 +48,82 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New withdrawal form
-  const [selectedMethodId, setSelectedMethodId] = useState<string>('');
-  const [withdrawAmount, setWithdrawAmount] = useState<string>('5000');
-  const [withdrawNote, setWithdrawNote] = useState<string>('');
+  const [selectedMethodId, setSelectedMethodId] = useState<string>("");
+  const [withdrawAmount, setWithdrawAmount] = useState<string>("5000");
+  const [withdrawNote, setWithdrawNote] = useState<string>("");
 
   // New payout method form
-  const [newMethodType, setNewMethodType] = useState<'mobile_money' | 'bank_transfer'>('mobile_money');
-  const [label, setLabel] = useState('');
-  const [country, setCountry] = useState('BJ');
-  const [operatorOrBank, setOperatorOrBank] = useState('');
-  const [recipientName, setRecipientName] = useState('');
-  const [recipientPhoneOrIban, setRecipientPhoneOrIban] = useState('');
+  const [newMethodType, setNewMethodType] = useState<
+    "mobile_money" | "bank_transfer"
+  >("mobile_money");
+  const [label, setLabel] = useState("");
+  const [country, setCountry] = useState("BJ");
+  const [operatorOrBank, setOperatorOrBank] = useState("");
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientPhoneOrIban, setRecipientPhoneOrIban] = useState("");
   // Bank-specific fields
-  const [accountNumber, setAccountNumber] = useState('');
-  const [iban, setIban] = useState('');
-  const [swiftBic, setSwiftBic] = useState('');
-  const [bankCode, setBankCode] = useState('');
-  const [branchCode, setBranchCode] = useState('');
-  const [currency, setCurrency] = useState('XOF');
+  const [accountNumber, setAccountNumber] = useState("");
+  const [iban, setIban] = useState("");
+  const [swiftBic, setSwiftBic] = useState("");
+  const [bankCode, setBankCode] = useState("");
+  const [branchCode, setBranchCode] = useState("");
+  const [currency, setCurrency] = useState("XOF");
 
   const loadData = useCallback(async () => {
+    const requestId = ++loadRequestId.current;
+    const applicationId = activeApp?.id;
+    if (!applicationId) {
+      setWithdrawals([]);
+      setPayoutMethods([]);
+      setLoadError("");
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
+    setWithdrawals([]);
+    setPayoutMethods([]);
+    setLoadError("");
     try {
       const [wList, mList] = await Promise.all([
-        apiClient.withdrawals.getAll(),
+        apiClient.withdrawals.getAll(applicationId),
         apiClient.payoutMethods.getAll(),
       ]);
+      if (requestId !== loadRequestId.current) return;
       setWithdrawals(wList);
       setPayoutMethods(mList);
-      if (mList.length > 0 && !selectedMethodId) {
+      setSelectedMethodId((current) => {
+        if (current && mList.some((method) => method.id === current)) return current;
+        if (mList.length === 0) return "";
         const def = mList.find((m) => m.isDefault) || mList[0];
-        setSelectedMethodId(def.id);
-      }
+        return def.id;
+      });
     } catch {
-      showToast('Impossible de charger les retraits et méthodes.', 'error');
+      if (requestId === loadRequestId.current) {
+        setLoadError("Impossible de charger les retraits et méthodes.");
+        showToast("Impossible de charger les retraits et méthodes.", "error");
+      }
     } finally {
-      setIsLoading(false);
+      if (requestId === loadRequestId.current) setIsLoading(false);
     }
-  }, [showToast, selectedMethodId]);
+  }, [activeApp?.id, showToast]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
+    return () => {
+      loadRequestId.current += 1;
+    };
   }, [loadData]);
 
   const handleWithdrawSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const applicationId = activeApp?.id;
+    if (!applicationId) {
+      showToast("Sélectionnez une application avant de créer un retrait.", "error");
+      return;
+    }
     const parsedAmount = Number(withdrawAmount);
     if (!parsedAmount || parsedAmount < 500) {
-      showToast('Le montant minimum de retrait est de 500 XOF.', 'error');
+      showToast("Le montant minimum de retrait est de 500 XOF.", "error");
       return;
     }
 
@@ -95,20 +132,32 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
     setIsSubmitting(true);
     try {
       const created = await apiClient.withdrawals.create({
+        applicationId,
         amount: parsedAmount,
-        currency: chosenMethod ? chosenMethod.currency : 'XOF',
-        methodType: chosenMethod ? chosenMethod.type : 'mobile_money',
-        recipientName: chosenMethod ? chosenMethod.recipientName : '',
-        recipientPhoneOrIban: chosenMethod ? (chosenMethod.accountNumber || chosenMethod.recipientPhoneOrIban) : '',
-        operatorOrBank: chosenMethod ? chosenMethod.operatorOrBank : 'Mobile Money',
-        country: chosenMethod ? chosenMethod.country : 'BJ',
+        currency: chosenMethod ? chosenMethod.currency : "XOF",
+        methodType: chosenMethod ? chosenMethod.type : "mobile_money",
+        recipientName: chosenMethod ? chosenMethod.recipientName : "",
+        recipientPhoneOrIban: chosenMethod
+          ? chosenMethod.accountNumber || chosenMethod.recipientPhoneOrIban
+          : "",
+        operatorOrBank: chosenMethod
+          ? chosenMethod.operatorOrBank
+          : "Mobile Money",
+        country: chosenMethod ? chosenMethod.country : "BJ",
       });
 
       setWithdrawals((prev) => [created, ...prev]);
       setWithdrawalModalOpen(false);
-      showToast(`Demande de retrait de ${parsedAmount.toLocaleString('fr-FR')} XOF enregistrée avec succès.`, 'success');
+      showToast(
+        `Demande de retrait de ${parsedAmount.toLocaleString("fr-FR")} XOF enregistrée avec succès.`,
+        "success",
+      );
     } catch (err: any) {
-      showToast(err.message || 'Solde insuffisant ou erreur lors du traitement du retrait.', 'error');
+      showToast(
+        err.message ||
+          "Solde insuffisant ou erreur lors du traitement du retrait.",
+        "error",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -116,12 +165,20 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
 
   const handleCreateMethodSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMethodType === 'mobile_money' && (!operatorOrBank || !recipientPhoneOrIban)) {
-      showToast('Opérateur et numéro de téléphone requis.', 'error');
+    if (
+      newMethodType === "mobile_money" &&
+      (!operatorOrBank || !recipientPhoneOrIban)
+    ) {
+      showToast("Opérateur et numéro de téléphone requis.", "error");
       return;
     }
-    if (newMethodType === 'bank_transfer' && (!operatorOrBank || !recipientName || (!accountNumber && !recipientPhoneOrIban))) {
-      showToast('Banque, titulaire et numéro de compte requis.', 'error');
+    if (
+      newMethodType === "bank_transfer" &&
+      (!operatorOrBank ||
+        !recipientName ||
+        (!accountNumber && !recipientPhoneOrIban))
+    ) {
+      showToast("Banque, titulaire et numéro de compte requis.", "error");
       return;
     }
 
@@ -129,7 +186,11 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
     try {
       const created = await apiClient.payoutMethods.create({
         type: newMethodType,
-        label: label.trim() || (newMethodType === 'mobile_money' ? `${operatorOrBank} ${recipientPhoneOrIban}` : `${operatorOrBank} - ${recipientName}`),
+        label:
+          label.trim() ||
+          (newMethodType === "mobile_money"
+            ? `${operatorOrBank} ${recipientPhoneOrIban}`
+            : `${operatorOrBank} - ${recipientName}`),
         operatorOrBank: operatorOrBank.trim(),
         recipientName: recipientName.trim(),
         recipientPhoneOrIban: recipientPhoneOrIban.trim(),
@@ -146,16 +207,22 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
       if (!selectedMethodId) setSelectedMethodId(created.id);
       setMethodModalOpen(false);
       // Reset form
-      setLabel('');
-      setRecipientPhoneOrIban('');
-      setAccountNumber('');
-      setIban('');
-      setSwiftBic('');
-      setBankCode('');
-      setBranchCode('');
-      showToast('Coordonnées enregistrées; elles ne sont pas vérifiées et aucun retrait n’a été effectué.', 'info');
+      setLabel("");
+      setRecipientPhoneOrIban("");
+      setAccountNumber("");
+      setIban("");
+      setSwiftBic("");
+      setBankCode("");
+      setBranchCode("");
+      showToast(
+        "Coordonnées enregistrées; elles ne sont pas vérifiées et aucun retrait n’a été effectué.",
+        "info",
+      );
     } catch (err: any) {
-      showToast(err.message || 'Erreur lors de l’enregistrement de la méthode.', 'error');
+      showToast(
+        err.message || "Erreur lors de l’enregistrement de la méthode.",
+        "error",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -163,16 +230,23 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
 
   const handleDeleteMethod = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette méthode de retrait ?')) {
+    if (
+      !window.confirm(
+        "Êtes-vous sûr de vouloir supprimer cette méthode de retrait ?",
+      )
+    ) {
       return;
     }
     try {
       await apiClient.payoutMethods.delete(id);
       setPayoutMethods((prev) => prev.filter((m) => m.id !== id));
-      if (selectedMethodId === id) setSelectedMethodId('');
-      showToast('Méthode de retrait supprimée.', 'success');
+      if (selectedMethodId === id) setSelectedMethodId("");
+      showToast("Méthode de retrait supprimée.", "success");
     } catch (err: any) {
-      showToast(err.message || 'Impossible de supprimer cette méthode.', 'error');
+      showToast(
+        err.message || "Impossible de supprimer cette méthode.",
+        "error",
+      );
     }
   };
 
@@ -184,12 +258,15 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
         prev.map((m) => ({
           ...m,
           isDefault: m.id === id,
-        }))
+        })),
       );
       setSelectedMethodId(id);
-      showToast('Méthode définie par défaut.', 'success');
+      showToast("Méthode définie par défaut.", "success");
     } catch (err: any) {
-      showToast(err.message || 'Impossible de modifier la méthode par défaut.', 'error');
+      showToast(
+        err.message || "Impossible de modifier la méthode par défaut.",
+        "error",
+      );
     }
   };
 
@@ -200,21 +277,24 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
       w.id.toLowerCase().includes(term) ||
       (w.reference && w.reference.toLowerCase().includes(term)) ||
       (w.recipientName && w.recipientName.toLowerCase().includes(term)) ||
-      (w.recipientPhoneOrIban && w.recipientPhoneOrIban.toLowerCase().includes(term))
+      (w.recipientPhoneOrIban &&
+        w.recipientPhoneOrIban.toLowerCase().includes(term))
     );
   });
 
   return (
     <div>
+      {loadError && <DashboardLoadError message={loadError} onRetry={() => void loadData()} />}
       {/* Header */}
       <div className="pf-page-head-row">
         <div>
           <h1 className="pf-page-title">Retraits & Reversements</h1>
           <p className="pf-page-subtitle">
-            Pilotez les versements et reversements de {appName} vers vos comptes Mobile Money ou bancaires.
+            Pilotez les versements et reversements de {appName} vers vos comptes
+            Mobile Money ou bancaires.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
           <button
             onClick={loadData}
             className="pf-btn pf-btn-secondary pf-btn-sm"
@@ -227,44 +307,61 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
       </div>
 
       {/* Sub Tabs + Primary Action Button */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', background: '#F1F5F9', padding: '4px', borderRadius: '10px' }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "1.25rem",
+          flexWrap: "wrap",
+          gap: "1rem",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            background: "#F1F5F9",
+            padding: "4px",
+            borderRadius: "10px",
+          }}
+        >
           <button
-            onClick={() => setActiveTab('retraits')}
+            onClick={() => setActiveTab("retraits")}
             style={{
-              padding: '0.45rem 1.1rem',
-              borderRadius: '8px',
-              border: 'none',
-              background: activeTab === 'retraits' ? '#2563EB' : 'transparent',
-              color: activeTab === 'retraits' ? '#FFFFFF' : '#475569',
+              padding: "0.45rem 1.1rem",
+              borderRadius: "8px",
+              border: "none",
+              background: activeTab === "retraits" ? "#2563EB" : "transparent",
+              color: activeTab === "retraits" ? "#FFFFFF" : "#475569",
               fontWeight: 600,
-              fontSize: '0.8125rem',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
+              fontSize: "0.8125rem",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
             }}
           >
             Historique des retraits ({withdrawals.length})
           </button>
           <button
-            onClick={() => setActiveTab('methodes')}
+            onClick={() => setActiveTab("methodes")}
             style={{
-              padding: '0.45rem 1.1rem',
-              borderRadius: '8px',
-              border: 'none',
-              background: activeTab === 'methodes' ? '#2563EB' : 'transparent',
-              color: activeTab === 'methodes' ? '#FFFFFF' : '#475569',
+              padding: "0.45rem 1.1rem",
+              borderRadius: "8px",
+              border: "none",
+              background: activeTab === "methodes" ? "#2563EB" : "transparent",
+              color: activeTab === "methodes" ? "#FFFFFF" : "#475569",
               fontWeight: 600,
-              fontSize: '0.8125rem',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
+              fontSize: "0.8125rem",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
             }}
           >
             Méthodes enregistrées ({payoutMethods.length})
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          {activeTab === 'methodes' ? (
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          {activeTab === "methodes" ? (
             <button
               onClick={() => setMethodModalOpen(true)}
               className="pf-btn-action-primary"
@@ -287,16 +384,24 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
       </div>
 
       {/* TAB 1: RETRAITS */}
-      {activeTab === 'retraits' && (
+      {activeTab === "retraits" && (
         <>
-          <p role="note" className="pf-saspay-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
-            Les retraits ne sont pas intégrés. Aucun solde affiché par PichFlow ne peut être retiré ou considéré comme un solde PayDunya confirmé.
+          <p
+            role="note"
+            className="pf-saspay-card"
+            style={{ padding: "0.85rem 1.25rem", marginBottom: "1.25rem" }}
+          >
+            Les retraits ne sont pas intégrés. Aucun solde affiché par PichFlow
+            ne peut être retiré ou considéré comme un solde PayDunya confirmé.
           </p>
-          <div className="pf-saspay-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
+          <div
+            className="pf-saspay-card"
+            style={{ padding: "0.85rem 1.25rem", marginBottom: "1.25rem" }}
+          >
             <input
               type="text"
               className="pf-search-filter-input"
-              style={{ width: '100%', boxSizing: 'border-box' }}
+              style={{ width: "100%", boxSizing: "border-box" }}
               placeholder="Rechercher par référence, bénéficiaire ou téléphone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -304,33 +409,53 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
           </div>
 
           {filteredWithdrawals.length === 0 ? (
-            <div className="pf-saspay-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+            <div
+              className="pf-saspay-card"
+              style={{ textAlign: "center", padding: "3.5rem 1.5rem" }}
+            >
               <div
                 style={{
-                  width: '4rem',
-                  height: '4rem',
-                  borderRadius: '50%',
-                  background: '#EFF6FF',
-                  color: '#2563EB',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 1.25rem',
-                  fontSize: '1.5rem',
+                  width: "4rem",
+                  height: "4rem",
+                  borderRadius: "50%",
+                  background: "#EFF6FF",
+                  color: "#2563EB",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 1.25rem",
+                  fontSize: "1.5rem",
                 }}
               >
                 <FontAwesomeIcon icon={faMoneyBillTransfer} />
               </div>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0F172A', marginBottom: '0.5rem' }}>
+              <h3
+                style={{
+                  fontSize: "1.125rem",
+                  fontWeight: 700,
+                  color: "#0F172A",
+                  marginBottom: "0.5rem",
+                }}
+              >
                 Aucun retrait pour le moment
               </h3>
-              <p style={{ color: '#64748B', fontSize: '0.875rem', maxWidth: '460px', margin: '0 auto 1.5rem', lineHeight: '1.5' }}>
-                Vos demandes de versement vers vos comptes Mobile Money ou bancaires apparaîtront ici dès que vous aurez effectué un premier retrait depuis vos soldes.
+              <p
+                style={{
+                  color: "#64748B",
+                  fontSize: "0.875rem",
+                  maxWidth: "460px",
+                  margin: "0 auto 1.5rem",
+                  lineHeight: "1.5",
+                }}
+              >
+                Vos demandes de versement vers vos comptes Mobile Money ou
+                bancaires apparaîtront ici dès que vous aurez effectué un
+                premier retrait depuis vos soldes.
               </p>
               <button
                 onClick={() => {
                   if (payoutMethods.length === 0) {
-                    setActiveTab('methodes');
+                    setActiveTab("methodes");
                     setMethodModalOpen(true);
                   } else {
                     setWithdrawalModalOpen(true);
@@ -352,46 +477,71 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                       <th>BÉNÉFICIAIRE & MÉTHODE</th>
                       <th>DEMANDÉ LE</th>
                       <th>STATUT</th>
-                      <th style={{ textAlign: 'right' }}>MONTANT NET</th>
+                      <th style={{ textAlign: "right" }}>MONTANT NET</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredWithdrawals.map((w) => (
                       <tr key={w.id}>
                         <td>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0F172A' }}>
+                          <span
+                            style={{
+                              fontFamily: "monospace",
+                              fontWeight: 700,
+                              color: "#0F172A",
+                            }}
+                          >
                             {w.reference || w.id}
                           </span>
                         </td>
                         <td>
                           <div>
-                            <div style={{ fontWeight: 600, color: '#0F172A', fontSize: '0.875rem' }}>
+                            <div
+                              style={{
+                                fontWeight: 600,
+                                color: "#0F172A",
+                                fontSize: "0.875rem",
+                              }}
+                            >
                               {w.recipientName || w.operatorOrBank}
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                            <div
+                              style={{ fontSize: "0.75rem", color: "#64748B" }}
+                            >
                               {w.operatorOrBank} · {w.recipientPhoneOrIban}
                             </div>
                           </div>
                         </td>
                         <td>
-                          <span style={{ color: '#64748B', fontSize: '0.8125rem' }}>
-                            {new Date(w.createdAt).toLocaleDateString('fr-FR', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
+                          <span
+                            style={{ color: "#64748B", fontSize: "0.8125rem" }}
+                          >
+                            {new Date(w.createdAt).toLocaleDateString("fr-FR", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
                             })}
                           </span>
                         </td>
                         <td>
-                          <span className={`pf-pill-status ${w.status === 'completed' ? 'reussi' : w.status === 'failed' ? 'echoue' : 'en_attente'}`}>
-                            {w.status === 'completed' ? 'Réussi' : w.status === 'failed' ? 'Échoué' : 'En traitement'}
+                          <span
+                            className={`pf-pill-status ${w.status === "completed" ? "reussi" : w.status === "failed" ? "echoue" : "en_attente"}`}
+                          >
+                            {w.status === "completed"
+                              ? "Réussi"
+                              : w.status === "failed"
+                                ? "Échoué"
+                                : "En traitement"}
                           </span>
                         </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <strong style={{ color: '#0F172A', fontSize: '0.9rem' }}>
-                            {(w.netAmount || w.amount).toLocaleString('fr-FR')} {w.currency || 'XOF'}
+                        <td style={{ textAlign: "right" }}>
+                          <strong
+                            style={{ color: "#0F172A", fontSize: "0.9rem" }}
+                          >
+                            {(w.netAmount || w.amount).toLocaleString("fr-FR")}{" "}
+                            {w.currency || "XOF"}
                           </strong>
                         </td>
                       </tr>
@@ -405,15 +555,25 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
       )}
 
       {/* TAB 2: METHODES DE RETRAIT */}
-      {activeTab === 'methodes' && (
-        <div className="pf-saspay-card" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+      {activeTab === "methodes" && (
+        <div className="pf-saspay-card" style={{ padding: "1.5rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "1.25rem",
+            }}
+          >
             <div>
-              <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A' }}>
+              <div
+                style={{ fontSize: "1rem", fontWeight: 700, color: "#0F172A" }}
+              >
                 Méthodes de versement vérifiées
               </div>
-              <div style={{ fontSize: '0.8125rem', color: '#64748B' }}>
-                Comptes Mobile Money ou bancaires autorisés pour recevoir vos reversements.
+              <div style={{ fontSize: "0.8125rem", color: "#64748B" }}>
+                Comptes Mobile Money ou bancaires autorisés pour recevoir vos
+                reversements.
               </div>
             </div>
             <button
@@ -426,28 +586,50 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
           </div>
 
           {payoutMethods.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2.5rem 1rem', background: '#F8FAFC', borderRadius: '12px', border: '1px dashed #CBD5E1' }}>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "2.5rem 1rem",
+                background: "#F8FAFC",
+                borderRadius: "12px",
+                border: "1px dashed #CBD5E1",
+              }}
+            >
               <div
                 style={{
-                  width: '3.5rem',
-                  height: '3.5rem',
-                  borderRadius: '50%',
-                  background: '#EFF6FF',
-                  color: '#2563EB',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 1rem',
-                  fontSize: '1.25rem',
+                  width: "3.5rem",
+                  height: "3.5rem",
+                  borderRadius: "50%",
+                  background: "#EFF6FF",
+                  color: "#2563EB",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 1rem",
+                  fontSize: "1.25rem",
                 }}
               >
                 <FontAwesomeIcon icon={faBuildingColumns} />
               </div>
-              <h4 style={{ fontWeight: 700, color: '#0F172A', marginBottom: '0.35rem' }}>
+              <h4
+                style={{
+                  fontWeight: 700,
+                  color: "#0F172A",
+                  marginBottom: "0.35rem",
+                }}
+              >
                 Aucune méthode de retrait enregistrée
               </h4>
-              <p style={{ color: '#64748B', fontSize: '0.8125rem', maxWidth: '420px', margin: '0 auto 1.25rem' }}>
-                Ajoutez un compte Mobile Money (MTN, Moov, Orange, Wave) ou un compte bancaire pour débloquer les virements.
+              <p
+                style={{
+                  color: "#64748B",
+                  fontSize: "0.8125rem",
+                  maxWidth: "420px",
+                  margin: "0 auto 1.25rem",
+                }}
+              >
+                Ajoutez un compte Mobile Money (MTN, Moov, Orange, Wave) ou un
+                compte bancaire pour débloquer les virements.
               </p>
               <button
                 onClick={() => setMethodModalOpen(true)}
@@ -458,50 +640,97 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                gap: "1rem",
+              }}
+            >
               {payoutMethods.map((m) => (
                 <div
                   key={m.id}
                   style={{
-                    padding: '1.15rem',
-                    background: '#FFFFFF',
-                    borderRadius: '12px',
-                    border: m.isDefault ? '2px solid #2563EB' : '1px solid #E2E8F0',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                    position: 'relative',
+                    padding: "1.15rem",
+                    background: "#FFFFFF",
+                    borderRadius: "12px",
+                    border: m.isDefault
+                      ? "2px solid #2563EB"
+                      : "1px solid #E2E8F0",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                    position: "relative",
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.85rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      marginBottom: "0.85rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.75rem",
+                      }}
+                    >
                       <div
                         style={{
-                          width: '2.5rem',
-                          height: '2.5rem',
-                          borderRadius: '10px',
-                          background: m.type === 'mobile_money' ? '#EFF6FF' : '#F0FDF4',
-                          color: m.type === 'mobile_money' ? '#2563EB' : '#16A34A',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '1.125rem',
+                          width: "2.5rem",
+                          height: "2.5rem",
+                          borderRadius: "10px",
+                          background:
+                            m.type === "mobile_money" ? "#EFF6FF" : "#F0FDF4",
+                          color:
+                            m.type === "mobile_money" ? "#2563EB" : "#16A34A",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "1.125rem",
                         }}
                       >
-                        <FontAwesomeIcon icon={m.type === 'mobile_money' ? faMobileScreen : faBuildingColumns} />
+                        <FontAwesomeIcon
+                          icon={
+                            m.type === "mobile_money"
+                              ? faMobileScreen
+                              : faBuildingColumns
+                          }
+                        />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0F172A' }}>
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            fontSize: "0.9rem",
+                            color: "#0F172A",
+                          }}
+                        >
                           {m.label || m.operatorOrBank}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                          {m.type === 'mobile_money' ? 'Mobile Money' : 'Compte Bancaire'} · {m.country}
+                        <div style={{ fontSize: "0.75rem", color: "#64748B" }}>
+                          {m.type === "mobile_money"
+                            ? "Mobile Money"
+                            : "Compte Bancaire"}{" "}
+                          · {m.country}
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "0.35rem",
+                        alignItems: "center",
+                      }}
+                    >
                       {m.isDefault ? (
                         <span className="pf-pill-status actif">
-                          <FontAwesomeIcon icon={faStar} style={{ marginRight: '4px' }} />
+                          <FontAwesomeIcon
+                            icon={faStar}
+                            style={{ marginRight: "4px" }}
+                          />
                           Par défaut
                         </span>
                       ) : (
@@ -509,13 +738,13 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                           onClick={(e) => handleSetDefaultMethod(m.id, e)}
                           title="Définir comme méthode principale"
                           style={{
-                            padding: '0.25rem 0.5rem',
-                            fontSize: '0.75rem',
-                            borderRadius: '6px',
-                            border: '1px solid #E2E8F0',
-                            background: '#FFFFFF',
-                            color: '#64748B',
-                            cursor: 'pointer',
+                            padding: "0.25rem 0.5rem",
+                            fontSize: "0.75rem",
+                            borderRadius: "6px",
+                            border: "1px solid #E2E8F0",
+                            background: "#FFFFFF",
+                            color: "#64748B",
+                            cursor: "pointer",
                           }}
                         >
                           Définir par défaut
@@ -525,38 +754,89 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                         onClick={(e) => handleDeleteMethod(m.id, e)}
                         title="Supprimer la méthode"
                         style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#94A3B8',
-                          cursor: 'pointer',
-                          padding: '0.35rem',
-                          borderRadius: '6px',
+                          background: "transparent",
+                          border: "none",
+                          color: "#94A3B8",
+                          cursor: "pointer",
+                          padding: "0.35rem",
+                          borderRadius: "6px",
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.color = '#EF4444')}
-                        onMouseLeave={(e) => (e.currentTarget.style.color = '#94A3B8')}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.color = "#EF4444")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.color = "#94A3B8")
+                        }
                       >
                         <FontAwesomeIcon icon={faTrash} />
                       </button>
                     </div>
                   </div>
 
-                  <div style={{ fontSize: '0.8125rem', color: '#334155', lineHeight: '1.6', background: '#F8FAFC', padding: '0.75rem', borderRadius: '8px' }}>
-                    <div><strong>Opérateur / Banque :</strong> {m.operatorOrBank}</div>
-                    {m.recipientName && <div><strong>Titulaire :</strong> {m.recipientName}</div>}
+                  <div
+                    style={{
+                      fontSize: "0.8125rem",
+                      color: "#334155",
+                      lineHeight: "1.6",
+                      background: "#F8FAFC",
+                      padding: "0.75rem",
+                      borderRadius: "8px",
+                    }}
+                  >
                     <div>
-                      <strong>{m.type === 'mobile_money' ? 'Numéro de téléphone :' : 'Numéro de compte :'}</strong>{' '}
-                      <span style={{ fontFamily: 'monospace' }}>{m.accountNumber || m.recipientPhoneOrIban}</span>
+                      <strong>Opérateur / Banque :</strong> {m.operatorOrBank}
                     </div>
-                    {m.iban && <div><strong>IBAN :</strong> <span style={{ fontFamily: 'monospace' }}>{m.iban}</span></div>}
-                    {m.swiftBic && <div><strong>SWIFT / BIC :</strong> <span style={{ fontFamily: 'monospace' }}>{m.swiftBic}</span></div>}
+                    {m.recipientName && (
+                      <div>
+                        <strong>Titulaire :</strong> {m.recipientName}
+                      </div>
+                    )}
+                    <div>
+                      <strong>
+                        {m.type === "mobile_money"
+                          ? "Numéro de téléphone :"
+                          : "Numéro de compte :"}
+                      </strong>{" "}
+                      <span style={{ fontFamily: "monospace" }}>
+                        {m.accountNumber || m.recipientPhoneOrIban}
+                      </span>
+                    </div>
+                    {m.iban && (
+                      <div>
+                        <strong>IBAN :</strong>{" "}
+                        <span style={{ fontFamily: "monospace" }}>
+                          {m.iban}
+                        </span>
+                      </div>
+                    )}
+                    {m.swiftBic && (
+                      <div>
+                        <strong>SWIFT / BIC :</strong>{" "}
+                        <span style={{ fontFamily: "monospace" }}>
+                          {m.swiftBic}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', color: '#16A34A' }}>
+                  <div
+                    style={{
+                      marginTop: "0.75rem",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      fontSize: "0.75rem",
+                      color: "#16A34A",
+                    }}
+                  >
                     <span>
-                      <FontAwesomeIcon icon={faShieldHalved} style={{ marginRight: '4px' }} />
+                      <FontAwesomeIcon
+                        icon={faShieldHalved}
+                        style={{ marginRight: "4px" }}
+                      />
                       Vérifié & certifié
                     </span>
-                    <span style={{ color: '#94A3B8' }}>{m.currency}</span>
+                    <span style={{ color: "#94A3B8" }}>{m.currency}</span>
                   </div>
                 </div>
               ))}
@@ -567,25 +847,57 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
 
       {/* MODAL 1: DEMANDER UN RETRAIT */}
       {withdrawalModalOpen && (
-        <div className="pf-modal-overlay" onClick={() => setWithdrawalModalOpen(false)}>
-          <div className="pf-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+        <div
+          className="pf-modal-overlay"
+          onClick={() => setWithdrawalModalOpen(false)}
+        >
+          <div
+            className="pf-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "480px" }}
+          >
             <div className="pf-modal-header">
               <h3 className="pf-card-title">Demander un reversement</h3>
-              <button onClick={() => setWithdrawalModalOpen(false)} className="pf-modal-close">
+              <button
+                onClick={() => setWithdrawalModalOpen(false)}
+                className="pf-modal-close"
+              >
                 <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
 
-            <div style={{ padding: '0.75rem', background: '#EFF6FF', borderRadius: '8px', border: '1px solid #BFDBFE', fontSize: '0.75rem', color: '#1E40AF', marginBottom: '1.25rem' }}>
-              <strong>Environnement Sandbox :</strong> simulation d'ordre de virement bancaire ou mobile money sécurisé sans impact sur les réseaux bancaires réels.
+            <div
+              style={{
+                padding: "0.75rem",
+                background: "#EFF6FF",
+                borderRadius: "8px",
+                border: "1px solid #BFDBFE",
+                fontSize: "0.75rem",
+                color: "#1E40AF",
+                marginBottom: "1.25rem",
+              }}
+            >
+              <strong>Environnement Sandbox :</strong> simulation d'ordre de
+              virement bancaire ou mobile money sécurisé sans impact sur les
+              réseaux bancaires réels.
             </div>
 
             <form onSubmit={handleWithdrawSubmit}>
               <div className="pf-form-group">
                 <label className="pf-label">Méthode de réception</label>
                 {payoutMethods.length === 0 ? (
-                  <div style={{ padding: '0.75rem', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '0.8125rem' }}>
-                    Aucune méthode configurée. Veuillez d’abord enregistrer une méthode.
+                  <div
+                    style={{
+                      padding: "0.75rem",
+                      background: "#FEF2F2",
+                      border: "1px solid #FECACA",
+                      borderRadius: "8px",
+                      color: "#DC2626",
+                      fontSize: "0.8125rem",
+                    }}
+                  >
+                    Aucune méthode configurée. Veuillez d’abord enregistrer une
+                    méthode.
                   </div>
                 ) : (
                   <select
@@ -596,7 +908,9 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                   >
                     {payoutMethods.map((m) => (
                       <option key={m.id} value={m.id}>
-                        {m.label} ({m.operatorOrBank} - {m.accountNumber || m.recipientPhoneOrIban}) {m.isDefault ? '★ Défaut' : ''}
+                        {m.label} ({m.operatorOrBank} -{" "}
+                        {m.accountNumber || m.recipientPhoneOrIban}){" "}
+                        {m.isDefault ? "★ Défaut" : ""}
                       </option>
                     ))}
                   </select>
@@ -615,13 +929,23 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                   placeholder="Ex: 25000"
                   required
                 />
-                <span style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.25rem', display: 'block' }}>
-                  Frais de transaction : 0 XOF (pris en charge par la plateforme en mode test).
+                <span
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "#64748B",
+                    marginTop: "0.25rem",
+                    display: "block",
+                  }}
+                >
+                  Frais de transaction : 0 XOF (pris en charge par la plateforme
+                  en mode test).
                 </span>
               </div>
 
               <div className="pf-form-group">
-                <label className="pf-label">Motif ou référence interne (facultatif)</label>
+                <label className="pf-label">
+                  Motif ou référence interne (facultatif)
+                </label>
                 <input
                   type="text"
                   className="pf-input"
@@ -631,7 +955,9 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <div
+                style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem" }}
+              >
                 <button
                   type="button"
                   onClick={() => setWithdrawalModalOpen(false)}
@@ -646,7 +972,9 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                   className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
                   style={{ flex: 1 }}
                 >
-                  <span>{isSubmitting ? 'Traitement...' : 'Valider le retrait'}</span>
+                  <span>
+                    {isSubmitting ? "Traitement..." : "Valider le retrait"}
+                  </span>
                   <FontAwesomeIcon icon={faCheck} />
                 </button>
               </div>
@@ -657,49 +985,108 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
 
       {/* MODAL 2: AJOUTER UNE METHODE DE RETRAIT (Dynamic Category A vs B) */}
       {methodModalOpen && (
-        <div className="pf-modal-overlay" onClick={() => setMethodModalOpen(false)}>
-          <div className="pf-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
+        <div
+          className="pf-modal-overlay"
+          onClick={() => setMethodModalOpen(false)}
+        >
+          <div
+            className="pf-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "540px" }}
+          >
             <div className="pf-modal-header">
               <h3 className="pf-card-title">Ajouter une méthode de retrait</h3>
-              <button onClick={() => setMethodModalOpen(false)} className="pf-modal-close">
+              <button
+                onClick={() => setMethodModalOpen(false)}
+                className="pf-modal-close"
+              >
                 <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
 
             {/* Type selector: Mobile Money vs Bank */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.25rem' }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "0.75rem",
+                marginBottom: "1.25rem",
+              }}
+            >
               <div
-                onClick={() => setNewMethodType('mobile_money')}
+                onClick={() => setNewMethodType("mobile_money")}
                 style={{
-                  padding: '0.85rem',
-                  borderRadius: '10px',
-                  border: newMethodType === 'mobile_money' ? '2px solid #2563EB' : '1px solid #E2E8F0',
-                  background: newMethodType === 'mobile_money' ? '#EFF6FF' : '#FFFFFF',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  transition: 'all 0.15s ease',
+                  padding: "0.85rem",
+                  borderRadius: "10px",
+                  border:
+                    newMethodType === "mobile_money"
+                      ? "2px solid #2563EB"
+                      : "1px solid #E2E8F0",
+                  background:
+                    newMethodType === "mobile_money" ? "#EFF6FF" : "#FFFFFF",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "all 0.15s ease",
                 }}
               >
-                <FontAwesomeIcon icon={faMobileScreen} style={{ color: '#2563EB', fontSize: '1.25rem', marginBottom: '0.35rem' }} />
-                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0F172A' }}>Mobile Money</div>
-                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>MTN, Moov, Orange, Wave</div>
+                <FontAwesomeIcon
+                  icon={faMobileScreen}
+                  style={{
+                    color: "#2563EB",
+                    fontSize: "1.25rem",
+                    marginBottom: "0.35rem",
+                  }}
+                />
+                <div
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 700,
+                    color: "#0F172A",
+                  }}
+                >
+                  Mobile Money
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "#64748B" }}>
+                  MTN, Moov, Orange, Wave
+                </div>
               </div>
 
               <div
-                onClick={() => setNewMethodType('bank_transfer')}
+                onClick={() => setNewMethodType("bank_transfer")}
                 style={{
-                  padding: '0.85rem',
-                  borderRadius: '10px',
-                  border: newMethodType === 'bank_transfer' ? '2px solid #2563EB' : '1px solid #E2E8F0',
-                  background: newMethodType === 'bank_transfer' ? '#EFF6FF' : '#FFFFFF',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  transition: 'all 0.15s ease',
+                  padding: "0.85rem",
+                  borderRadius: "10px",
+                  border:
+                    newMethodType === "bank_transfer"
+                      ? "2px solid #2563EB"
+                      : "1px solid #E2E8F0",
+                  background:
+                    newMethodType === "bank_transfer" ? "#EFF6FF" : "#FFFFFF",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  transition: "all 0.15s ease",
                 }}
               >
-                <FontAwesomeIcon icon={faBuildingColumns} style={{ color: '#2563EB', fontSize: '1.25rem', marginBottom: '0.35rem' }} />
-                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0F172A' }}>Virement Bancaire</div>
-                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>BOA, Ecobank, UBA, etc.</div>
+                <FontAwesomeIcon
+                  icon={faBuildingColumns}
+                  style={{
+                    color: "#2563EB",
+                    fontSize: "1.25rem",
+                    marginBottom: "0.35rem",
+                  }}
+                />
+                <div
+                  style={{
+                    fontSize: "0.875rem",
+                    fontWeight: 700,
+                    color: "#0F172A",
+                  }}
+                >
+                  Virement Bancaire
+                </div>
+                <div style={{ fontSize: "0.75rem", color: "#64748B" }}>
+                  BOA, Ecobank, UBA, etc.
+                </div>
               </div>
             </div>
 
@@ -710,7 +1097,11 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                 <input
                   type="text"
                   className="pf-input"
-                  placeholder={newMethodType === 'mobile_money' ? 'Ex: Mon MTN Principal Bénin' : 'Ex: Compte Trésorerie BOA'}
+                  placeholder={
+                    newMethodType === "mobile_money"
+                      ? "Ex: Mon MTN Principal Bénin"
+                      : "Ex: Compte Trésorerie BOA"
+                  }
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                 />
@@ -733,10 +1124,12 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
               </div>
 
               {/* CATEGORY A: MOBILE MONEY EXCLUSIVE FIELDS */}
-              {newMethodType === 'mobile_money' && (
+              {newMethodType === "mobile_money" && (
                 <>
                   <div className="pf-form-group">
-                    <label className="pf-label">Réseau / Opérateur Mobile Money</label>
+                    <label className="pf-label">
+                      Réseau / Opérateur Mobile Money
+                    </label>
                     <select
                       className="pf-select"
                       value={operatorOrBank}
@@ -753,7 +1146,9 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                   </div>
 
                   <div className="pf-form-group">
-                    <label className="pf-label">Numéro de téléphone bénéficiaire</label>
+                    <label className="pf-label">
+                      Numéro de téléphone bénéficiaire
+                    </label>
                     <input
                       type="tel"
                       className="pf-input"
@@ -765,7 +1160,9 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                   </div>
 
                   <div className="pf-form-group">
-                    <label className="pf-label">Nom complet du titulaire de la ligne</label>
+                    <label className="pf-label">
+                      Nom complet du titulaire de la ligne
+                    </label>
                     <input
                       type="text"
                       className="pf-input"
@@ -779,7 +1176,7 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
               )}
 
               {/* CATEGORY B: VIREMENT BANCAIRE EXCLUSIVE FIELDS */}
-              {newMethodType === 'bank_transfer' && (
+              {newMethodType === "bank_transfer" && (
                 <>
                   <div className="pf-form-group">
                     <label className="pf-label">Nom de la banque</label>
@@ -790,20 +1187,32 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                       required
                     >
                       <option value="">-- Sélectionnez votre banque --</option>
-                      <option value="Bank of Africa (BOA)">Bank of Africa (BOA)</option>
+                      <option value="Bank of Africa (BOA)">
+                        Bank of Africa (BOA)
+                      </option>
                       <option value="Ecobank">Ecobank</option>
-                      <option value="United Bank for Africa (UBA)">United Bank for Africa (UBA)</option>
-                      <option value="Coris Bank International">Coris Bank International</option>
+                      <option value="United Bank for Africa (UBA)">
+                        United Bank for Africa (UBA)
+                      </option>
+                      <option value="Coris Bank International">
+                        Coris Bank International
+                      </option>
                       <option value="Société Générale">Société Générale</option>
                       <option value="BGFIBank">BGFIBank</option>
-                      <option value="Banque Atlantique">Banque Atlantique</option>
+                      <option value="Banque Atlantique">
+                        Banque Atlantique
+                      </option>
                       <option value="Orabank">Orabank</option>
-                      <option value="Autre banque">Autre banque commerciale</option>
+                      <option value="Autre banque">
+                        Autre banque commerciale
+                      </option>
                     </select>
                   </div>
 
                   <div className="pf-form-group">
-                    <label className="pf-label">Nom du titulaire du compte (exact)</label>
+                    <label className="pf-label">
+                      Nom du titulaire du compte (exact)
+                    </label>
                     <input
                       type="text"
                       className="pf-input"
@@ -828,7 +1237,9 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
 
                   <div className="pf-form-row-2col">
                     <div className="pf-form-group">
-                      <label className="pf-label">Code Banque (facultatif)</label>
+                      <label className="pf-label">
+                        Code Banque (facultatif)
+                      </label>
                       <input
                         type="text"
                         className="pf-input"
@@ -838,7 +1249,9 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                       />
                     </div>
                     <div className="pf-form-group">
-                      <label className="pf-label">Code Guichet (facultatif)</label>
+                      <label className="pf-label">
+                        Code Guichet (facultatif)
+                      </label>
                       <input
                         type="text"
                         className="pf-input"
@@ -861,7 +1274,9 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                       />
                     </div>
                     <div className="pf-form-group">
-                      <label className="pf-label">SWIFT / BIC (facultatif)</label>
+                      <label className="pf-label">
+                        SWIFT / BIC (facultatif)
+                      </label>
                       <input
                         type="text"
                         className="pf-input"
@@ -874,7 +1289,9 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                 </>
               )}
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <div
+                style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem" }}
+              >
                 <button
                   type="button"
                   onClick={() => setMethodModalOpen(false)}
@@ -889,7 +1306,11 @@ export const WithdrawalsView: React.FC<WithdrawalsViewProps> = ({ appName = 'Mon
                   className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
                   style={{ flex: 1 }}
                 >
-                  <span>{isSubmitting ? 'Enregistrement...' : 'Enregistrer la méthode'}</span>
+                  <span>
+                    {isSubmitting
+                      ? "Enregistrement..."
+                      : "Enregistrer la méthode"}
+                  </span>
                   <FontAwesomeIcon icon={faCheck} />
                 </button>
               </div>

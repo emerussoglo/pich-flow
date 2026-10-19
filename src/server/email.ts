@@ -1,4 +1,4 @@
-import nodemailer, { type Transporter } from 'nodemailer';
+import nodemailer, { type Transporter } from "nodemailer";
 
 let primaryTransporter: Transporter | null = null;
 let testTransporter: Transporter | null = null;
@@ -10,23 +10,23 @@ let lastSmtpCheck = 0;
  * exactly matching SaaSPay / modern fintech notifications.
  */
 export function parseUserAgent(ua: string): string {
-  if (!ua || ua === 'Unknown') return 'Appareil inconnu';
+  if (!ua || ua === "Unknown") return "Appareil inconnu";
 
-  let browser = 'Navigateur Web';
-  if (/edg/i.test(ua)) browser = 'Microsoft Edge';
-  else if (/opr|opera/i.test(ua)) browser = 'Opera';
-  else if (/chrome|crios/i.test(ua)) browser = 'Google Chrome';
-  else if (/firefox|fxios/i.test(ua)) browser = 'Mozilla Firefox';
-  else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browser = 'Apple Safari';
+  let browser = "Navigateur Web";
+  if (/edg/i.test(ua)) browser = "Microsoft Edge";
+  else if (/opr|opera/i.test(ua)) browser = "Opera";
+  else if (/chrome|crios/i.test(ua)) browser = "Google Chrome";
+  else if (/firefox|fxios/i.test(ua)) browser = "Mozilla Firefox";
+  else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browser = "Apple Safari";
 
-  let os = 'Système';
-  if (/windows nt 10/i.test(ua)) os = 'Windows 10/11';
-  else if (/windows/i.test(ua)) os = 'Windows';
-  else if (/macintosh|mac os x/i.test(ua)) os = 'macOS';
-  else if (/iphone/i.test(ua)) os = 'iPhone';
-  else if (/ipad/i.test(ua)) os = 'iPad';
-  else if (/android/i.test(ua)) os = 'Android';
-  else if (/linux/i.test(ua)) os = 'Linux';
+  let os = "Système";
+  if (/windows nt 10/i.test(ua)) os = "Windows 10/11";
+  else if (/windows/i.test(ua)) os = "Windows";
+  else if (/macintosh|mac os x/i.test(ua)) os = "macOS";
+  else if (/iphone/i.test(ua)) os = "iPhone";
+  else if (/ipad/i.test(ua)) os = "iPad";
+  else if (/android/i.test(ua)) os = "Android";
+  else if (/linux/i.test(ua)) os = "Linux";
 
   return `${browser} sur ${os}`;
 }
@@ -34,9 +34,12 @@ export function parseUserAgent(ua: string): string {
 /**
  * Formats a Date object into both UTC and Local representation (SaaSPay style)
  */
-export function formatLoginDate(date: Date = new Date()): { utcString: string; localString: string } {
+export function formatLoginDate(date: Date = new Date()): {
+  utcString: string;
+  localString: string;
+} {
   const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
-  
+
   const d = pad(date.getUTCDate());
   const m = pad(date.getUTCMonth() + 1);
   const y = date.getUTCFullYear();
@@ -44,34 +47,41 @@ export function formatLoginDate(date: Date = new Date()): { utcString: string; l
   const min = pad(date.getUTCMinutes());
   const utcString = `${d}/${m}/${y} ${h}:${min} UTC`;
 
-  const localString = date.toLocaleString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZoneName: 'short',
+  const localString = date.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
   });
 
   return { utcString, localString };
 }
 
-async function getTransporter(): Promise<{ transport: Transporter; isFallback: boolean }> {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = Number(process.env.SMTP_PORT || '465');
+async function getTransporter(): Promise<{
+  transport: Transporter;
+  isFallback: boolean;
+}> {
+  const host = process.env.SMTP_HOST || "smtp.gmail.com";
+  const port = Number(process.env.SMTP_PORT || "465");
   const secureSetting = process.env.SMTP_SECURE?.trim().toLowerCase();
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error('Configuration SMTP invalide : SMTP_PORT doit être un port TCP valide.');
+    throw new Error(
+      "Configuration SMTP invalide : SMTP_PORT doit être un port TCP valide.",
+    );
   }
-  if (secureSetting && secureSetting !== 'true' && secureSetting !== 'false') {
-    throw new Error('Configuration SMTP invalide : SMTP_SECURE doit valoir true ou false.');
+  if (secureSetting && secureSetting !== "true" && secureSetting !== "false") {
+    throw new Error(
+      "Configuration SMTP invalide : SMTP_SECURE doit valoir true ou false.",
+    );
   }
-  const secure = secureSetting ? secureSetting === 'true' : port === 465;
-  const user = (process.env.SMTP_USER || '').trim();
-  const pass = (process.env.SMTP_PASSWORD || '').replace(/\s+/g, '');
+  const secure = secureSetting ? secureSetting === "true" : port === 465;
+  const user = (process.env.SMTP_USER || "").trim();
+  const pass = (process.env.SMTP_PASSWORD || "").replace(/\s+/g, "");
 
   // In test environment, use mock JSON transport for deterministic test runs
-  if (process.env.NODE_ENV === 'test' || process.env.SMTP_MOCK === 'true') {
+  if (process.env.NODE_ENV === "test" || process.env.SMTP_MOCK === "true") {
     if (!testTransporter) {
       testTransporter = nodemailer.createTransport({
         jsonTransport: true,
@@ -82,7 +92,7 @@ async function getTransporter(): Promise<{ transport: Transporter; isFallback: b
 
   if (!user || !pass || pass.length < 8) {
     throw new Error(
-      'Configuration SMTP incomplète : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.'
+      "Configuration SMTP incomplète : Veuillez renseigner SMTP_USER et SMTP_PASSWORD dans votre fichier .env.",
     );
   }
 
@@ -106,15 +116,19 @@ async function getTransporter(): Promise<{ transport: Transporter; isFallback: b
     return { transport: primaryTransporter, isFallback: false };
   } catch (err: any) {
     primaryTransporter = null;
-    console.error(`[PichFlow Email] Échec de vérification SMTP (${host}:${port}, code: ${String(err.code || 'unknown').slice(0, 40)}).`);
-    if (err.message && err.message.includes('535')) {
+    console.error(
+      `[PichFlow Email] Échec de vérification SMTP (${host}:${port}, code: ${String(err.code || "unknown").slice(0, 40)}).`,
+    );
+    if (err.message && err.message.includes("535")) {
       throw new Error(
         `Identifiants Gmail refusés (535 Bad Credentials) pour "${user}". ` +
-        `Pour Gmail, générez un "Mot de passe d'application" (16 lettres sans espace) sur : ` +
-        `https://myaccount.google.com/apppasswords puis mettez à jour SMTP_PASSWORD dans .env.`
+          `Pour Gmail, générez un "Mot de passe d'application" (16 lettres sans espace) sur : ` +
+          `https://myaccount.google.com/apppasswords puis mettez à jour SMTP_PASSWORD dans .env.`,
       );
     }
-    throw new Error(`Échec de connexion au serveur SMTP (${host}:${port}) : ${err.message}`);
+    throw new Error(
+      `Échec de connexion au serveur SMTP (${host}:${port}) : ${err.message}`,
+    );
   }
 }
 
@@ -128,8 +142,16 @@ export async function sendEmail({
   subject: string;
   html: string;
   text: string;
-}): Promise<{ success: boolean; isFallback: boolean; messageId?: string; previewUrl?: string }> {
-  const from = process.env.EMAIL_FROM || process.env.SMTP_USER || 'contactpichflow@gmail.com';
+}): Promise<{
+  success: boolean;
+  isFallback: boolean;
+  messageId?: string;
+  previewUrl?: string;
+}> {
+  const from =
+    process.env.EMAIL_FROM ||
+    process.env.SMTP_USER ||
+    "contactpichflow@gmail.com";
 
   try {
     const { transport, isFallback } = await getTransporter();
@@ -142,15 +164,18 @@ export async function sendEmail({
     });
 
     if (isFallback) {
-      console.log('[PichFlow Email] [Test Mode] Email intercepté.');
+      console.log("[PichFlow Email] [Test Mode] Email intercepté.");
     } else {
-      console.log('[PichFlow Email] Email délivré avec succès via SMTP.');
+      console.log("[PichFlow Email] Email délivré avec succès via SMTP.");
     }
 
     return { success: true, isFallback, messageId: info.messageId };
   } catch (error: any) {
-    const errorCode = typeof error?.code === 'string' ? error.code.slice(0, 40) : 'unknown';
-    console.error(`[PichFlow Email] Échec de livraison SMTP (code: ${errorCode}).`);
+    const errorCode =
+      typeof error?.code === "string" ? error.code.slice(0, 40) : "unknown";
+    console.error(
+      `[PichFlow Email] Échec de livraison SMTP (code: ${errorCode}).`,
+    );
     throw error;
   }
 }
@@ -158,9 +183,13 @@ export async function sendEmail({
 /**
  * 1. Envoi du code de confirmation d'inscription (Email verification code)
  */
-export async function sendVerificationCodeEmail(to: string, code: string, fullName?: string): Promise<boolean> {
-  const name = fullName ? fullName.trim() : 'Cher créateur';
-  const subject = 'Votre code de validation PichFlow';
+export async function sendVerificationCodeEmail(
+  to: string,
+  code: string,
+  fullName?: string,
+): Promise<boolean> {
+  const name = fullName ? fullName.trim() : "Cher créateur";
+  const subject = "Votre code de validation PichFlow";
   const text = `Bonjour ${name},\n\nVotre code de confirmation PichFlow est : ${code}\nCe code est valable pendant 15 minutes.\n\nSaisissez ce code sur la plateforme pour finaliser l'activation de votre compte et commencer à encaisser vos paiements.\n\nSi vous n'êtes pas à l'origine de cette demande, veuillez ignorer cet e-mail.\n\nL'équipe PichFlow — Infrastructure de paiement pour l'Afrique.`;
 
   const html = `
@@ -181,7 +210,7 @@ export async function sendVerificationCodeEmail(to: string, code: string, fullNa
         .title { margin: 0 0 12px; font-size: 20px; font-weight: 700; color: #0f172a; }
         .text { margin: 0 0 16px; color: #334155; font-size: 15px; line-height: 1.6; }
         .code-box { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 22px; text-align: center; margin: 24px 0; }
-        .code { font-size: 38px; font-weight: 800; letter-spacing: 10px; color: #2563eb; font-family: 'SF Mono', Monaco, Consolas, monospace; }
+        .code { font-size: 38px; font-weight: 800; letter-spacing: 10px; color: #2563EB; font-family: 'SF Mono', Monaco, Consolas, monospace; }
         .hint { font-size: 12px; color: #64748b; margin-top: 8px; font-weight: 500; }
         .footer { padding: 20px 32px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8; text-align: center; line-height: 1.6; }
       </style>
@@ -226,12 +255,16 @@ export async function sendVerificationCodeEmail(to: string, code: string, fullNa
 export async function sendLoginNotificationEmail(
   to: string,
   fullName: string,
-  details: { ip: string; userAgent: string; time?: string }
+  details: { ip: string; userAgent: string; time?: string },
 ): Promise<boolean> {
-  const name = fullName ? fullName.trim() : 'Cher créateur';
+  const name = fullName ? fullName.trim() : "Cher créateur";
   const { utcString, localString } = formatLoginDate();
   const humanDevice = parseUserAgent(details.userAgent);
-  const appUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const appUrl = (
+    process.env.APP_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000"
+  ).replace(/\/$/, "");
   const securitySettingsUrl = `${appUrl}/dashboard/settings`;
 
   const subject = `Nouvelle connexion détectée — PichFlow`;
@@ -264,7 +297,7 @@ export async function sendLoginNotificationEmail(
         .box-ok { padding: 12px 16px; background: #f0fdf4; border-left: 4px solid #16a34a; border-radius: 4px; font-size: 13px; color: #166534; line-height: 1.5; margin-bottom: 10px; }
         .box-warn { padding: 12px 16px; background: #fff7ed; border-left: 4px solid #f97316; border-radius: 4px; font-size: 13px; color: #9a3412; line-height: 1.5; }
         .btn-wrapper { text-align: center; margin: 28px 0 12px; }
-        .btn { display: inline-block; background: #2563eb; color: #ffffff !important; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 28px; border-radius: 8px; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25); }
+        .btn { display: inline-block; background: #2563EB; color: #ffffff !important; text-decoration: none; font-size: 14px; font-weight: 700; padding: 12px 28px; border-radius: 8px; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25); }
         .footer { padding: 22px 32px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8; text-align: center; line-height: 1.6; }
       </style>
     </head>
@@ -328,9 +361,13 @@ export async function sendLoginNotificationEmail(
   return res.success;
 }
 
-export async function sendPasswordResetEmail(to: string, code: string, fullName?: string): Promise<boolean> {
-  const name = fullName ? fullName.trim() : 'Cher utilisateur';
-  const subject = 'Réinitialisation de votre mot de passe PichFlow';
+export async function sendPasswordResetEmail(
+  to: string,
+  code: string,
+  fullName?: string,
+): Promise<boolean> {
+  const name = fullName ? fullName.trim() : "Cher utilisateur";
+  const subject = "Réinitialisation de votre mot de passe PichFlow";
   const text = `Bonjour ${name},\n\nVous avez demandé la réinitialisation de votre mot de passe PichFlow.\nVotre code de réinitialisation est : ${code}\nCe code expire dans 15 minutes.\n\nSi vous n'avez pas demandé cette réinitialisation, veuillez ignorer ce message.\n\nL'équipe PichFlow.`;
 
   const html = `
@@ -375,9 +412,12 @@ export async function sendPasswordResetEmail(to: string, code: string, fullName?
   return res.success;
 }
 
-export async function sendPasswordChangedNotificationEmail(to: string, fullName: string): Promise<boolean> {
-  const name = fullName ? fullName.trim() : 'Cher partenaire';
-  const subject = 'Confirmation : Mot de passe modifié sur PichFlow';
+export async function sendPasswordChangedNotificationEmail(
+  to: string,
+  fullName: string,
+): Promise<boolean> {
+  const name = fullName ? fullName.trim() : "Cher partenaire";
+  const subject = "Confirmation : Mot de passe modifié sur PichFlow";
   const text = `Bonjour ${name},\n\nLe mot de passe de votre compte PichFlow a été modifié avec succès.\n\nSi vous êtes à l'origine de ce changement, aucune action n'est requise.\nSi vous n'avez pas modifié votre mot de passe, contactez immédiatement l'assistance PichFlow.\n\nL'équipe PichFlow.`;
 
   const html = `
@@ -398,7 +438,7 @@ export async function sendPasswordChangedNotificationEmail(to: string, fullName:
         <h2 style="margin: 0 0 12px; font-size: 18px; color: #0f172a;">Mot de passe mis à jour</h2>
         <p style="margin: 0 0 16px; color: #475569; font-size: 14px; line-height: 1.5;">
           Bonjour <strong>${name}</strong>,<br/>
-          Le mot de passe associé à votre compte PichFlow a été modifié avec succès le ${new Date().toLocaleString('fr-FR')}.
+          Le mot de passe associé à votre compte PichFlow a été modifié avec succès le ${new Date().toLocaleString("fr-FR")}.
         </p>
         <p style="font-size: 13px; color: #64748b; line-height: 1.5;">
           Si vous n'êtes pas l'auteur de cette modification, veuillez contacter sans délai notre équipe de support pour sécuriser votre compte.

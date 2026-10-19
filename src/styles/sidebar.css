@@ -4,8 +4,8 @@
 
 .pf-saspay-sidebar {
   width: 250px;
-  background: #FFFFFF;
-  border-right: 1px solid #E5E7EB;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
   height: 100vh;
   position: fixed;
   top: 0;
@@ -13,7 +13,9 @@
   display: flex;
   flex-direction: column;
   z-index: 50;
-  transition: width 240ms cubic-bezier(0.16, 1, 0.3, 1), transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition:
+    width 240ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
 
@@ -29,9 +31,9 @@
   width: 2rem;
   height: 2rem;
   border-radius: 8px;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  color: #64748B;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -41,9 +43,9 @@
 }
 
 .pf-sidebar-collapse-btn:hover {
-  background: #EFF6FF;
-  border-color: #BFDBFE;
-  color: #2563EB;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
 }
 
 /* Mobile Drawer Header (Screenshot 1 & 8) */
@@ -57,7 +59,7 @@
 .pf-sidebar-menu-title {
   font-size: 0.875rem;
   font-weight: 700;
-  color: #94A3B8;
+  color: #94a3b8;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -68,7 +70,7 @@
   border-radius: 8px;
   background: transparent;
   border: none;
-  color: #64748B;
+  color: #64748b;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -77,8 +79,8 @@
 }
 
 .pf-sidebar-mobile-close-btn:hover {
-  background: #F1F5F9;
-  color: #0F172A;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 /* Top App Selector Box */
@@ -88,10 +90,10 @@
 
 .pf-app-card-btn {
   width: 100%;
-  border: 1px solid #E2E8F0;
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
   padding: 0.625rem 0.75rem;
-  background: #FFFFFF;
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -102,8 +104,8 @@
 }
 
 .pf-app-card-btn:hover {
-  border-color: #CBD5E1;
-  background: #F8FAFC;
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 
 .pf-app-card-left {
@@ -117,8 +119,8 @@
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 10px;
-  background: #2563EB;
-  color: #FFFFFF;
+  background: #2563eb;
+  color: #ffffff;
   font-weight: 800;
   font-size: 0.95rem;
   display: flex;
@@ -141,7 +143,7 @@
 .pf-app-card-name {
   font-size: 0.875rem;
   font-weight: 700;
-  color: #0F172A;
+  color: #0f172a;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -150,13 +152,13 @@
 
 .pf-app-card-category {
   font-size: 0.75rem;
-  color: #94A3B8;
+  color: #94a3b8;
   margin-top: 0.1rem;
 }
 
 .pf-app-card-chevron {
   font-size: 0.75rem;
-  color: #94A3B8;
+  color: #94a3b8;
   transition: transform 200ms ease;
   flex-shrink: 0;
 }
@@ -171,10 +173,12 @@
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.05);
   padding: 0.5rem;
   z-index: 70;
   animation: scaleIn 140ms ease;
@@ -183,7 +187,7 @@
 .pf-app-popup-header {
   font-size: 0.6875rem;
   font-weight: 700;
-  color: #94A3B8;
+  color: #94a3b8;
   text-transform: uppercase;
   padding: 0.35rem 0.6rem;
 }
@@ -199,39 +203,39 @@
 }
 
 .pf-app-popup-row:hover {
-  background: #F1F5F9;
+  background: #f1f5f9;
 }
 
 .pf-app-popup-row.active {
-  background: #EFF6FF;
+  background: #eff6ff;
 }
 
 .pf-app-popup-row.action {
-  color: #2563EB;
+  color: #2563eb;
 }
 
 .pf-app-popup-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #2563EB;
+  background: #2563eb;
 }
 
 .pf-app-popup-add-icon {
   width: 1.85rem;
   height: 1.85rem;
-  border: 1px dashed #BFDBFE;
+  border: 1px dashed #bfdbfe;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #2563EB;
+  color: #2563eb;
   font-size: 0.75rem;
 }
 
 .pf-app-popup-divider {
   height: 1px;
-  background: #F1F5F9;
+  background: #f1f5f9;
   margin: 0.35rem 0;
 }
 
@@ -256,7 +260,7 @@
 }
 
 .pf-sidebar-nav-scroll:hover::-webkit-scrollbar-thumb {
-  background: #E2E8F0;
+  background: #e2e8f0;
 }
 
 .pf-saspay-nav-link {
@@ -278,19 +282,19 @@
 }
 
 .pf-saspay-nav-link:hover {
-  background: #F1F5F9;
-  color: #0F172A;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .pf-saspay-nav-link.active {
-  background: #2563EB !important;
-  color: #FFFFFF !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
   font-weight: 600;
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
 }
 
 .pf-saspay-nav-link.active .pf-nav-icon {
-  color: #FFFFFF !important;
+  color: #ffffff !important;
 }
 
 .pf-nav-icon {
@@ -298,7 +302,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #64748B;
+  color: #64748b;
   font-size: 0.95rem;
   flex-shrink: 0;
 }
@@ -312,16 +316,16 @@
 /* Bottom User Profile Box */
 .pf-sidebar-user-box {
   padding: 0.75rem 0.875rem;
-  border-top: 1px solid #F1F5F9;
-  background: #FFFFFF;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
 }
 
 .pf-user-card-btn {
   width: 100%;
-  border: 1px solid #E2E8F0;
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
   padding: 0.5rem 0.65rem;
-  background: #FFFFFF;
+  background: #ffffff;
   display: flex;
   align-items: center;
   gap: 0.65rem;
@@ -331,16 +335,16 @@
 }
 
 .pf-user-card-btn:hover {
-  border-color: #CBD5E1;
-  background: #F8FAFC;
+  border-color: #cbd5e1;
+  background: #f8fafc;
 }
 
 .pf-user-avatar-circle {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: #2563EB;
-  color: #FFFFFF;
+  background: #2563eb;
+  color: #ffffff;
   font-weight: 700;
   font-size: 0.75rem;
   display: flex;
@@ -370,7 +374,7 @@
 .pf-user-card-name {
   font-size: 0.775rem;
   font-weight: 700;
-  color: #0F172A;
+  color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -378,7 +382,7 @@
 
 .pf-user-card-app {
   font-size: 0.6875rem;
-  color: #94A3B8;
+  color: #94a3b8;
   margin-top: 0.05rem;
 }
 
@@ -388,10 +392,12 @@
   bottom: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.05);
   padding: 0.5rem;
   z-index: 70;
   animation: scaleIn 140ms ease;
@@ -407,7 +413,7 @@
 .pf-user-popup-name {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: #0F172A;
+  color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -415,7 +421,7 @@
 
 .pf-user-popup-email {
   font-size: 0.7rem;
-  color: #94A3B8;
+  color: #94a3b8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -435,16 +441,16 @@
 }
 
 .pf-user-popup-row:hover {
-  background: #F1F5F9;
-  color: #0F172A;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .pf-user-popup-row.danger {
-  color: #EF4444;
+  color: #ef4444;
 }
 
 .pf-user-popup-row.danger:hover {
-  background: #FEF2F2;
+  background: #fef2f2;
 }
 
 /* Backdrop */

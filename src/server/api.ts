@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import type { Row } from '@libsql/client';
 import crypto from 'crypto';
-import { getDb } from './db';
+import { getDb, recordConfirmedPaymentCredit } from './db';
 import {
   requireAuth,
   requireApiKey,
@@ -14,6 +14,7 @@ import {
 } from './auth';
 import { paydunyaService, dispatchMerchantWebhook } from './paydunya';
 import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../config/payments';
+import { CHECKOUT_COUNTRIES, isSupportedPaymentCurrency } from '../config/countries';
 import { getAppBaseUrl, getPayDunyaCallbackUrl } from './urls';
 import { sasPayService, formatDecimalAmount } from './saspay';
 import {
@@ -961,15 +962,19 @@ apiRouter.post('/wallets/transfer', requireAuth, async (req: AuthenticatedReques
     const ledgerIdIn = `led_${Date.now()}_in`;
 
     await db.execute({
-      sql: `INSERT INTO ledger_entries (id, user_id, wallet_id, type, reference, amount, currency, net_amount, description, created_at)
-            VALUES (?, ?, ?, 'debit', ?, ?, ?, ?, 'Transfert sortant inter-portefeuilles', ?)`,
-      args: [ledgerIdOut, req.user!.id, fromWalletId, ref, transferAmount, String(fromWallet.currency), -transferAmount, now],
+      sql: `INSERT INTO ledger_entries (
+              id, user_id, application_id, wallet_id, type, reference,
+              amount, currency, net_amount, balance_delta, description, created_at
+            ) VALUES (?, ?, ?, ?, 'debit', ?, ?, ?, ?, ?, 'Transfert sortant inter-portefeuilles', ?)`,
+      args: [ledgerIdOut, req.user!.id, applicationId, fromWalletId, ref, transferAmount, String(fromWallet.currency), -transferAmount, -transferAmount, now],
     });
 
     await db.execute({
-      sql: `INSERT INTO ledger_entries (id, user_id, wallet_id, type, reference, amount, currency, net_amount, description, created_at)
-            VALUES (?, ?, ?, 'credit', ?, ?, ?, ?, 'Transfert entrant inter-portefeuilles', ?)`,
-      args: [ledgerIdIn, req.user!.id, toWalletId, ref, transferAmount, String(toWallet.currency), transferAmount, now],
+      sql: `INSERT INTO ledger_entries (
+              id, user_id, application_id, wallet_id, type, reference,
+              amount, currency, net_amount, balance_delta, description, created_at
+            ) VALUES (?, ?, ?, ?, 'credit', ?, ?, ?, ?, ?, 'Transfert entrant inter-portefeuilles', ?)`,
+      args: [ledgerIdIn, req.user!.id, applicationId, toWalletId, ref, transferAmount, String(toWallet.currency), transferAmount, transferAmount, now],
     });
 
     res.json({
@@ -1116,8 +1121,12 @@ apiRouter.post('/payment-links', requireAuth, async (req: AuthenticatedRequest, 
       res.status(400).json({ success: false, error: 'Un lien à montant libre ne peut pas définir de montant fixe.' });
       return;
     }
-    if (cleanCurrency !== 'XOF' || (cleanCountry && cleanCountry !== 'BJ')) {
-      res.status(400).json({ success: false, error: 'La configuration PayDunya vérifiée ici prend en charge les paiements en XOF au Bénin.' });
+    if (!isSupportedPaymentCurrency(cleanCurrency)) {
+      res.status(400).json({ success: false, error: 'Cette devise n’est pas prise en charge par le flux PayDunya actuellement configuré.' });
+      return;
+    }
+    if (cleanCountry && !CHECKOUT_COUNTRIES.some((supportedCountry) => supportedCountry.code === cleanCountry && supportedCountry.currency === cleanCurrency)) {
+      res.status(400).json({ success: false, error: 'Ce pays n’est pas disponible pour la devise sélectionnée dans le flux PayDunya actuellement configuré.' });
       return;
     }
     if (numericUsageLimit !== null && (!Number.isInteger(numericUsageLimit) || numericUsageLimit < 1)) {
@@ -2407,10 +2416,6 @@ async function settleSuccessfulPayment(params: {
     });
     if (sessionRes.rows.length === 0) throw new Error('Checkout session is missing.');
     const session = sessionRes.rows[0];
-    if (String(session.status) === 'success') {
-      await transaction.commit();
-      return;
-    }
     if (
       Number(session.amount) !== baseAmount ||
       String(session.currency) !== (params.currency || 'XOF') ||
@@ -2432,10 +2437,31 @@ async function settleSuccessfulPayment(params: {
     });
     if (transactionRes.rows.length === 0) throw new Error('Pending transaction is missing.');
     const existingTransaction = transactionRes.rows[0];
-    if (String(existingTransaction.status) === 'success' || String(existingTransaction.status) === 'completed') {
+    const transactionStatus = String(existingTransaction.status).toLowerCase();
+    const sessionStatus = String(session.status).toLowerCase();
+    if (sessionStatus === 'failed' || sessionStatus === 'cancelled' || sessionStatus === 'canceled') {
+      throw new Error('Failed checkout sessions cannot be credited.');
+    }
+    if (transactionStatus === 'success' || transactionStatus === 'completed') {
+      if (sessionStatus !== 'success' && sessionStatus !== 'completed') {
+        await transaction.execute({
+          sql: `UPDATE checkout_sessions SET status = 'success', updated_at = ?
+                WHERE reference = ? AND status = 'pending'`,
+          args: [now, params.reference],
+        });
+      }
+      await recordConfirmedPaymentCredit(transaction, {
+        userId,
+        applicationId,
+        reference: params.reference,
+        amount: baseAmount,
+        currency: params.currency || 'XOF',
+        countryCode: params.country || 'BJ',
+      });
       await transaction.commit();
       return;
     }
+    if (sessionStatus !== 'pending') throw new Error('Checkout session is not pending.');
     const updated = await transaction.execute({
       sql: `UPDATE transactions SET status = 'success', external_id = ?, provider = 'PayDunya',
               provider_fee = 0, platform_fee = 0, net_amount = 0, fees_confirmed = 0,
@@ -2493,6 +2519,14 @@ async function settleSuccessfulPayment(params: {
         args: [session.payment_link_id, userId, applicationId],
       });
     }
+    await recordConfirmedPaymentCredit(transaction, {
+      userId,
+      applicationId,
+      reference: params.reference,
+      amount: baseAmount,
+      currency: params.currency || 'XOF',
+      countryCode: params.country || 'BJ',
+    });
     await transaction.commit();
     shouldDispatch = true;
   } catch (error) {
@@ -2593,11 +2627,10 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
     const currency = String(link.currency || 'XOF').toUpperCase();
     const country = String(requestedCountry || link.country || '').trim().toUpperCase();
     if (
-      currency !== 'XOF' ||
-      country !== 'BJ' ||
-      (String(link.country || '').toUpperCase() && String(link.country).toUpperCase() !== country)
+      !isSupportedPaymentCurrency(currency) ||
+      !CHECKOUT_COUNTRIES.some((supportedCountry) => supportedCountry.code === country && supportedCountry.currency === currency)
     ) {
-      res.status(400).json({ success: false, error: 'Ce lien ne correspond pas à la configuration PayDunya actuellement vérifiée (XOF, Bénin).' });
+      res.status(400).json({ success: false, error: 'Le pays ou la devise ne sont pas disponibles dans le flux PayDunya actuellement configuré.' });
       return;
     }
 

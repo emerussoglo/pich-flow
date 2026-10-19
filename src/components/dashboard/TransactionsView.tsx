@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useState, useEffect, useCallback } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faDownload,
   faEye,
@@ -8,10 +8,10 @@ import {
   faRotate,
   faReceipt,
   faFilter,
-} from '@fortawesome/free-solid-svg-icons';
-import { useToast } from '../ui/ToastContext';
-import { apiClient } from '../../lib/api';
-import { Application, Transaction } from '../../types';
+} from "@fortawesome/free-solid-svg-icons";
+import { useToast } from "../ui/ToastContext";
+import { apiClient } from "../../lib/api";
+import { Application, Transaction } from "../../types";
 
 interface TransactionsViewProps {
   appName?: string;
@@ -20,19 +20,25 @@ interface TransactionsViewProps {
 }
 
 export const TransactionsView: React.FC<TransactionsViewProps> = ({
-  appName = 'Mon Application',
+  appName = "Mon Application",
   activeApp,
   transactions: initialTransactions,
 }) => {
   const { showToast } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'Tous' | 'completed' | 'pending' | 'failed' | 'cancelled'>('Tous');
-  const [directionFilter, setDirectionFilter] = useState<'Tous' | 'in' | 'out'>('Tous');
-  const [countryFilter, setCountryFilter] = useState<string>('Tous');
-  const [networkFilter, setNetworkFilter] = useState<string>('Tous');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "Tous" | "completed" | "pending" | "failed" | "cancelled"
+  >("Tous");
+  const [directionFilter, setDirectionFilter] = useState<"Tous" | "in" | "out">(
+    "Tous",
+  );
+  const [countryFilter, setCountryFilter] = useState<string>("Tous");
+  const [networkFilter, setNetworkFilter] = useState<string>("Tous");
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions || []);
+  const [transactions, setTransactions] = useState<Transaction[]>(
+    initialTransactions || [],
+  );
   const [isLoading, setIsLoading] = useState(!initialTransactions);
 
   const loadTransactions = useCallback(async () => {
@@ -41,7 +47,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       const data = await apiClient.transactions.getAll(activeApp?.id);
       setTransactions(data || []);
     } catch {
-      showToast('Impossible de charger les transactions.', 'error');
+      showToast("Impossible de charger les transactions.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -53,32 +59,43 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
   const filtered = transactions.filter((tx) => {
     // Status filter
-    if (statusFilter !== 'Tous' && tx.status !== statusFilter) {
+    if (statusFilter !== "Tous" && tx.status !== statusFilter) {
       return false;
     }
     // Direction filter
-    if (directionFilter === 'in' && tx.type !== 'charge' && tx.type !== 'payin') {
+    if (
+      directionFilter === "in" &&
+      tx.type !== "charge" &&
+      tx.type !== "payin"
+    ) {
       return false;
     }
-    if (directionFilter === 'out' && tx.type !== 'payout' && tx.type !== 'transfer') {
+    if (
+      directionFilter === "out" &&
+      tx.type !== "payout" &&
+      tx.type !== "transfer"
+    ) {
       return false;
     }
     // Country filter
-    if (countryFilter !== 'Tous' && tx.country !== countryFilter) {
+    if (countryFilter !== "Tous" && tx.country !== countryFilter) {
       return false;
     }
     // Network filter
-    if (networkFilter !== 'Tous') {
-      const prov = (tx.provider || tx.paymentMethod || '').toLowerCase();
+    if (networkFilter !== "Tous") {
+      const prov = (tx.provider || tx.paymentMethod || "").toLowerCase();
       if (!prov.includes(networkFilter.toLowerCase())) return false;
     }
     // Search query
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       const matchId = tx.id.toLowerCase().includes(term);
-      const matchRef = tx.reference && tx.reference.toLowerCase().includes(term);
-      const matchPhone = tx.customerPhone && tx.customerPhone.toLowerCase().includes(term);
-      const matchDesc = tx.description && tx.description.toLowerCase().includes(term);
+      const matchRef =
+        tx.reference && tx.reference.toLowerCase().includes(term);
+      const matchPhone =
+        tx.customerPhone && tx.customerPhone.toLowerCase().includes(term);
+      const matchDesc =
+        tx.description && tx.description.toLowerCase().includes(term);
       if (!matchId && !matchRef && !matchPhone && !matchDesc) return false;
     }
     return true;
@@ -87,51 +104,68 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const handleExportCSV = () => {
     try {
       if (filtered.length === 0) {
-        showToast('Aucune transaction à exporter avec ces critères.', 'warning');
+        showToast(
+          "Aucune transaction à exporter avec ces critères.",
+          "warning",
+        );
         return;
       }
-      const headers = ['ID', 'Référence', 'Type', 'Montant', 'Devise', 'Pays', 'Moyen_Paiement', 'Statut', 'Date', 'Client_Tel'];
+      const headers = [
+        "ID",
+        "Référence",
+        "Type",
+        "Montant",
+        "Devise",
+        "Pays",
+        "Moyen_Paiement",
+        "Statut",
+        "Date",
+        "Client_Tel",
+      ];
       const rows = filtered.map((tx) => [
         tx.id,
         tx.reference || tx.id,
-        tx.type || 'Paiement',
+        tx.type || "Paiement",
         tx.amount,
-        tx.currency || 'XOF',
-        tx.country || 'BJ',
-        tx.provider || tx.paymentMethod || 'Mobile Money',
+        tx.currency || "XOF",
+        tx.country || "BJ",
+        tx.provider || tx.paymentMethod || "Mobile Money",
         tx.status,
         tx.createdAt,
-        tx.customerPhone || '',
+        tx.customerPhone || "",
       ]);
 
       const csvContent =
-        'data:text/csv;charset=utf-8,' +
-        [headers.join(';'), ...rows.map((e) => e.join(';'))].join('\n');
+        "data:text/csv;charset=utf-8," +
+        [headers.join(";"), ...rows.map((e) => e.join(";"))].join("\n");
 
       const encodedUri = encodeURI(csvContent);
-      const link = document.createElement('a');
-      link.setAttribute('href', encodedUri);
-      link.setAttribute('download', `pichflow_transactions_${Date.now()}.csv`);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `pichflow_transactions_${Date.now()}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      showToast(`Export de ${filtered.length} transaction(s) généré !`, 'success');
+      showToast(
+        `Export de ${filtered.length} transaction(s) généré !`,
+        "success",
+      );
     } catch {
-      showToast("Échec de l'exportation CSV.", 'error');
+      showToast("Échec de l'exportation CSV.", "error");
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'completed':
-      case 'success':
+      case "completed":
+      case "success":
         return <span className="pf-pill-status reussi">Réussi</span>;
-      case 'pending':
+      case "pending":
         return <span className="pf-pill-status en_attente">En attente</span>;
-      case 'cancelled':
+      case "cancelled":
         return <span className="pf-pill-status annule">Annulé</span>;
-      case 'failed':
+      case "failed":
       default:
         return <span className="pf-pill-status echoue">Échoué</span>;
     }
@@ -147,7 +181,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
             Flux financiers réels et traçabilité comptable pour {appName}.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
           <button
             onClick={loadTransactions}
             className="pf-btn pf-btn-secondary pf-btn-sm"
@@ -159,7 +193,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           <button
             onClick={handleExportCSV}
             className="pf-btn-action-primary"
-            style={{ background: '#0F172A' }}
+            style={{ background: "#0F172A" }}
           >
             <FontAwesomeIcon icon={faDownload} />
             <span>Exporter CSV ({filtered.length})</span>
@@ -168,11 +202,25 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       </div>
 
       {/* Filter Toolbar */}
-      <div className="pf-saspay-card" style={{ padding: '1rem', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+      <div
+        className="pf-saspay-card"
+        style={{ padding: "1rem", marginBottom: "1.25rem" }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: "0.75rem",
+          }}
+        >
           {/* Search */}
           <div>
-            <label className="pf-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>Recherche</label>
+            <label
+              className="pf-label"
+              style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}
+            >
+              Recherche
+            </label>
             <div className="pf-input-wrapper">
               <span className="pf-input-icon">
                 <FontAwesomeIcon icon={faSearch} />
@@ -189,7 +237,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
           {/* Status */}
           <div>
-            <label className="pf-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>Statut</label>
+            <label
+              className="pf-label"
+              style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}
+            >
+              Statut
+            </label>
             <select
               className="pf-select"
               value={statusFilter}
@@ -205,7 +258,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
           {/* Direction */}
           <div>
-            <label className="pf-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>Sens du flux</label>
+            <label
+              className="pf-label"
+              style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}
+            >
+              Sens du flux
+            </label>
             <select
               className="pf-select"
               value={directionFilter}
@@ -219,7 +277,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
           {/* Country */}
           <div>
-            <label className="pf-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>Pays</label>
+            <label
+              className="pf-label"
+              style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}
+            >
+              Pays
+            </label>
             <select
               className="pf-select"
               value={countryFilter}
@@ -237,7 +300,12 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
           {/* Network */}
           <div>
-            <label className="pf-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>Réseau</label>
+            <label
+              className="pf-label"
+              style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}
+            >
+              Réseau
+            </label>
             <select
               className="pf-select"
               value={networkFilter}
@@ -256,28 +324,47 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
 
       {/* Real Data vs Empty State */}
       {filtered.length === 0 ? (
-        <div className="pf-saspay-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
+        <div
+          className="pf-saspay-card"
+          style={{ textAlign: "center", padding: "3.5rem 1.5rem" }}
+        >
           <div
             style={{
-              width: '4rem',
-              height: '4rem',
-              borderRadius: '50%',
-              background: '#EFF6FF',
-              color: '#2563EB',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 1.25rem',
-              fontSize: '1.5rem',
+              width: "4rem",
+              height: "4rem",
+              borderRadius: "50%",
+              background: "#EFF6FF",
+              color: "#2563EB",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 1.25rem",
+              fontSize: "1.5rem",
             }}
           >
             <FontAwesomeIcon icon={faReceipt} />
           </div>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#0F172A', marginBottom: '0.5rem' }}>
+          <h3
+            style={{
+              fontSize: "1.125rem",
+              fontWeight: 700,
+              color: "#0F172A",
+              marginBottom: "0.5rem",
+            }}
+          >
             Aucune transaction pour le moment
           </h3>
-          <p style={{ color: '#64748B', fontSize: '0.875rem', maxWidth: '460px', margin: '0 auto 1.5rem', lineHeight: '1.5' }}>
-            Vos transactions réelles apparaîtront ici dès que vos clients auront commencé à payer via vos liens de paiement ou l'API de {appName}.
+          <p
+            style={{
+              color: "#64748B",
+              fontSize: "0.875rem",
+              maxWidth: "460px",
+              margin: "0 auto 1.5rem",
+              lineHeight: "1.5",
+            }}
+          >
+            Vos transactions réelles apparaîtront ici dès que vos clients auront
+            commencé à payer via vos liens de paiement ou l'API de {appName}.
           </p>
         </div>
       ) : (
@@ -291,8 +378,8 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                   <th>PAYS & RÉSEAU</th>
                   <th>CLIENT / TÉLÉPHONE</th>
                   <th>STATUT</th>
-                  <th style={{ textAlign: 'right' }}>MONTANT NET</th>
-                  <th style={{ textAlign: 'right' }}>ACTION</th>
+                  <th style={{ textAlign: "right" }}>MONTANT NET</th>
+                  <th style={{ textAlign: "right" }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
@@ -300,67 +387,109 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                   <tr key={tx.id}>
                     <td>
                       <div>
-                        <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0F172A', fontSize: '0.8125rem' }}>
+                        <span
+                          style={{
+                            fontFamily: "monospace",
+                            fontWeight: 700,
+                            color: "#0F172A",
+                            fontSize: "0.8125rem",
+                          }}
+                        >
                           {tx.reference || tx.id}
                         </span>
-                        <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>
-                          {new Date(tx.createdAt).toLocaleDateString('fr-FR', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
+                        <div
+                          style={{
+                            fontSize: "0.75rem",
+                            color: "#64748B",
+                            marginTop: "2px",
+                          }}
+                        >
+                          {new Date(tx.createdAt).toLocaleDateString("fr-FR", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
                           })}
                         </div>
                       </div>
                     </td>
                     <td>
                       <div>
-                        <div style={{ fontWeight: 600, color: '#0F172A', fontSize: '0.8125rem' }}>
-                          {tx.type === 'charge' || tx.type === 'payin' ? 'Encaissement' : 'Reversement'}
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            color: "#0F172A",
+                            fontSize: "0.8125rem",
+                          }}
+                        >
+                          {tx.type === "charge" || tx.type === "payin"
+                            ? "Encaissement"
+                            : "Reversement"}
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
-                          {tx.description || 'Paiement client'}
+                        <div style={{ fontSize: "0.75rem", color: "#64748B" }}>
+                          {tx.description || "Paiement client"}
                         </div>
                       </div>
                     </td>
                     <td>
                       <div>
-                        <span className="pf-pill-currency" style={{ marginRight: '6px' }}>{tx.country || 'BJ'}</span>
-                        <span style={{ fontSize: '0.8125rem', color: '#334155', fontWeight: 500 }}>
-                          {tx.provider || tx.paymentMethod || 'Mobile Money'}
+                        <span
+                          className="pf-pill-currency"
+                          style={{ marginRight: "6px" }}
+                        >
+                          {tx.country || "BJ"}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: "0.8125rem",
+                            color: "#334155",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {tx.provider || tx.paymentMethod || "Mobile Money"}
                         </span>
                       </div>
                     </td>
                     <td>
-                      <span style={{ fontFamily: 'monospace', color: '#475569', fontSize: '0.8125rem' }}>
-                        {tx.customerPhone || '—'}
-                      </span>
-                    </td>
-                    <td>
-                      {getStatusBadge(tx.status)}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <strong
+                      <span
                         style={{
-                          fontSize: '0.9rem',
-                          color: tx.status === 'completed' || tx.status === 'success' ? '#16A34A' : '#0F172A',
+                          fontFamily: "monospace",
+                          color: "#475569",
+                          fontSize: "0.8125rem",
                         }}
                       >
-                        {tx.type === 'charge' || tx.type === 'payin' ? '+' : '-'}
-                        {Number(tx.amount).toLocaleString('fr-FR')} {tx.currency || 'XOF'}
+                        {tx.customerPhone || "—"}
+                      </span>
+                    </td>
+                    <td>{getStatusBadge(tx.status)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <strong
+                        style={{
+                          fontSize: "0.9rem",
+                          color:
+                            tx.status === "completed" || tx.status === "success"
+                              ? "#16A34A"
+                              : "#0F172A",
+                        }}
+                      >
+                        {tx.type === "charge" || tx.type === "payin"
+                          ? "+"
+                          : "-"}
+                        {Number(tx.amount).toLocaleString("fr-FR")}{" "}
+                        {tx.currency || "XOF"}
                       </strong>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td style={{ textAlign: "right" }}>
                       <button
                         onClick={() => setSelectedTx(tx)}
                         style={{
-                          background: '#F1F5F9',
-                          border: 'none',
-                          color: '#475569',
-                          padding: '0.35rem 0.65rem',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
+                          background: "#F1F5F9",
+                          border: "none",
+                          color: "#475569",
+                          padding: "0.35rem 0.65rem",
+                          borderRadius: "6px",
+                          cursor: "pointer",
                         }}
                         title="Détails de la transaction"
                       >
@@ -378,42 +507,91 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       {/* Transaction Details Modal */}
       {selectedTx && (
         <div className="pf-modal-overlay" onClick={() => setSelectedTx(null)}>
-          <div className="pf-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+          <div
+            className="pf-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "520px" }}
+          >
             <div className="pf-modal-header">
               <h3 className="pf-card-title">Détails de la transaction</h3>
-              <button onClick={() => setSelectedTx(null)} className="pf-modal-close">
+              <button
+                onClick={() => setSelectedTx(null)}
+                className="pf-modal-close"
+              >
                 <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
 
-            <div style={{ background: '#F8FAFC', padding: '1.25rem', borderRadius: '12px', lineHeight: '1.8', fontSize: '0.875rem' }}>
-              <div><strong>Identifiant :</strong> <span style={{ fontFamily: 'monospace' }}>{selectedTx.id}</span></div>
-              <div><strong>Référence PayDunya / PichFlow :</strong> <span style={{ fontFamily: 'monospace' }}>{selectedTx.reference || selectedTx.id}</span></div>
-              <div><strong>Montant brut :</strong> {Number(selectedTx.amount).toLocaleString('fr-FR')} {selectedTx.currency || 'XOF'}</div>
-              <div><strong>Frais PayDunya :</strong> {selectedTx.feesConfirmed ? `${Number(selectedTx.providerFee || 0).toLocaleString('fr-FR')} ${selectedTx.currency || 'XOF'}` : 'Non confirmés par l’API'}</div>
-              <div><strong>Montant net :</strong> {selectedTx.feesConfirmed && selectedTx.netAmount !== null ? `${Number(selectedTx.netAmount).toLocaleString('fr-FR')} ${selectedTx.currency || 'XOF'}` : 'Non calculable faute de frais confirmés'}</div>
-              <div><strong>Réseau & Fournisseur :</strong> {selectedTx.provider || selectedTx.paymentMethod || 'Mobile Money'}</div>
-              <div><strong>Pays :</strong> {selectedTx.country || 'BJ'}</div>
-              <div><strong>Téléphone client :</strong> {selectedTx.customerPhone || 'Non renseigné'}</div>
-              <div><strong>Statut :</strong> {selectedTx.status}</div>
+            <div
+              style={{
+                background: "#F8FAFC",
+                padding: "1.25rem",
+                borderRadius: "12px",
+                lineHeight: "1.8",
+                fontSize: "0.875rem",
+              }}
+            >
               <div>
-                <strong>Date & heure :</strong>{' '}
-                {new Date(selectedTx.createdAt).toLocaleDateString('fr-FR', {
-                  day: '2-digit',
-                  month: 'long',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
+                <strong>Identifiant :</strong>{" "}
+                <span style={{ fontFamily: "monospace" }}>{selectedTx.id}</span>
+              </div>
+              <div>
+                <strong>Référence PayDunya / PichFlow :</strong>{" "}
+                <span style={{ fontFamily: "monospace" }}>
+                  {selectedTx.reference || selectedTx.id}
+                </span>
+              </div>
+              <div>
+                <strong>Montant brut :</strong>{" "}
+                {Number(selectedTx.amount).toLocaleString("fr-FR")}{" "}
+                {selectedTx.currency || "XOF"}
+              </div>
+              <div>
+                <strong>Frais PayDunya :</strong>{" "}
+                {selectedTx.feesConfirmed
+                  ? `${Number(selectedTx.providerFee || 0).toLocaleString("fr-FR")} ${selectedTx.currency || "XOF"}`
+                  : "Non confirmés par l’API"}
+              </div>
+              <div>
+                <strong>Montant net :</strong>{" "}
+                {selectedTx.feesConfirmed && selectedTx.netAmount !== null
+                  ? `${Number(selectedTx.netAmount).toLocaleString("fr-FR")} ${selectedTx.currency || "XOF"}`
+                  : "Non calculable faute de frais confirmés"}
+              </div>
+              <div>
+                <strong>Réseau & Fournisseur :</strong>{" "}
+                {selectedTx.provider ||
+                  selectedTx.paymentMethod ||
+                  "Mobile Money"}
+              </div>
+              <div>
+                <strong>Pays :</strong> {selectedTx.country || "BJ"}
+              </div>
+              <div>
+                <strong>Téléphone client :</strong>{" "}
+                {selectedTx.customerPhone || "Non renseigné"}
+              </div>
+              <div>
+                <strong>Statut :</strong> {selectedTx.status}
+              </div>
+              <div>
+                <strong>Date & heure :</strong>{" "}
+                {new Date(selectedTx.createdAt).toLocaleDateString("fr-FR", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
                 })}
               </div>
             </div>
 
-            <div style={{ marginTop: '1.25rem' }}>
+            <div style={{ marginTop: "1.25rem" }}>
               <button
                 onClick={() => setSelectedTx(null)}
                 className="pf-btn pf-btn-secondary pf-btn-md"
-                style={{ width: '100%' }}
+                style={{ width: "100%" }}
               >
                 Fermer
               </button>

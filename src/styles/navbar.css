@@ -47,11 +47,15 @@
   width: 2.35rem;
   height: 2.35rem;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--pf-primary) 0%, var(--pf-primary-deep) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--pf-primary) 0%,
+    var(--pf-primary-deep) 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #FFFFFF;
+  color: #ffffff;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
   font-size: 1.15rem;
   flex-shrink: 0;
@@ -79,7 +83,9 @@
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--pf-muted);
-  transition: color var(--pf-transition-fast), background-color var(--pf-transition-fast);
+  transition:
+    color var(--pf-transition-fast),
+    background-color var(--pf-transition-fast);
   padding: 0.5rem 0.65rem;
   border-radius: var(--pf-radius-sm);
   background: transparent;
@@ -112,8 +118,8 @@
   font-size: 0.8125rem;
   font-weight: 700;
   border-radius: 10px;
-  background: #2563EB !important;
-  color: #FFFFFF !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
   border: none !important;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
 }
@@ -173,7 +179,7 @@
   right: 0;
   width: min(340px, 85vw);
   height: 100vh;
-  background: #FFFFFF;
+  background: #ffffff;
   z-index: 200;
   box-shadow: -8px 0 24px rgba(15, 23, 42, 0.12);
   display: flex;
@@ -214,7 +220,7 @@
 
 .pf-mobile-close-btn:hover {
   color: var(--pf-text);
-  background: #E2E8F0;
+  background: #e2e8f0;
 }
 
 /* Live Status banner in drawer */
@@ -223,8 +229,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0.85rem;
-  background: #F0FDF4;
-  border: 1px solid #BBF7D0;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
   border-radius: var(--pf-radius-md);
   font-size: 0.75rem;
   font-weight: 600;
@@ -256,7 +262,7 @@
 
 .pf-mobile-nav-row:hover,
 .pf-mobile-nav-row.active {
-  background: #F8FAFC;
+  background: #f8fafc;
   border-color: var(--pf-border);
 }
 
@@ -300,7 +306,7 @@
 
 .pf-mobile-chevron {
   font-size: 0.75rem;
-  color: #94A3B8;
+  color: #94a3b8;
   flex-shrink: 0;
 }
 
@@ -313,13 +319,13 @@
 }
 
 .pf-badge-doc-pill {
-  background: #EEF2FF;
-  color: #4F46E5;
+  background: #eef2ff;
+  color: #4f46e5;
 }
 
 .pf-badge-dash-pill {
-  background: #EFF6FF;
-  color: #2563EB;
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 .pf-mobile-drawer-actions {
@@ -357,7 +363,7 @@
   font-size: 0.6875rem;
   font-weight: 600;
   color: #475569;
-  background: #F1F5F9;
+  background: #f1f5f9;
   padding: 0.2rem 0.5rem;
   border-radius: var(--pf-radius-pill);
 }

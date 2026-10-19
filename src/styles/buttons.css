@@ -83,8 +83,8 @@
   font-size: 0.875rem;
   font-weight: 700;
   border-radius: 12px;
-  background: #2563EB !important;
-  color: #FFFFFF !important;
+  background: #2563eb !important;
+  color: #ffffff !important;
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3) !important;
   border: none;
   position: relative;
@@ -92,7 +92,7 @@
 }
 
 .pf-nav-cta-btn:hover {
-  background: #1D4ED8 !important;
+  background: #1d4ed8 !important;
   box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4) !important;
 }
 
@@ -115,7 +115,7 @@
 .pf-faq-bottom-btn::after,
 .pf-btn-cta-large::after,
 .pf-btn-shimmer-sweep::after {
-  content: '';
+  content: "";
   position: absolute;
   top: -50%;
   left: -120%;
@@ -172,16 +172,20 @@
 
 /* VARIANTS */
 .pf-btn-primary {
-  background: linear-gradient(135deg, var(--pf-primary) 0%, var(--pf-primary-dark) 100%);
-  color: #FFFFFF;
+  background: linear-gradient(
+    135deg,
+    var(--pf-primary) 0%,
+    var(--pf-primary-dark) 100%
+  );
+  color: #ffffff;
   box-shadow: var(--pf-shadow-blue);
 }
 
 .pf-btn-primary:hover {
-  background: linear-gradient(135deg, #2B6DF5 0%, var(--pf-primary-deep) 100%);
+  background: linear-gradient(135deg, #2b6df5 0%, var(--pf-primary-deep) 100%);
   box-shadow: var(--pf-shadow-blue-lg);
   transform: translateY(-2px);
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .pf-btn-secondary {
@@ -222,11 +226,11 @@
 
 .pf-btn-danger {
   background: var(--pf-danger);
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .pf-btn-danger:hover {
-  background: #B91C1C;
+  background: #b91c1c;
 }
 
 /* Signature Light Sweep / Mirror Band reflection animation */

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faRotate,
   faXmark,
@@ -8,10 +8,11 @@ import {
   faPlus,
   faWallet,
   faShieldHalved,
-} from '@fortawesome/free-solid-svg-icons';
-import { useToast } from '../ui/ToastContext';
-import { apiClient } from '../../lib/api';
-import { Application, Wallet } from '../../types';
+} from "@fortawesome/free-solid-svg-icons";
+import { useToast } from "../ui/ToastContext";
+import { DashboardLoadError } from "../ui/DashboardLoadError";
+import { apiClient } from "../../lib/api";
+import { Application, Wallet } from "../../types";
 
 interface WalletsViewProps {
   appName?: string;
@@ -21,70 +22,131 @@ interface WalletsViewProps {
 }
 
 const SUPPORTED_COUNTRIES = [
-  { countryCode: 'BJ', countryName: 'Bénin', currency: 'XOF', symbol: 'FCFA' },
-  { countryCode: 'CI', countryName: "Côte d'Ivoire", currency: 'XOF', symbol: 'FCFA' },
-  { countryCode: 'SN', countryName: 'Sénégal', currency: 'XOF', symbol: 'FCFA' },
-  { countryCode: 'TG', countryName: 'Togo', currency: 'XOF', symbol: 'FCFA' },
-  { countryCode: 'BF', countryName: 'Burkina Faso', currency: 'XOF', symbol: 'FCFA' },
-  { countryCode: 'CM', countryName: 'Cameroun', currency: 'XAF', symbol: 'FCFA' },
-  { countryCode: 'NG', countryName: 'Nigeria', currency: 'NGN', symbol: '₦' },
-  { countryCode: 'GH', countryName: 'Ghana', currency: 'GHS', symbol: 'GH₵' },
-  { countryCode: 'US', countryName: 'International (USD)', currency: 'USD', symbol: '$' },
+  { countryCode: "BJ", countryName: "Bénin", currency: "XOF", symbol: "FCFA" },
+  {
+    countryCode: "CI",
+    countryName: "Côte d'Ivoire",
+    currency: "XOF",
+    symbol: "FCFA",
+  },
+  {
+    countryCode: "SN",
+    countryName: "Sénégal",
+    currency: "XOF",
+    symbol: "FCFA",
+  },
+  { countryCode: "TG", countryName: "Togo", currency: "XOF", symbol: "FCFA" },
+  {
+    countryCode: "BF",
+    countryName: "Burkina Faso",
+    currency: "XOF",
+    symbol: "FCFA",
+  },
+  {
+    countryCode: "CM",
+    countryName: "Cameroun",
+    currency: "XAF",
+    symbol: "FCFA",
+  },
+  { countryCode: "NG", countryName: "Nigeria", currency: "NGN", symbol: "₦" },
+  { countryCode: "GH", countryName: "Ghana", currency: "GHS", symbol: "GH₵" },
+  {
+    countryCode: "US",
+    countryName: "International (USD)",
+    currency: "USD",
+    symbol: "$",
+  },
 ];
 
-export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Application', activeApp }) => {
+export const WalletsView: React.FC<WalletsViewProps> = ({
+  appName = "Mon Application",
+  activeApp,
+}) => {
   const { showToast } = useToast();
   const [wallets, setWallets] = useState<Wallet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const walletLoadId = useRef(0);
 
   // Transfer modal
   const [transferModalOpen, setTransferModalOpen] = useState(false);
-  const [fromWalletId, setFromWalletId] = useState('');
-  const [toWalletId, setToWalletId] = useState('');
-  const [transferAmount, setTransferAmount] = useState('1000');
+  const [fromWalletId, setFromWalletId] = useState("");
+  const [toWalletId, setToWalletId] = useState("");
+  const [transferAmount, setTransferAmount] = useState("1000");
   const [isTransferring, setIsTransferring] = useState(false);
 
   // Add wallet modal
   const [addWalletModalOpen, setAddWalletModalOpen] = useState(false);
-  const [selectedCountryCode, setSelectedCountryCode] = useState('CI');
+  const [selectedCountryCode, setSelectedCountryCode] = useState("CI");
   const [isAdding, setIsAdding] = useState(false);
 
   const loadWallets = useCallback(async () => {
+    const loadId = ++walletLoadId.current;
+    const applicationId = activeApp?.id;
+    if (!applicationId) {
+      setWallets([]);
+      setLoadError("");
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
+    setWallets([]);
+    setLoadError("");
     try {
-      const data = await apiClient.wallets.getAll(activeApp?.id);
+      const data = await apiClient.wallets.getAll(applicationId);
+      if (loadId !== walletLoadId.current) return;
       setWallets(data || []);
       if (data && data.length > 0) {
-        if (!fromWalletId) setFromWalletId(data[0].id);
-        if (!toWalletId && data.length > 1) setToWalletId(data[1].id);
+        setFromWalletId((current) => current || data[0].id);
+        setToWalletId((current) => current || (data.length > 1 ? data[1].id : ""));
       }
     } catch {
-      showToast('Impossible de charger les portefeuilles.', 'error');
+      if (loadId === walletLoadId.current) {
+        setLoadError("Impossible de charger les portefeuilles.");
+        showToast("Impossible de charger les portefeuilles.", "error");
+      }
     } finally {
-      setIsLoading(false);
+      if (loadId === walletLoadId.current) setIsLoading(false);
     }
-  }, [activeApp?.id, showToast, fromWalletId, toWalletId]);
+  }, [activeApp?.id, showToast]);
 
   useEffect(() => {
-    loadWallets();
+    void loadWallets();
+    return () => {
+      walletLoadId.current += 1;
+    };
   }, [loadWallets]);
+
+  useEffect(() => {
+    setFromWalletId("");
+    setToWalletId("");
+  }, [activeApp?.id]);
 
   const handleTransferSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = Number(transferAmount);
     if (!amount || amount <= 0) {
-      showToast('Veuillez saisir un montant valide et strictement positif.', 'error');
+      showToast(
+        "Veuillez saisir un montant valide et strictement positif.",
+        "error",
+      );
       return;
     }
 
     if (fromWalletId === toWalletId) {
-      showToast('Les portefeuilles source et destination doivent être différents.', 'error');
+      showToast(
+        "Les portefeuilles source et destination doivent être différents.",
+        "error",
+      );
       return;
     }
 
     const source = wallets.find((w) => w.id === fromWalletId);
     if (source && source.balance < amount) {
-      showToast(`Solde insuffisant (${source.balance} ${source.currency} disponible).`, 'error');
+      showToast(
+        `Solde insuffisant (${source.balance} ${source.currency} disponible).`,
+        "error",
+      );
       return;
     }
 
@@ -94,14 +156,20 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
         fromWalletId,
         toWalletId,
         amount,
-        applicationId: activeApp?.id || '',
+        applicationId: activeApp?.id || "",
       });
 
-      showToast(res.message || 'Transfert inter-portefeuilles réussi !', 'success');
+      showToast(
+        res.message || "Transfert inter-portefeuilles réussi !",
+        "success",
+      );
       setTransferModalOpen(false);
       await loadWallets();
     } catch (err: any) {
-      showToast(err.message || 'Échec du transfert entre portefeuilles.', 'error');
+      showToast(
+        err.message || "Échec du transfert entre portefeuilles.",
+        "error",
+      );
     } finally {
       setIsTransferring(false);
     }
@@ -109,7 +177,9 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
 
   const handleAddWalletSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const match = SUPPORTED_COUNTRIES.find((c) => c.countryCode === selectedCountryCode);
+    const match = SUPPORTED_COUNTRIES.find(
+      (c) => c.countryCode === selectedCountryCode,
+    );
     if (!match) return;
 
     setIsAdding(true);
@@ -118,13 +188,19 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
         countryCode: match.countryCode,
         currency: match.currency,
         symbol: match.symbol,
-        applicationId: activeApp?.id || '',
+        applicationId: activeApp?.id || "",
       });
-      showToast(`Portefeuille ${match.countryName} (${match.currency}) activé avec succès.`, 'success');
+      showToast(
+        `Portefeuille ${match.countryName} (${match.currency}) activé avec succès.`,
+        "success",
+      );
       setAddWalletModalOpen(false);
       await loadWallets();
     } catch (err: any) {
-      showToast(err.message || 'Impossible d’activer ce portefeuille.', 'error');
+      showToast(
+        err.message || "Impossible d’activer ce portefeuille.",
+        "error",
+      );
     } finally {
       setIsAdding(false);
     }
@@ -137,16 +213,18 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
 
   return (
     <div>
+      {loadError && <DashboardLoadError message={loadError} onRetry={() => void loadWallets()} />}
       {/* Header */}
       <div className="pf-page-head-row">
         <div>
           <h1 className="pf-page-title">Portefeuilles (Wallets)</h1>
           <p className="pf-page-subtitle">
-            Registre local PichFlow pour {appName}; il ne confirme pas le solde disponible chez PayDunya.
+            Registre local PichFlow pour {appName}; il ne confirme pas le solde
+            disponible chez PayDunya.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
           <button
             onClick={loadWallets}
             className="pf-btn pf-btn-secondary pf-btn-sm"
@@ -162,98 +240,173 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
       <div
         className="pf-saspay-card"
         style={{
-          padding: '1.25rem 1.5rem',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
-          color: '#FFFFFF',
+          padding: "1.25rem 1.5rem",
+          marginBottom: "1.5rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "1rem",
+          background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+          color: "#FFFFFF",
         }}
       >
         <div>
-          <div style={{ fontSize: '0.8125rem', color: '#94A3B8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div
+            style={{
+              fontSize: "0.8125rem",
+              color: "#94A3B8",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          >
             Solde officiel PayDunya
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.25rem' }}>
+          <div
+            style={{
+              fontSize: "1.75rem",
+              fontWeight: 800,
+              marginTop: "0.25rem",
+            }}
+          >
             Non disponible
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#CBD5E1', marginTop: '0.25rem' }}>
+          <div
+            style={{
+              fontSize: "0.75rem",
+              color: "#CBD5E1",
+              marginTop: "0.25rem",
+            }}
+          >
             L’API PayDunya utilisée ne fournit pas le solde marchand.
           </div>
         </div>
       </div>
 
       {wallets.length === 0 && !isLoading && (
-        <p role="status" className="pf-saspay-card" style={{ padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-          Aucun solde de registre n’est enregistré pour {appName}. PichFlow ne crée pas de portefeuille fictif.
+        <p
+          role="status"
+          className="pf-saspay-card"
+          style={{ padding: "1rem 1.25rem", marginBottom: "1rem" }}
+        >
+          Aucun solde de registre n’est enregistré pour {appName}. PichFlow ne
+          crée pas de portefeuille fictif.
         </p>
       )}
 
       {/* Stored PichFlow ledger entries; they are not provider-confirmed balances. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+          gap: "1rem",
+        }}
+      >
         {wallets.map((w) => (
           <div
             key={w.id}
             className="pf-saspay-card"
             style={{
-              padding: '1.25rem',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              border: w.isDefault ? '2px solid #2563EB' : '1px solid #E2E8F0',
-              position: 'relative',
+              padding: "1.25rem",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              border: w.isDefault ? "2px solid #2563EB" : "1px solid #E2E8F0",
+              position: "relative",
             }}
           >
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.65rem",
+                  }}
+                >
                   <div
                     style={{
-                      width: '2.5rem',
-                      height: '2.5rem',
-                      borderRadius: '10px',
-                      background: '#EFF6FF',
-                      color: '#2563EB',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      width: "2.5rem",
+                      height: "2.5rem",
+                      borderRadius: "10px",
+                      background: "#EFF6FF",
+                      color: "#2563EB",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                       fontWeight: 800,
-                      fontSize: '0.875rem',
+                      fontSize: "0.875rem",
                     }}
                   >
                     {w.countryCode}
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0F172A' }}>
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        fontSize: "0.95rem",
+                        color: "#0F172A",
+                      }}
+                    >
                       {getCountryName(w.countryCode)}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
+                    <div style={{ fontSize: "0.75rem", color: "#64748B" }}>
                       Devise : {w.currency} ({w.symbol})
                     </div>
                   </div>
                 </div>
 
                 {w.isDefault && (
-                  <span className="pf-pill-status actif" style={{ fontSize: '0.7rem' }}>
+                  <span
+                    className="pf-pill-status actif"
+                    style={{ fontSize: "0.7rem" }}
+                  >
                     Principal
                   </span>
                 )}
               </div>
 
-              <div style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>Montant inscrit au registre PichFlow</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F172A' }}>
-                  {w.balance.toLocaleString('fr-FR')} {w.currency}
+              <div style={{ marginTop: "0.75rem", marginBottom: "0.5rem" }}>
+                <div style={{ fontSize: "0.75rem", color: "#64748B" }}>
+                  Montant inscrit au registre PichFlow
+                </div>
+                <div
+                  style={{
+                    fontSize: "1.5rem",
+                    fontWeight: 800,
+                    color: "#0F172A",
+                  }}
+                >
+                  {w.balance.toLocaleString("fr-FR")} {w.currency}
                 </div>
               </div>
             </div>
 
-            <div style={{ paddingTop: '0.75rem', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748B' }}>
-              <span>En attente (registre) : {w.pendingBalance.toLocaleString('fr-FR')}</span>
-              <span>Réservé (registre) : {w.reservedBalance.toLocaleString('fr-FR')}</span>
+            <div
+              style={{
+                paddingTop: "0.75rem",
+                borderTop: "1px solid #F1F5F9",
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: "0.75rem",
+                color: "#64748B",
+              }}
+            >
+              <span>
+                En attente (registre) :{" "}
+                {w.pendingBalance.toLocaleString("fr-FR")}
+              </span>
+              <span>
+                Réservé (registre) : {w.reservedBalance.toLocaleString("fr-FR")}
+              </span>
             </div>
           </div>
         ))}
@@ -261,18 +414,30 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
 
       {/* MODAL 1: TRANSFERT DE FONDS */}
       {transferModalOpen && (
-        <div className="pf-modal-overlay" onClick={() => setTransferModalOpen(false)}>
-          <div className="pf-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+        <div
+          className="pf-modal-overlay"
+          onClick={() => setTransferModalOpen(false)}
+        >
+          <div
+            className="pf-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "480px" }}
+          >
             <div className="pf-modal-header">
               <h3 className="pf-card-title">Transfert inter-portefeuilles</h3>
-              <button onClick={() => setTransferModalOpen(false)} className="pf-modal-close">
+              <button
+                onClick={() => setTransferModalOpen(false)}
+                className="pf-modal-close"
+              >
                 <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
 
             <form onSubmit={handleTransferSubmit}>
               <div className="pf-form-group">
-                <label className="pf-label">Portefeuille source (à débiter)</label>
+                <label className="pf-label">
+                  Portefeuille source (à débiter)
+                </label>
                 <select
                   className="pf-select"
                   value={fromWalletId}
@@ -281,14 +446,17 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
                 >
                   {wallets.map((w) => (
                     <option key={w.id} value={w.id}>
-                      {getCountryName(w.countryCode)} ({w.balance.toLocaleString('fr-FR')} {w.currency})
+                      {getCountryName(w.countryCode)} (
+                      {w.balance.toLocaleString("fr-FR")} {w.currency})
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="pf-form-group">
-                <label className="pf-label">Portefeuille cible (à créditer)</label>
+                <label className="pf-label">
+                  Portefeuille cible (à créditer)
+                </label>
                 <select
                   className="pf-select"
                   value={toWalletId}
@@ -296,7 +464,11 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
                   required
                 >
                   {wallets.map((w) => (
-                    <option key={w.id} value={w.id} disabled={w.id === fromWalletId}>
+                    <option
+                      key={w.id}
+                      value={w.id}
+                      disabled={w.id === fromWalletId}
+                    >
                       {getCountryName(w.countryCode)} ({w.currency})
                     </option>
                   ))}
@@ -315,7 +487,9 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <div
+                style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem" }}
+              >
                 <button
                   type="button"
                   onClick={() => setTransferModalOpen(false)}
@@ -330,7 +504,9 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
                   className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
                   style={{ flex: 1 }}
                 >
-                  <span>{isTransferring ? 'Transfert...' : 'Confirmer le transfert'}</span>
+                  <span>
+                    {isTransferring ? "Transfert..." : "Confirmer le transfert"}
+                  </span>
                   <FontAwesomeIcon icon={faCheck} />
                 </button>
               </div>
@@ -341,35 +517,58 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
 
       {/* MODAL 2: ACTIVER UN PORTFEUILLE PAYS */}
       {addWalletModalOpen && (
-        <div className="pf-modal-overlay" onClick={() => setAddWalletModalOpen(false)}>
-          <div className="pf-modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+        <div
+          className="pf-modal-overlay"
+          onClick={() => setAddWalletModalOpen(false)}
+        >
+          <div
+            className="pf-modal-content"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "480px" }}
+          >
             <div className="pf-modal-header">
-              <h3 className="pf-card-title">Activer un nouveau portefeuille pays</h3>
-              <button onClick={() => setAddWalletModalOpen(false)} className="pf-modal-close">
+              <h3 className="pf-card-title">
+                Activer un nouveau portefeuille pays
+              </h3>
+              <button
+                onClick={() => setAddWalletModalOpen(false)}
+                className="pf-modal-close"
+              >
                 <FontAwesomeIcon icon={faXmark} />
               </button>
             </div>
 
             <form onSubmit={handleAddWalletSubmit}>
               <div className="pf-form-group">
-                <label className="pf-label">Pays et devise d'encaissement</label>
+                <label className="pf-label">
+                  Pays et devise d'encaissement
+                </label>
                 <select
                   className="pf-select"
                   value={selectedCountryCode}
                   onChange={(e) => setSelectedCountryCode(e.target.value)}
                 >
                   {SUPPORTED_COUNTRIES.map((c) => {
-                    const alreadyHas = wallets.some((w) => w.countryCode === c.countryCode);
+                    const alreadyHas = wallets.some(
+                      (w) => w.countryCode === c.countryCode,
+                    );
                     return (
-                      <option key={c.countryCode} value={c.countryCode} disabled={alreadyHas}>
-                        {c.countryName} ({c.currency} - {c.symbol}) {alreadyHas ? '✓ Déjà actif' : ''}
+                      <option
+                        key={c.countryCode}
+                        value={c.countryCode}
+                        disabled={alreadyHas}
+                      >
+                        {c.countryName} ({c.currency} - {c.symbol}){" "}
+                        {alreadyHas ? "✓ Déjà actif" : ""}
                       </option>
                     );
                   })}
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <div
+                style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem" }}
+              >
                 <button
                   type="button"
                   onClick={() => setAddWalletModalOpen(false)}
@@ -384,7 +583,9 @@ export const WalletsView: React.FC<WalletsViewProps> = ({ appName = 'Mon Applica
                   className="pf-btn pf-btn-primary pf-btn-md pf-btn-shine"
                   style={{ flex: 1 }}
                 >
-                  <span>{isAdding ? 'Activation...' : 'Activer le portefeuille'}</span>
+                  <span>
+                    {isAdding ? "Activation..." : "Activer le portefeuille"}
+                  </span>
                   <FontAwesomeIcon icon={faCheck} />
                 </button>
               </div>

@@ -35,6 +35,104 @@ export function getDb(): Client {
   }
 }
 
+type DatabaseTransaction = Awaited<ReturnType<Client['transaction']>>;
+
+export async function recordConfirmedPaymentCredit(
+  transaction: DatabaseTransaction,
+  payment: {
+    userId: string;
+    applicationId: string;
+    reference: string;
+    amount: number;
+    currency: string;
+    countryCode: string;
+  },
+): Promise<void> {
+  const amount = Number(payment.amount);
+  const currency = payment.currency.toUpperCase();
+  if (
+    !Number.isSafeInteger(amount) ||
+    amount <= 0 ||
+    !/^[A-Z]{3}$/.test(currency) ||
+    !payment.userId ||
+    !payment.applicationId ||
+    !payment.reference
+  ) {
+    throw new Error('Confirmed payment data is invalid for wallet accounting.');
+  }
+
+  const existingCredit = await transaction.execute({
+    sql: `SELECT id FROM ledger_entries
+          WHERE user_id = ? AND application_id = ? AND reference = ?
+            AND type = 'credit' AND description = 'Paiement PayDunya confirmé' LIMIT 1`,
+    args: [payment.userId, payment.applicationId, payment.reference],
+  });
+  if (existingCredit.rows.length > 0) return;
+
+  let wallet = await transaction.execute({
+    sql: `SELECT id FROM wallets
+          WHERE user_id = ? AND application_id = ? AND currency = ?
+          ORDER BY is_default DESC, created_at ASC LIMIT 1`,
+    args: [payment.userId, payment.applicationId, currency],
+  });
+
+  const now = new Date().toISOString();
+  if (wallet.rows.length === 0) {
+    const walletId = `wal_${crypto.randomUUID()}`;
+    await transaction.execute({
+      sql: `INSERT INTO wallets (
+              id, user_id, application_id, currency, symbol, balance,
+              pending_balance, reserved_balance, country_code, is_default, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, 0, ?, ?)`,
+      args: [
+        walletId,
+        payment.userId,
+        payment.applicationId,
+        currency,
+        currency === 'XOF' || currency === 'XAF' ? 'FCFA' : currency,
+        payment.countryCode || 'BJ',
+        now,
+        now,
+      ],
+    });
+    wallet = await transaction.execute({
+      sql: 'SELECT id FROM wallets WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [walletId, payment.userId, payment.applicationId],
+    });
+  }
+
+  const walletId = String(wallet.rows[0]?.id || '');
+  if (!walletId) throw new Error('Could not resolve the wallet for the confirmed payment.');
+
+  const ledgerColumns = await transaction.execute('PRAGMA table_info(ledger_entries)');
+  const netAmountColumn = ledgerColumns.rows.find((column) => String(column.name) === 'net_amount');
+  const netAmountValue = Number(netAmountColumn?.notnull) === 1 ? 0 : null;
+
+  await transaction.execute({
+    sql: `UPDATE wallets SET balance = balance + ?, updated_at = ?
+          WHERE id = ? AND user_id = ? AND application_id = ? AND currency = ?`,
+    args: [amount, now, walletId, payment.userId, payment.applicationId, currency],
+  });
+  await transaction.execute({
+    sql: `INSERT INTO ledger_entries (
+            id, user_id, application_id, wallet_id, type, reference,
+            amount, currency, net_amount, balance_delta, description, created_at
+          ) VALUES (?, ?, ?, ?, 'credit', ?, ?, ?, ?, ?, 'Paiement PayDunya confirmé', ?)`,
+    args: [
+      `led_${crypto.randomUUID()}`,
+      payment.userId,
+      payment.applicationId,
+      walletId,
+      payment.reference,
+      amount,
+      currency,
+      netAmountValue,
+      amount,
+      now,
+    ],
+  });
+}
+
 export async function initDatabase(database: Client = getDb()): Promise<void> {
   const db = database;
   console.log('[DB] Initializing database tables...');
@@ -480,6 +578,16 @@ const DATABASE_MIGRATIONS = [
       ['payment_links', 'expires_at', 'TEXT'],
     ] as const,
   },
+  {
+    version: 10,
+    name: 'create-application-scoped-wallet-ledger',
+    columns: [] as const,
+  },
+  {
+    version: 11,
+    name: 'reconcile-confirmed-payments-to-wallet-ledger',
+    columns: [] as const,
+  },
 ] as const;
 
 export async function applyDatabaseMigrations(db: Client): Promise<void> {
@@ -579,6 +687,70 @@ export async function applyDatabaseMigrations(db: Client): Promise<void> {
         WHERE application_id IS NULL
           AND (SELECT COUNT(*) FROM applications WHERE applications.user_id = payout_requests.user_id) = 1
       `);
+    }
+
+    if (migration.version === 10) {
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS ledger_entries (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          application_id TEXT,
+          wallet_id TEXT NOT NULL,
+          type TEXT NOT NULL,
+          reference TEXT NOT NULL,
+          amount REAL NOT NULL,
+          currency TEXT NOT NULL,
+          net_amount REAL,
+          balance_delta REAL NOT NULL DEFAULT 0,
+          description TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      `);
+      const ledgerColumns = await db.execute('PRAGMA table_info(ledger_entries)');
+      if (!ledgerColumns.rows.some((row) => String(row.name) === 'application_id')) {
+        await db.execute('ALTER TABLE ledger_entries ADD COLUMN application_id TEXT');
+      }
+      if (!ledgerColumns.rows.some((row) => String(row.name) === 'net_amount')) {
+        await db.execute('ALTER TABLE ledger_entries ADD COLUMN net_amount REAL');
+      }
+      if (!ledgerColumns.rows.some((row) => String(row.name) === 'balance_delta')) {
+        await db.execute('ALTER TABLE ledger_entries ADD COLUMN balance_delta REAL NOT NULL DEFAULT 0');
+      }
+    }
+
+    if (migration.version === 11) {
+      const confirmedPayments = await db.execute(`
+        SELECT t.user_id, t.application_id, t.reference, t.amount, t.currency, t.country
+        FROM transactions t
+        JOIN checkout_sessions cs ON cs.reference = t.reference
+        JOIN applications a ON a.id = t.application_id AND a.user_id = t.user_id
+        WHERE t.status IN ('success', 'completed')
+          AND cs.status IN ('success', 'completed')
+          AND cs.user_id = t.user_id
+          AND cs.application_id = t.application_id
+          AND cs.amount = t.amount
+          AND cs.currency = t.currency
+      `);
+
+      for (const payment of confirmedPayments.rows) {
+        const transaction = await db.transaction('write');
+        try {
+          await recordConfirmedPaymentCredit(transaction, {
+            userId: String(payment.user_id),
+            applicationId: String(payment.application_id),
+            reference: String(payment.reference),
+            amount: Number(payment.amount),
+            currency: String(payment.currency || 'XOF'),
+            countryCode: String(payment.country || 'BJ'),
+          });
+          await transaction.commit();
+        } catch (error) {
+          await transaction.rollback();
+          throw error;
+        } finally {
+          transaction.close();
+        }
+      }
     }
 
     await db.execute({

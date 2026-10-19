@@ -1,17 +1,17 @@
-import React from 'react';
+import React from "react";
 
 interface PichFlowLogoProps {
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: "sm" | "md" | "lg" | "xl";
   showText?: boolean;
   textClassName?: string;
   className?: string;
 }
 
 export const PichFlowLogo: React.FC<PichFlowLogoProps> = ({
-  size = 'md',
+  size = "md",
   showText = true,
-  textClassName = '',
-  className = '',
+  textClassName = "",
+  className = "",
 }) => {
   // Dimensions for the card icon
   const iconDimensions = {
@@ -22,43 +22,51 @@ export const PichFlowLogo: React.FC<PichFlowLogoProps> = ({
   }[size];
 
   const textSizeClass = {
-    sm: 'text-sm font-bold',
-    md: 'text-lg font-extrabold',
-    lg: 'text-xl font-extrabold',
-    xl: 'text-2xl font-black',
+    sm: "text-sm font-bold",
+    md: "text-lg font-extrabold",
+    lg: "text-xl font-extrabold",
+    xl: "text-2xl font-black",
   }[size];
 
   return (
     <div
       className={`inline-flex items-center select-none ${className}`}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.625rem', userSelect: 'none' }}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.625rem",
+        userSelect: "none",
+      }}
     >
       {/* Bespoke Fintech Payment Card Emblem */}
       <div
         style={{
           width: `${iconDimensions.box}px`,
           height: `${iconDimensions.box}px`,
-          borderRadius: size === 'sm' ? '8px' : size === 'xl' ? '14px' : '10px',
-          background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 60%, #1E40AF 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 14px -2px rgba(37, 99, 235, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.35)',
+          borderRadius: size === "sm" ? "8px" : size === "xl" ? "14px" : "10px",
+          background:
+            "linear-gradient(135deg, #2563EB 0%, #1D4ED8 60%, #1E40AF 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow:
+            "0 4px 14px -2px rgba(37, 99, 235, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.35)",
           flexShrink: 0,
-          position: 'relative',
-          overflow: 'hidden',
+          position: "relative",
+          overflow: "hidden",
         }}
       >
         {/* Subtle glass reflection on the top half */}
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             left: 0,
             right: 0,
-            height: '46%',
-            background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 100%)',
-            pointerEvents: 'none',
+            height: "46%",
+            background:
+              "linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 100%)",
+            pointerEvents: "none",
           }}
         />
 
@@ -122,11 +130,11 @@ export const PichFlowLogo: React.FC<PichFlowLogoProps> = ({
           style={{
             fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
             fontWeight: 800,
-            letterSpacing: '-0.035em',
-            color: '#0F172A',
+            letterSpacing: "-0.035em",
+            color: "#0F172A",
           }}
         >
-          Pich<span style={{ color: '#2563EB' }}>Flow</span>
+          Pich<span style={{ color: "#2563EB" }}>Flow</span>
         </span>
       )}
     </div>

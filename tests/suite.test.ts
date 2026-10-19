@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { SUPPORTED_COUNTRIES } from '../src/config/countries';
+import {
+  CHECKOUT_COUNTRIES,
+  DOCUMENTED_PAYMENT_CHANNELS,
+  filterCountriesBySearch,
+  SUPPORTED_COUNTRIES,
+  SUPPORTED_PAYMENT_CURRENCIES,
+} from '../src/config/countries';
 import { PRICING_CONFIG } from '../src/config/pricing';
 import { PayDunyaService } from '../src/server/paydunya';
 import { getAppBaseUrl, getPayDunyaCallbackUrl, getPaymentLinkUrl } from '../src/server/urls';
@@ -15,8 +21,25 @@ assert.equal(verifyPassword(password, passwordHash), true);
 assert.equal(verifyPassword('incorrect password', passwordHash), false);
 assert.equal(PRICING_CONFIG.feeScheduleConfirmed, false);
 assert.equal(PRICING_CONFIG.customerSurchargeEnabled, false);
-assert.deepEqual(SUPPORTED_COUNTRIES.map((country) => country.code), ['BJ']);
+assert.deepEqual(SUPPORTED_COUNTRIES.map((country) => country.code), ['BJ', 'SN', 'CI', 'TG', 'ML', 'BF', 'CM']);
+assert.deepEqual(CHECKOUT_COUNTRIES.map((country) => country.code), ['BJ']);
 assert.deepEqual(SUPPORTED_COUNTRIES[0].methods, []);
+assert.equal(SUPPORTED_COUNTRIES.find((country) => country.code === 'CM')?.currency, 'XAF');
+assert.equal(SUPPORTED_COUNTRIES.find((country) => country.code === 'CM')?.methods.find((method) => method.id === 'mtn-cameroun')?.isAvailable, false);
+assert.deepEqual(SUPPORTED_PAYMENT_CURRENCIES.map((currency) => currency.code), ['XOF']);
+assert.deepEqual(filterCountriesBySearch(CHECKOUT_COUNTRIES, 'benin').map((country) => country.code), ['BJ']);
+assert.deepEqual(filterCountriesBySearch(SUPPORTED_COUNTRIES, 'cote d ivoire').map((country) => country.code), ['CI']);
+assert.deepEqual(filterCountriesBySearch(CHECKOUT_COUNTRIES, 'cameroun'), []);
+assert.deepEqual(
+  DOCUMENTED_PAYMENT_CHANNELS.map((method) => method.id).sort(),
+  [
+    'card', 'orange-money-senegal', 'wave-senegal', 'free-money-senegal', 'expresso-sn',
+    'wizall-senegal', 'mtn-benin', 'moov-benin', 'orange-money-ci', 'wave-ci', 'mtn-ci',
+    'moov-ci', 't-money-togo', 'moov-togo', 'orange-money-mali', 'moov-ml',
+    'orange-money-burkina', 'moov-burkina-faso', 'mtn-cameroun', 'djamo-ci', 'djamo-sn',
+    'celtiis-cash',
+  ].sort(),
+);
 
 const callbackVerifier = new PayDunyaService();
 assert.equal(callbackVerifier.verifyCallbackHash('invalid'), false);
