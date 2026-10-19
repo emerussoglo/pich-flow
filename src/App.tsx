@@ -12,8 +12,6 @@ import { SocialProof } from './components/landing/SocialProof';
 import { SelfRecognition } from './components/landing/SelfRecognition';
 import { Features } from './components/landing/Features';
 import { Developers } from './components/landing/Developers';
-import { CheckoutPreview } from './components/landing/CheckoutPreview';
-import { PaymentLinksDemo } from './components/landing/PaymentLinksDemo';
 import { AfricaCoverage } from './components/landing/AfricaCoverage';
 import { HowItWorks, SecuritySection } from './components/landing/HowItWorks';
 import { PricingCalculator } from './components/landing/PricingCalculator';

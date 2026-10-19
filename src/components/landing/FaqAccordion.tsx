@@ -1,16 +1,9 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
-interface StartButtonSimulatorProps {
-  onNavigate: (route: string) => void;
-}
 import {
   faPlus,
   faMinus,
   faArrowRight,
-  faBolt,
-  faCheck,
-  faComments,
 } from '@fortawesome/free-solid-svg-icons';
 import { ScrollReveal } from '../ui/ScrollReveal';
 
@@ -25,37 +18,37 @@ export const FaqAccordion: React.FC<FaqAccordionProps> = ({ onNavigate }) => {
     {
       num: '01',
       q: "Je n'ai jamais codé de ma vie. C'est vraiment possible ?",
-      a: "Oui, absolument. PichFlow propose des liens de paiement prêts à l'emploi et un checkout hébergé que vous pouvez partager directement sur WhatsApp, Instagram ou par e-mail sans écrire une seule ligne de code.",
+      a: "Oui. Vous pouvez créer un lien de paiement depuis le dashboard et partager son URL. Le checkout est hébergé par PayDunya.",
     },
     {
       num: '02',
       q: "Combien de temps avant d'activer mes paiements ?",
-      a: "Votre compte Sandbox est actif instantanément dès la création de votre compte. L'activation de l'environnement Live pour recevoir de vrais fonds prend généralement moins de 24 heures après vérification des informations de base.",
+      a: "Une facture a été créée et vérifiée en Sandbox. Le mode production et les moyens activés n’ont pas été vérifiés : ils dépendent de la configuration et de la validation de votre compte PayDunya.",
     },
     {
       num: '03',
       q: "Est-ce que je peux suivre mes encaissements depuis mon téléphone ?",
-      a: "Oui. Le tableau de bord PichFlow est 100% responsive et optimisé pour smartphone. Vous pouvez consulter vos soldes, vérifier les transactions en temps réel et ordonner des retraits directement depuis votre téléphone.",
+      a: "Le dashboard permet de consulter les ressources de l’application sélectionnée. PichFlow n’affiche pas de solde officiel PayDunya et n’intègre pas de retraits.",
     },
     {
       num: '04',
       q: "Et si une transaction bloque en cours de route ?",
-      a: "PichFlow dispose d'un routage intelligent multi-opérateurs et d'une gestion automatique de l'idempotence. Si un réseau Mobile Money ralentit, la passerelle bascule ou retente immédiatement sans jamais dédoubler un débit.",
+      a: "Le statut reste en attente jusqu’à sa confirmation côté serveur auprès de PayDunya. Vous pouvez demander une nouvelle vérification ; PichFlow ne bascule pas entre des opérateurs.",
     },
     {
       num: '05',
-      q: "Dois-je payer un abonnement pour les outils ?",
-      a: "Non. PichFlow fonctionne à 100% à la commission par transaction réussie. Vous ne payez aucun abonnement mensuel, aucun frais de mise en service et aucun coût fixe si vous n'encaissez rien.",
+      q: "Quels frais s'appliquent aux paiements ?",
+      a: "Les frais PayDunya applicables dépendent de votre compte et ne sont pas exposés par l’API utilisée. PichFlow n’ajoute pas de surcharge au montant demandé et n’affiche pas de frais estimés.",
     },
     {
       num: '06',
-      q: "Comment et quand sont versés mes fonds ?",
-      a: "Vos fonds sont disponibles dans vos portefeuilles par pays. Vous pouvez déclencher un retrait instantané vers vos numéros Mobile Money marchands ou planifier un virement bancaire automatique vers votre compte (BOA, Ecobank, etc.).",
+      q: "Comment retirer mes fonds ?",
+      a: "Les retraits et virements ne sont pas intégrés dans PichFlow. Consultez votre compte PayDunya pour connaître les fonds disponibles et les modalités de versement.",
     },
     {
       num: '07',
       q: "Comment je commence après l'inscription ?",
-      a: "Dès votre inscription validée, vous accédez directement au tableau de bord. Vous pouvez créer votre premier lien de paiement en 30 secondes ou copier vos clés API Sandbox pour commencer vos tests.",
+      a: "Après la création de votre compte, sélectionnez ou créez une application dans le dashboard, puis créez un lien de paiement. Pour les tests, utilisez l’environnement Sandbox configuré.",
     },
   ];
 
@@ -115,11 +108,11 @@ export const FaqAccordion: React.FC<FaqAccordionProps> = ({ onNavigate }) => {
             })}
           </div>
 
-          {/* Bottom Call-To-Action Row matching competitor style */}
+          {/* Bottom call to action */}
           <div className="pf-faq-bottom-card">
             <div className="pf-faq-bottom-text">
               <div className="pf-faq-bottom-title">Tu as toutes tes réponses ?</div>
-              <div className="pf-faq-bottom-sub">Il ne reste plus qu’à lancer tes encaissements.</div>
+              <div className="pf-faq-bottom-sub">Consulte les fonctionnalités réellement disponibles avant de configurer ton compte.</div>
             </div>
 
            <div className="pf-btn-click-simulator-wrap">
@@ -185,7 +178,7 @@ export const FinalCta: React.FC<{ onNavigate: (route: string) => void }> = ({ on
 
             {/* Description */}
             <p className="pf-final-cta-desc">
-              Crée ton compte en quelques minutes et commence à encaisser partout en Afrique, sans abonnement ni engagement.
+              Crée un compte pour configurer une application et générer un lien de paiement en XOF pour le Bénin.
             </p>
 
             {/* Boutons d'action */}

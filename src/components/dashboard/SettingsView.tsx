@@ -762,12 +762,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ activeApp, onUpdateA
             </div>
           </div>
 
-          {/* Login Alerts Card (SaaSPay Style) */}
+          {/* Login Alerts Card */}
           <div className="pf-saspay-card" style={{ padding: '1.5rem', marginTop: '1.25rem', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '0.5rem' }}>
               <div>
                 <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0F172A' }}>
-                  Alertes de sécurité de connexion (Format SaaSPay)
+                  Alertes de sécurité de connexion
                 </div>
                 <p style={{ fontSize: '0.8125rem', color: '#64748B', margin: '0.25rem 0 0', lineHeight: 1.5 }}>
                   Un e-mail de sécurité avec date UTC, adresse IP et empreinte de l’appareil est expédié à chaque ouverture de session.
