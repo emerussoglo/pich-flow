@@ -14,17 +14,11 @@ import {
   faPen,
   faExternalLinkAlt,
   faXmark,
-  faDesktop,
-  faMobileScreen,
-  faCreditCard,
-  faLock,
-  faCoins,
-  faShieldHalved,
 } from '@fortawesome/free-solid-svg-icons';
 import { useToast } from '../ui/ToastContext';
 import { apiClient } from '../../lib/api';
 import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../../config/payments';
-import { SUPPORTED_COUNTRIES, type PaymentMethodOption } from '../../config/countries';
+import { SUPPORTED_COUNTRIES } from '../../config/countries';
 
 interface PaymentLinksViewProps {
   appName?: string;
@@ -67,18 +61,11 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [amountVal, setAmountVal] = useState('15000');
   const [currency, setCurrency] = useState('XOF');
   const [maxUsage, setMaxUsage] = useState('');
-  const [defaultCountry, setDefaultCountry] = useState('BJ');
-  const [requirePhone, setRequirePhone] = useState(true);
-  const [customSlug, setCustomSlug] = useState('');
+  const [defaultCountry, setDefaultCountry] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [requirePhone, setRequirePhone] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Studio Preview States
-  const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
-  const currentPreviewCountry = SUPPORTED_COUNTRIES.find((c) => c.code === defaultCountry) || SUPPORTED_COUNTRIES[0];
-  const [previewPhone, setPreviewPhone] = useState('97 00 12 34');
-
-  const numericAmount = amountType === 'fixed' ? Number(amountVal) || 0 : 5000;
-  const previewTotal = numericAmount;
+  const [recentlyCreatedLink, setRecentlyCreatedLink] = useState<PaymentLink | null>(null);
 
   const loadLinks = useCallback(async () => {
     setIsLoading(true);
@@ -96,9 +83,9 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
     loadLinks();
   }, [loadLinks]);
 
-  const copyPublicUrl = (slug: string, e?: React.MouseEvent) => {
+  const copyPublicUrl = (slug: string, e?: React.MouseEvent, paymentUrl?: string) => {
     if (e) e.stopPropagation();
-    const fullUrl = `${window.location.origin}/pay/${slug}`;
+    const fullUrl = paymentUrl || links.find((link) => link.slug === slug)?.paymentUrl || `${window.location.origin}/pay/${slug}`;
     navigator.clipboard.writeText(fullUrl);
     setCopiedSlug(slug);
     showToast('URL publique copiée dans le presse-papier !', 'info');
@@ -210,17 +197,17 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
         description: desc.trim() || 'Paiement en ligne sécurisé',
         amount: amountType === 'fixed' ? Number(amountVal) : undefined,
         isFixedAmount: amountType === 'fixed',
-        currency,
+        currency: amountType === 'fixed' ? currency : 'XOF',
         country: defaultCountry,
+        expiresAt: expiresAt || undefined,
         usageLimit: maxUsage ? Number(maxUsage) : undefined,
         requirePhone,
         applicationId: activeApp?.id,
       });
 
       setLinks((prev) => [created, ...prev]);
+      setRecentlyCreatedLink(created);
       setViewMode('list');
-      setName('Licence Pro PitchFlow');
-      setDesc('Accès complet aux modules et intégrations');
       showToast(`Lien "${created.title}" créé avec succès !`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Impossible de créer le lien de paiement.', 'error');
@@ -239,42 +226,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
     );
   });
 
-  const getMethodBrandClass = (method: PaymentMethodOption) => {
-    const id = method.id.toLowerCase();
-    const mName = method.name.toLowerCase();
-    if (id.includes('celtiis') || mName.includes('celtiis')) return 'celtiis';
-    if (id.includes('mtn') || mName.includes('mtn')) return 'mtn';
-    if (id.includes('moov') || mName.includes('moov')) return 'moov';
-    if (id.includes('wave') || mName.includes('wave')) return 'wave';
-    if (id.includes('orange') || mName.includes('orange')) return 'orange';
-    if (id.includes('crypto') || method.type === 'crypto') return 'crypto';
-    if (id.includes('card') || method.type === 'card') return 'card';
-    if (id.includes('expresso')) return 'expresso';
-    if (id.includes('free')) return 'free';
-    return 'card';
-  };
-
-  const renderMethodLogo = (method: PaymentMethodOption) => {
-    const brand = getMethodBrandClass(method);
-    switch (brand) {
-      case 'celtiis':
-        return <span style={{ fontWeight: 800, fontSize: '0.8rem' }}>C</span>;
-      case 'mtn':
-        return <span style={{ fontWeight: 900, fontSize: '0.75rem', letterSpacing: '-0.02em' }}>MTN</span>;
-      case 'moov':
-        return <span style={{ fontWeight: 800, fontSize: '0.72rem' }}>Moov</span>;
-      case 'wave':
-        return <span style={{ fontWeight: 900, fontSize: '0.75rem' }}>Wave</span>;
-      case 'orange':
-        return <span style={{ fontWeight: 900, fontSize: '0.75rem' }}>OM</span>;
-      case 'crypto':
-        return <FontAwesomeIcon icon={faCoins} style={{ fontSize: '0.85rem' }} />;
-      default:
-        return <FontAwesomeIcon icon={faCreditCard} style={{ fontSize: '0.85rem' }} />;
-    }
-  };
-
-  // If in create view -> SPLIT STUDIO WITH LIVE CHECKOUT PREVIEW
+  // The public checkout is hosted by the payment provider; no simulated preview is shown here.
   if (viewMode === 'create') {
     return (
       <div style={{ maxWidth: '1280px', margin: '0 auto', width: '100%' }}>
@@ -302,13 +254,11 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
             Créer un lien de paiement
           </h1>
           <p className="pf-page-subtitle">
-            Configurez votre offre et visualisez en direct la page de paiement sécurisée que vos clients verront.
+            Configurez le produit, le montant et les options de paiement.
           </p>
         </div>
 
-        {/* 2-Column Split Studio */}
-        <div className="pf-payment-link-studio">
-          {/* LEFT COLUMN: Configuration Form */}
+        <div className="pf-payment-link-studio" style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
           <div className="pf-saspay-card" style={{ padding: '1.75rem' }}>
             <form onSubmit={handleCreateSubmit}>
               {/* Section 1: Produit & Tarification */}
@@ -388,7 +338,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 </div>
 
                 {/* Amount & Currency */}
-                <div style={{ display: 'grid', gridTemplateColumns: amountType === 'fixed' ? '2fr 1fr' : '1fr', gap: '0.75rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
                   {amountType === 'fixed' && (
                     <div className="pf-form-group">
                       <label className="pf-label">
@@ -400,21 +350,24 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                         value={amountVal}
                         onChange={(e) => setAmountVal(e.target.value)}
                         min={PAYDUNYA_MINIMUM_AMOUNT_XOF}
+                        step="1"
                         required
                       />
                     </div>
                   )}
 
-                  <div className="pf-form-group">
-                    <label className="pf-label">Devise</label>
-                    <select
-                      className="pf-select"
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                    >
-                      <option value="XOF">XOF (FCFA)</option>
-                    </select>
-                  </div>
+                  {amountType === 'fixed' && (
+                    <div className="pf-form-group">
+                      <label className="pf-label">Devise</label>
+                      <select
+                        className="pf-select"
+                        value={currency}
+                        onChange={(e) => setCurrency(e.target.value)}
+                      >
+                        <option value="XOF">XOF (FCFA)</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -433,6 +386,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                     value={defaultCountry}
                     onChange={(e) => setDefaultCountry(e.target.value)}
                   >
+                    <option value="">Laisser le client choisir</option>
                     {SUPPORTED_COUNTRIES.filter((c) => c.code === 'BJ').map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.flag} {c.name} ({c.dialCode}) — {c.currency}
@@ -442,17 +396,17 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 </div>
 
                 <p className="pf-form-group" role="note">
-                  Aucun frais supplémentaire n’est ajouté au montant demandé. Les frais PayDunya éventuels ne sont pas présumés.
+                  Aucun frais supplémentaire n’est ajouté au montant demandé. Les frais éventuels ne sont pas présumés.
                 </p>
 
                 <div className="pf-form-group" style={{ background: '#F8FAFC', padding: '0.85rem 1rem', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
                   <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0F172A' }}>
-                        Numéro de téléphone requis
+                        Demander le numéro de téléphone de contact
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>
-                        Le numéro est transmis à PayDunya pour préremplir sa page de paiement sécurisée.
+                        Facultatif. Le numéro utilisé ensuite pour le paiement mobile est saisi séparément sur la page de paiement sécurisée.
                       </div>
                     </div>
                     <input
@@ -469,8 +423,19 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
               <div style={{ marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid #F1F5F9', paddingBottom: '0.5rem' }}>
                   <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#0F172A' }}>
-                    3. Options avancées
+                    3. Expiration et options
                   </span>
+                </div>
+
+                <div className="pf-form-group">
+                  <label className="pf-label">Date d’expiration (optionnelle)</label>
+                  <input
+                    type="date"
+                    className="pf-input"
+                    value={expiresAt}
+                    onChange={(event) => setExpiresAt(event.target.value)}
+                    min={new Date().toISOString().slice(0, 10)}
+                  />
                 </div>
 
                 <div className="pf-form-group">
@@ -509,200 +474,6 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
             </form>
           </div>
 
-          {/* RIGHT COLUMN: Real-Time Interactive Live Preview */}
-          <div className="pf-preview-sticky-wrap">
-            {/* Header bar with Live badge & Device toggle */}
-            <div className="pf-preview-header-bar">
-              <div className="pf-preview-live-badge">
-                <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: '#10B981', animation: 'pulse 1.8s infinite' }} />
-                <span>Aperçu en direct</span>
-              </div>
-
-              <div className="pf-device-toggle-bar">
-                <button
-                  type="button"
-                  onClick={() => setPreviewDevice('desktop')}
-                  className={`pf-device-toggle-btn ${previewDevice === 'desktop' ? 'active' : ''}`}
-                  title="Vue Ordinateur"
-                >
-                  <FontAwesomeIcon icon={faDesktop} />
-                  <span>Ordinateur</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewDevice('mobile')}
-                  className={`pf-device-toggle-btn ${previewDevice === 'mobile' ? 'active' : ''}`}
-                  title="Vue Mobile"
-                >
-                  <FontAwesomeIcon icon={faMobileScreen} />
-                  <span>Mobile</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Frame containing the EXACT Checkout Card from user screenshots */}
-            <div className={previewDevice === 'mobile' ? 'pf-mobile-frame' : 'pf-desktop-preview-frame'}>
-              {previewDevice === 'mobile' && <div className="pf-mobile-speaker" />}
-
-              <div className="pf-saspay-checkout-card" style={{ boxShadow: previewDevice === 'mobile' ? 'none' : undefined, borderRadius: previewDevice === 'mobile' ? '28px' : undefined }}>
-                {/* Fixed vs Libre Header */}
-                {amountType === 'fixed' ? (
-                  <div className="pf-saspay-header-fixed">
-                    <div className="pf-saspay-header-left">
-                      <div className="pf-saspay-avatar-badge">
-                        {(activeApp?.name || appName || 'P').charAt(0).toUpperCase()}
-                      </div>
-                      <div className="pf-saspay-header-titles">
-                        <div className="pf-saspay-header-title">
-                          {name.trim() || 'Titre du produit'}
-                        </div>
-                        <div className="pf-saspay-header-sub">
-                          {activeApp?.name || appName || 'PitchFlow Store'}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="pf-saspay-header-price">
-                      {new Intl.NumberFormat('fr-FR').format(previewTotal)} {currency}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="pf-saspay-header-libre">
-                    <div className="pf-saspay-avatar-badge center">
-                      {(activeApp?.name || appName || 'P').charAt(0).toUpperCase()}
-                    </div>
-                    <div className="pf-saspay-sub-libre">Faire un paiement à</div>
-                    <div className="pf-saspay-title-libre">
-                      {activeApp?.name || appName || 'PitchFlow Store'}
-                    </div>
-                  </div>
-                )}
-
-                {/* If Libre amount, custom input */}
-                {amountType === 'libre' && (
-                  <div className="pf-saspay-form-group">
-                    <label className="pf-saspay-label">Montant à régler ({currency})</label>
-                    <input
-                      type="number"
-                      className="pf-saspay-input"
-                      value={amountVal}
-                      onChange={(e) => setAmountVal(e.target.value)}
-                      placeholder="Ex: 5000"
-                    />
-                  </div>
-                )}
-
-                {/* Country dropdown */}
-                <div className="pf-saspay-form-group">
-                  <label className="pf-saspay-label">Pays</label>
-                  <div className="pf-saspay-select-wrap">
-                    <select
-                      className="pf-saspay-select"
-                      value={defaultCountry}
-                      onChange={(e) => setDefaultCountry(e.target.value)}
-                    >
-                      {SUPPORTED_COUNTRIES.filter((c) => c.code === 'BJ').map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.flag} {c.name} ({c.dialCode})
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pf-saspay-select-chevron">▾</div>
-                  </div>
-                </div>
-
-                <div className="pf-saspay-notice-chip">
-                  Les moyens de paiement actifs sur ce compte seront présentés par la page sécurisée PayDunya.
-                </div>
-
-                {/* Customer Info */}
-                <div className="pf-saspay-form-row">
-                  <div>
-                    <label className="pf-saspay-label">Nom complet</label>
-                    <input
-                      type="text"
-                      className="pf-saspay-input"
-                      defaultValue="Paul Dossou"
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="pf-saspay-label">Email pour reçu</label>
-                    <input
-                      type="email"
-                      className="pf-saspay-input"
-                      defaultValue="paul@email.com"
-                      readOnly
-                    />
-                  </div>
-                </div>
-
-                {/* Phone Input with Calling Code Divider */}
-                <div className="pf-saspay-form-group">
-                  <label className="pf-saspay-label">Numéro de téléphone</label>
-                  <div className="pf-saspay-phone-row">
-                    <span className="pf-saspay-phone-icon">
-                      <FontAwesomeIcon icon={faMobileScreen} />
-                    </span>
-                    <span className="pf-saspay-phone-code">{currentPreviewCountry.dialCode}</span>
-                    <div className="pf-saspay-phone-divider" />
-                    <input
-                      type="tel"
-                      className="pf-saspay-phone-input"
-                      value={previewPhone}
-                      onChange={(e) => setPreviewPhone(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Notice Chip */}
-                <div className="pf-saspay-notice-chip">
-                  PayDunya collecte les informations sensibles sur son domaine sécurisé.
-                </div>
-
-                {/* Summary Breakdown Box */}
-                <div className="pf-saspay-summary-box">
-                  <div className="pf-saspay-summary-row">
-                    <span>Montant de la commande</span>
-                    <span style={{ fontWeight: 600, color: '#374151' }}>
-                      {new Intl.NumberFormat('fr-FR').format(numericAmount)} {currency}
-                    </span>
-                  </div>
-                  <div className="pf-saspay-summary-divider" />
-                  <div className="pf-saspay-summary-total">
-                    <span>Total à payer</span>
-                    <span>
-                      {new Intl.NumberFormat('fr-FR').format(previewTotal)} {currency}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Submit button */}
-                <button
-                  type="button"
-                  className="pf-saspay-submit-btn"
-                  style={{ pointerEvents: 'none' }}
-                >
-                  <span>Payer {new Intl.NumberFormat('fr-FR').format(previewTotal)} {currency}</span>
-                </button>
-
-                {/* PichFlow Watermark Footer */}
-                <div className="pf-saspay-watermark">
-                  <span className="pf-saspay-watermark-lock">
-                    <FontAwesomeIcon icon={faLock} />
-                  </span>
-                  <span>Paiement sécurisé propulsé par</span>
-                  <span className="pf-saspay-watermark-brand">
-                    <span className="pf-saspay-watermark-icon">⚡</span>
-                    PichFlow
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <p style={{ fontSize: '0.75rem', color: '#64748B', textAlign: 'center', marginTop: '0.75rem', maxWidth: '380px' }}>
-              Aperçu synchronisé en temps réel : Vos clients accèdent à ce checkout optimisé pour mobile et web.
-            </p>
-          </div>
         </div>
       </div>
     );
@@ -737,6 +508,30 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
           </button>
         </div>
       </div>
+
+      {recentlyCreatedLink && (
+        <div className="pf-saspay-card" style={{ padding: '1rem 1.25rem', marginBottom: '1.25rem' }}>
+          <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>Lien de paiement créé</div>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <a
+              href={recentlyCreatedLink.paymentUrl || `${window.location.origin}/pay/${recentlyCreatedLink.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontFamily: 'monospace', overflowWrap: 'anywhere', flex: 1 }}
+            >
+              {recentlyCreatedLink.paymentUrl || `${window.location.origin}/pay/${recentlyCreatedLink.slug}`}
+            </a>
+            <button
+              type="button"
+              className="pf-btn pf-btn-primary pf-btn-sm"
+              onClick={() => copyPublicUrl(recentlyCreatedLink.slug, undefined, recentlyCreatedLink.paymentUrl)}
+            >
+              <FontAwesomeIcon icon={copiedSlug === recentlyCreatedLink.slug ? faCheck : faCopy} />
+              <span>{copiedSlug === recentlyCreatedLink.slug ? 'Copié' : 'Copier'}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="pf-saspay-card" style={{ padding: '0.85rem 1.25rem', marginBottom: '1.25rem' }}>
         <input
@@ -818,10 +613,10 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                         <span style={{ fontFamily: 'monospace', color: '#2563EB', fontSize: '0.8125rem' }}>
-                          /pay/{link.slug}
+                          {link.paymentUrl || `${window.location.origin}/pay/${link.slug}`}
                         </span>
                         <button
-                          onClick={(e) => copyPublicUrl(link.slug, e)}
+                          onClick={(e) => copyPublicUrl(link.slug, e, link.paymentUrl)}
                           title="Copier l'URL complète"
                           style={{
                             background: 'transparent',
@@ -834,7 +629,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                           <FontAwesomeIcon icon={copiedSlug === link.slug ? faCheck : faCopy} />
                         </button>
                         <a
-                          href={`/pay/${link.slug}`}
+                          href={link.paymentUrl || `/pay/${link.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Tester le lien dans un nouvel onglet"
@@ -939,10 +734,10 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
               <div>
                 <strong>URL publique client :</strong>{' '}
                 <span style={{ fontFamily: 'monospace', color: '#2563EB' }}>
-                  {window.location.origin}/pay/{selectedLink.slug}
+                  {selectedLink.paymentUrl || `${window.location.origin}/pay/${selectedLink.slug}`}
                 </span>{' '}
                 <button
-                  onClick={() => copyPublicUrl(selectedLink.slug)}
+                  onClick={() => copyPublicUrl(selectedLink.slug, undefined, selectedLink.paymentUrl)}
                   style={{ border: 'none', background: 'transparent', color: '#2563EB', cursor: 'pointer', padding: '0 4px' }}
                 >
                   <FontAwesomeIcon icon={faCopy} />
@@ -954,6 +749,9 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
               </div>
               <div><strong>Statut :</strong> <span className={`pf-pill-status ${selectedLink.status === 'active' ? 'actif' : 'inactif'}`}>{selectedLink.status === 'active' ? 'Actif' : 'Désactivé'}</span></div>
               <div><strong>Nombre d'utilisations :</strong> {selectedLink.usageCount || 0}</div>
+              {selectedLink.expiresAt && (
+                <div><strong>Expire le :</strong> {new Date(selectedLink.expiresAt).toLocaleDateString('fr-FR')}</div>
+              )}
               <div>
                 <strong>Date de création :</strong>{' '}
                 {new Date(selectedLink.createdAt).toLocaleDateString('fr-FR', {

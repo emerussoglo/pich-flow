@@ -14,6 +14,7 @@ import {
 } from './auth';
 import { paydunyaService, dispatchMerchantWebhook } from './paydunya';
 import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../config/payments';
+import { getAppBaseUrl, getPayDunyaCallbackUrl } from './urls';
 import { sasPayService, formatDecimalAmount } from './saspay';
 import {
   sendVerificationCodeEmail,
@@ -1025,7 +1026,7 @@ apiRouter.get('/transactions', requireAuth, async (req: AuthenticatedRequest, re
       customerName: String(row.customer_name),
       customerEmail: String(row.customer_email),
       customerPhone: String(row.customer_phone || ''),
-      country: String(row.country || 'BJ'),
+      country: String(row.country || ''),
       provider: String(row.provider),
       amount: Number(row.amount),
       providerFee: Number(row.provider_fee || 0),
@@ -1054,18 +1055,15 @@ apiRouter.get('/payment-links', requireAuth, async (req: AuthenticatedRequest, r
     const db = getDb();
     const { applicationId, appId } = req.query;
     const targetAppId = (applicationId || appId || '') as string;
-
-    let sql = 'SELECT * FROM payment_links WHERE user_id = ?';
-    const args: any[] = [req.user!.id];
-
-    if (targetAppId.trim()) {
-      sql += ' AND application_id = ?';
-      args.push(targetAppId.trim());
+    if (!await userOwnsApplication(req.user!.id, targetAppId)) {
+      res.status(404).json({ success: false, error: 'Application introuvable.' });
+      return;
     }
 
-    sql += ' ORDER BY created_at DESC';
-
-    const result = await db.execute({ sql, args });
+    const result = await db.execute({
+      sql: 'SELECT * FROM payment_links WHERE user_id = ? AND application_id = ? ORDER BY created_at DESC',
+      args: [req.user!.id, targetAppId.trim()],
+    });
 
     const paymentLinks = result.rows.map((row) => ({
       id: String(row.id),
@@ -1075,11 +1073,12 @@ apiRouter.get('/payment-links', requireAuth, async (req: AuthenticatedRequest, r
       amount: row.amount !== null ? Number(row.amount) : null,
       isFixedAmount: Boolean(row.is_fixed_amount),
       currency: String(row.currency || 'XOF'),
-      country: String(row.country || 'BJ'),
+      country: String(row.country || ''),
       status: String(row.status),
       usageCount: Number(row.usage_count || 0),
       usageLimit: row.usage_limit !== null ? Number(row.usage_limit) : null,
       requirePhone: Boolean(row.require_phone),
+      expiresAt: row.expires_at ? String(row.expires_at) : null,
       createdAt: String(row.created_at),
       redirectUrl: row.redirect_url ? String(row.redirect_url) : undefined,
     }));
@@ -1093,38 +1092,74 @@ apiRouter.get('/payment-links', requireAuth, async (req: AuthenticatedRequest, r
 apiRouter.post('/payment-links', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { title, description, amount, isFixedAmount, currency, country, usageLimit, requirePhone, redirectUrl, applicationId } = req.body;
-    if (!title) {
-      res.status(400).json({ success: false, error: 'Le titre du lien de paiement est requis.' });
+    const cleanTitle = typeof title === 'string' ? title.trim() : '';
+    const fixedAmount = isFixedAmount !== false;
+    const numericAmount = amount === undefined || amount === null || amount === '' ? null : Number(amount);
+    const cleanCurrency = typeof currency === 'string' ? currency.toUpperCase() : 'XOF';
+    const cleanCountry = typeof country === 'string' ? country.trim().toUpperCase() : '';
+    const expiresAtValue = typeof req.body?.expiresAt === 'string' ? req.body.expiresAt.trim() : '';
+    const expiresAt = expiresAtValue ? new Date(`${expiresAtValue}T23:59:59.999Z`) : null;
+    const numericUsageLimit = usageLimit === undefined || usageLimit === null || usageLimit === '' ? null : Number(usageLimit);
+    if (!await userOwnsApplication(req.user!.id, String(applicationId || ''))) {
+      res.status(404).json({ success: false, error: 'Application introuvable.' });
+      return;
+    }
+    if (!cleanTitle || cleanTitle.length > 140) {
+      res.status(400).json({ success: false, error: 'Le nom du produit est requis (140 caractères maximum).' });
+      return;
+    }
+    if (fixedAmount && (numericAmount === null || !Number.isSafeInteger(numericAmount) || numericAmount < PAYDUNYA_MINIMUM_AMOUNT_XOF)) {
+      res.status(400).json({ success: false, error: `Saisissez un montant fixe entier d’au moins ${PAYDUNYA_MINIMUM_AMOUNT_XOF} XOF.` });
+      return;
+    }
+    if (!fixedAmount && numericAmount !== null) {
+      res.status(400).json({ success: false, error: 'Un lien à montant libre ne peut pas définir de montant fixe.' });
+      return;
+    }
+    if (cleanCurrency !== 'XOF' || (cleanCountry && cleanCountry !== 'BJ')) {
+      res.status(400).json({ success: false, error: 'La configuration PayDunya vérifiée ici prend en charge les paiements en XOF au Bénin.' });
+      return;
+    }
+    if (numericUsageLimit !== null && (!Number.isInteger(numericUsageLimit) || numericUsageLimit < 1)) {
+      res.status(400).json({ success: false, error: 'La limite de paiements doit être un entier positif.' });
+      return;
+    }
+    if (expiresAtValue && (!expiresAt || Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now())) {
+      res.status(400).json({ success: false, error: 'La date d’expiration doit être une date future valide.' });
       return;
     }
 
-    const id = `pl_${Date.now()}`;
-    const cleanSlug = title
+    const id = `pl_${crypto.randomUUID()}`;
+    const cleanSlug = cleanTitle
       .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-    const slug = `${cleanSlug}-${crypto.randomBytes(3).toString('hex')}`;
+      .replace(/(^-|-$)/g, '')
+      .slice(0, 55) || 'paiement';
+    const slug = `${cleanSlug}-${crypto.randomBytes(5).toString('hex')}`;
     const now = new Date().toISOString();
 
     const db = getDb();
     await db.execute({
-      sql: `INSERT INTO payment_links (id, user_id, application_id, slug, title, description, amount, is_fixed_amount, currency, country, status, usage_count, usage_limit, require_phone, redirect_url, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO payment_links (id, user_id, application_id, slug, title, description, amount, is_fixed_amount, currency, country, status, usage_count, usage_limit, require_phone, expires_at, redirect_url, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
         req.user!.id,
-        applicationId || 'app_default',
+        applicationId,
         slug,
-        title,
-        description || '',
-        amount ? Number(amount) : null,
-        isFixedAmount !== false ? 1 : 0,
-        currency || 'XOF',
-        country || 'BJ',
+        cleanTitle,
+        typeof description === 'string' ? description.trim() : '',
+        numericAmount,
+        fixedAmount ? 1 : 0,
+        cleanCurrency,
+        cleanCountry,
         'active',
         0,
-        usageLimit ? Number(usageLimit) : null,
-        requirePhone !== false ? 1 : 0,
+        numericUsageLimit,
+        requirePhone === true ? 1 : 0,
+        expiresAt?.toISOString() || null,
         redirectUrl || null,
         now,
         now,
@@ -1134,16 +1169,17 @@ apiRouter.post('/payment-links', requireAuth, async (req: AuthenticatedRequest, 
     const newLink = {
       id,
       slug,
-      title,
-      description: description || '',
-      amount: amount ? Number(amount) : null,
-      isFixedAmount: isFixedAmount !== false,
-      currency: currency || 'XOF',
-      country: country || 'BJ',
+      title: cleanTitle,
+      description: typeof description === 'string' ? description.trim() : '',
+      amount: numericAmount,
+      isFixedAmount: fixedAmount,
+      currency: cleanCurrency,
+      country: cleanCountry,
       status: 'active',
       usageCount: 0,
-      usageLimit: usageLimit ? Number(usageLimit) : null,
-      requirePhone: requirePhone !== false,
+      usageLimit: numericUsageLimit,
+      requirePhone: requirePhone === true,
+      expiresAt: expiresAt?.toISOString() || null,
       createdAt: now,
       redirectUrl: redirectUrl || undefined,
     };
@@ -1162,8 +1198,10 @@ apiRouter.get('/payment-links/slug/:slug', async (req: Request, res: Response) =
       sql: `SELECT pl.*, u.full_name as merchant_name, a.name as app_name
             FROM payment_links pl
             JOIN users u ON pl.user_id = u.id
-            LEFT JOIN applications a ON pl.application_id = a.id
-            WHERE pl.slug = ? AND pl.status = 'active'`,
+            JOIN applications a ON pl.application_id = a.id AND a.user_id = pl.user_id
+            WHERE pl.slug = ? AND pl.status = 'active'
+              AND (pl.expires_at IS NULL OR datetime(pl.expires_at) > datetime('now'))
+              AND (pl.usage_limit IS NULL OR pl.usage_count < pl.usage_limit)`,
       args: [req.params.slug],
     });
 
@@ -1183,8 +1221,9 @@ apiRouter.get('/payment-links/slug/:slug', async (req: Request, res: Response) =
         amount: row.amount !== null ? Number(row.amount) : null,
         isFixedAmount: Boolean(row.is_fixed_amount),
         currency: String(row.currency || 'XOF'),
-        country: String(row.country || 'BJ'),
+        country: String(row.country || ''),
         requirePhone: Boolean(row.require_phone),
+        expiresAt: row.expires_at ? String(row.expires_at) : null,
         merchantName: String(row.merchant_name || 'Marchand PichFlow'),
         appName: String(row.app_name || 'PichFlow Store'),
       },
@@ -2497,6 +2536,7 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
       customerName,
       customerEmail,
       customerPhone,
+      country: requestedCountry,
     } = req.body || {};
     const db = getDb();
     const now = new Date().toISOString();
@@ -2509,7 +2549,8 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
       sql: `SELECT pl.*, a.name AS app_name
             FROM payment_links pl
             JOIN applications a ON a.id = pl.application_id AND a.user_id = pl.user_id
-            WHERE (pl.id = ? OR pl.slug = ?) AND pl.status = 'active'`,
+            WHERE (pl.id = ? OR pl.slug = ?) AND pl.status = 'active'
+              AND (pl.expires_at IS NULL OR datetime(pl.expires_at) > datetime('now'))`,
       args: [linkSelector, linkSelector],
     });
     if (linkResult.rows.length === 0) {
@@ -2528,8 +2569,15 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
     const cleanCustomerName = `${cleanFirstName} ${cleanLastName}`.trim() || String(customerName || '').trim();
     const cleanEmail = String(customerEmail || '').trim().toLowerCase();
     const cleanPhone = String(customerPhone || '').trim();
-    if (!cleanCustomerName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) || cleanPhone.replace(/\D/g, '').length < 7) {
-      res.status(400).json({ success: false, error: 'Prénom, nom, adresse e-mail valide et numéro de téléphone sont requis.' });
+    const requirePhone = Boolean(link.require_phone);
+    if (
+      !cleanFirstName ||
+      !cleanLastName ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) ||
+      (requirePhone && cleanPhone.replace(/\D/g, '').length < 7) ||
+      (cleanPhone && cleanPhone.replace(/\D/g, '').length < 7)
+    ) {
+      res.status(400).json({ success: false, error: 'Prénom, nom et adresse e-mail valides sont requis; le numéro de contact est requis uniquement si le marchand l’a demandé.' });
       return;
     }
 
@@ -2543,8 +2591,28 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
       return;
     }
     const currency = String(link.currency || 'XOF').toUpperCase();
-    if (currency !== 'XOF' || String(link.country || 'BJ').toUpperCase() !== 'BJ') {
+    const country = String(requestedCountry || link.country || '').trim().toUpperCase();
+    if (
+      currency !== 'XOF' ||
+      country !== 'BJ' ||
+      (String(link.country || '').toUpperCase() && String(link.country).toUpperCase() !== country)
+    ) {
       res.status(400).json({ success: false, error: 'Ce lien ne correspond pas à la configuration PayDunya actuellement vérifiée (XOF, Bénin).' });
+      return;
+    }
+
+    let appUrl: string;
+    let returnUrl: URL;
+    let cancelUrl: URL;
+    let callbackUrl: string;
+    try {
+      appUrl = getAppBaseUrl();
+      returnUrl = new URL('/checkout-demo', `${appUrl}/`);
+      returnUrl.searchParams.set('slug', String(link.slug));
+      callbackUrl = getPayDunyaCallbackUrl();
+    } catch (error) {
+      console.error('[PayDunya] Checkout URL configuration is invalid:', error instanceof Error ? error.message : 'unknown');
+      res.status(500).json({ success: false, error: 'La configuration des URL de paiement est invalide.' });
       return;
     }
 
@@ -2619,15 +2687,17 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
               customer_phone, country, provider, amount, provider_fee, platform_fee,
               customer_fee, net_amount, currency, status, description, payment_method,
               metadata, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'BJ', 'PayDunya', ?, 0, 0, 0, 0, ?, 'pending', ?, 'PayDunya checkout', ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PayDunya', ?, 0, 0, 0, 0, ?, 'pending', ?, 'PayDunya checkout', ?, ?, ?)`,
       args: [
         `tx_${crypto.randomUUID()}`, userId, applicationId, reference, cleanCustomerName,
-        cleanEmail, cleanPhone, amount, currency, String(link.title),
+        cleanEmail, cleanPhone, country, amount, currency, String(link.title),
         JSON.stringify({ providerFeesConfirmed: false, netAmountAvailable: false }), now, now,
       ],
     });
 
-    const appUrl = (process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+    returnUrl.searchParams.set('ref', reference);
+    cancelUrl = new URL(returnUrl);
+    cancelUrl.searchParams.set('cancelled', '1');
     const invoice = await paydunyaService.createInvoice({
       amount,
       description: String(link.title),
@@ -2636,9 +2706,9 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
       customerEmail: cleanEmail,
       customerPhone: cleanPhone,
       reference,
-      returnUrl: `${appUrl}/checkout-demo?ref=${encodeURIComponent(reference)}&slug=${encodeURIComponent(String(link.slug))}`,
-      cancelUrl: `${appUrl}/checkout-demo?ref=${encodeURIComponent(reference)}&slug=${encodeURIComponent(String(link.slug))}&cancelled=1`,
-      callbackUrl: `${appUrl}/api/webhooks/paydunya`,
+      returnUrl: returnUrl.toString(),
+      cancelUrl: cancelUrl.toString(),
+      callbackUrl,
     });
     if (invoice.status !== 'pending' || !invoice.token || !invoice.invoiceUrl) {
       await db.execute({

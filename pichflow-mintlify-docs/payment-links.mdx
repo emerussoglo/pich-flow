@@ -22,7 +22,7 @@ Le middleware de session accepte un jeton Bearer de session; ces routes ne doive
 
 ## Création (tableau de bord)
 
-Le handler reconnaît `title` (requis), `description`, `amount`, `isFixedAmount`, `currency`, `country`, `usageLimit`, `requirePhone`, `redirectUrl` et `applicationId`. Il renvoie `success` et `paymentLink`. Le slug est construit par le serveur.
+Le handler reconnaît `title` (requis), `description`, `amount`, `isFixedAmount`, `currency`, `country`, `usageLimit`, `requirePhone`, `expiresAt`, `redirectUrl` et `applicationId`. Il renvoie `success` et `paymentLink`, y compris `paymentUrl`. Le slug est construit par le serveur; l'application sélectionnée doit appartenir à l'utilisateur.
 
 ```json
 {
@@ -32,8 +32,13 @@ Le handler reconnaît `title` (requis), `description`, `amount`, `isFixedAmount`
   "isFixedAmount": true,
   "currency": "XOF",
   "country": "BJ",
-  "requirePhone": true
+  "requirePhone": false,
+  "expiresAt": "2027-10-19"
 }
 ```
 
-Il s'agit d'un corps accepté par la route du tableau de bord, pas d'une opération de l'API publique par clé. Le code accepte aussi un montant libre lorsque `isFixedAmount` est faux; les modalités exactes de paiement restent liées au flux du tableau de bord.
+Un lien à montant libre doit omettre `amount`; le serveur le rejette s'il en reçoit un. Les montants fixes sont des entiers XOF d'au moins 200. `country` peut être omis; la configuration vérifiée de ce dépôt ne prend en charge que le Bénin (BJ) en XOF. `expiresAt` est une date `YYYY-MM-DD` et expire à la fin de cette journée UTC.
+
+Le checkout public ne demande le numéro de contact que si `requirePhone` est vrai. Il utilise ensuite la redirection PayDunya hébergée pour que le client sélectionne un moyen activé sur le compte; aucun code opérateur n'est envoyé et PichFlow ne collecte pas les données de carte.
+
+En production, configurez `APP_URL` avec l'origine HTTPS publique. En local, configurez `PAYDUNYA_CALLBACK_URL` avec l'URL HTTPS d'un tunnel vers `/api/webhooks/paydunya` pour recevoir les IPN; le callback vers localhost n'est pas joignable depuis PayDunya.

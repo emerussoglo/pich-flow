@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../config/payments';
 import { getDb } from './db';
+import { getAppBaseUrl, getPayDunyaCallbackUrl } from './urls';
 
 dotenv.config();
 
@@ -114,9 +115,9 @@ export class PayDunyaService {
         reference,
       },
       actions: {
-        cancel_url: params.cancelUrl || `${process.env.APP_URL || 'http://localhost:3000'}/checkout-demo?status=cancel`,
-        return_url: params.returnUrl || `${process.env.APP_URL || 'http://localhost:3000'}/checkout-demo?status=success&ref=${reference}`,
-        callback_url: params.callbackUrl || `${process.env.APP_URL || 'http://localhost:3000'}/api/webhooks/paydunya`,
+        cancel_url: params.cancelUrl || `${getAppBaseUrl()}/checkout-demo?status=cancel`,
+        return_url: params.returnUrl || `${getAppBaseUrl()}/checkout-demo?status=success&ref=${reference}`,
+        callback_url: params.callbackUrl || getPayDunyaCallbackUrl(),
       },
     });
 

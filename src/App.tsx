@@ -71,8 +71,6 @@ function AppContent() {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([]);
-  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
-  const [sessionRetryCount, setSessionRetryCount] = useState(0);
   const dashboardSessionCheck = useRef<Promise<unknown> | null>(null);
   const lastSessionVerifiedAt = useRef(0);
   const appDataLoadGeneration = useRef(0);
@@ -133,37 +131,43 @@ function AppContent() {
 
   // Synchronize applications from server
   const syncApplications = useCallback(async () => {
-    const validApps = await apiClient.apps.getAll();
-    setApplications(validApps);
+    try {
+      const validApps = await apiClient.apps.getAll();
+      setApplications(validApps);
 
-    if (validApps.length === 0) {
-      setActiveApp(null);
-      try { localStorage.removeItem('pf_active_app_id'); } catch {}
-    } else {
-      const savedAppId = (() => {
-        try { return localStorage.getItem('pf_active_app_id'); } catch { return null; }
-      })();
-      const matchedApp = validApps.find((a) => a.id === savedAppId) || validApps[0];
-      await apiClient.apps.selectActive(matchedApp.id);
-      setActiveApp(matchedApp);
-      try { localStorage.setItem('pf_active_app_id', matchedApp.id); } catch {}
-      await loadAppData(matchedApp.id);
+      if (validApps.length === 0) {
+        setActiveApp(null);
+        try { localStorage.removeItem('pf_active_app_id'); } catch {}
+      } else {
+        const savedAppId = (() => {
+          try { return localStorage.getItem('pf_active_app_id'); } catch { return null; }
+        })();
+        const matchedApp = validApps.find((a) => a.id === savedAppId) || validApps[0];
+        await apiClient.apps.selectActive(matchedApp.id);
+        setActiveApp(matchedApp);
+        try { localStorage.setItem('pf_active_app_id', matchedApp.id); } catch {}
+        await loadAppData(matchedApp.id);
+      }
+    } catch (error) {
+      if (error instanceof ApiResponseError && error.status === 401) {
+        handleUnauthorized();
+      } else {
+        console.warn('Sync apps error:', error);
+      }
     }
-  }, [loadAppData]);
+  }, [loadAppData, handleUnauthorized]);
 
-  // Validate the session before loading any private dashboard data.
+  // Validate the session in the background without blocking the UI.
   useEffect(() => {
     if (currentRoute !== 'dashboard') {
       lastSessionVerifiedAt.current = 0;
       hasHandledUnauthorized.current = false;
-      setIsDashboardLoading(false);
       setDashboardLoadError('');
       return;
     }
 
     let active = true;
     if (Date.now() - lastSessionVerifiedAt.current < 5 * 60 * 1000) {
-      setIsDashboardLoading(false);
       return () => {
         active = false;
       };
@@ -171,7 +175,6 @@ function AppContent() {
 
     hasHandledUnauthorized.current = false;
     setDashboardLoadError('');
-    setIsDashboardLoading(true);
 
     const loadDashboard = async () => {
       const sessionCheck = dashboardSessionCheck.current ?? apiClient.auth.me();
@@ -188,13 +191,12 @@ function AppContent() {
           handleUnauthorized();
         } else {
           console.error('Dashboard authentication or sync failed:', error);
-          setDashboardLoadError('Impossible de vérifier votre session ou de charger vos applications. Vérifiez votre connexion puis actualisez la page.');
+          setDashboardLoadError('Impossible de vérifier votre session ou de charger vos applications. Vérifiez votre connexion.');
         }
       } finally {
         if (dashboardSessionCheck.current === sessionCheck) {
           dashboardSessionCheck.current = null;
         }
-        if (active) setIsDashboardLoading(false);
       }
     };
 
@@ -202,7 +204,7 @@ function AppContent() {
     return () => {
       active = false;
     };
-  }, [currentRoute, handleUnauthorized, syncApplications, sessionRetryCount]);
+  }, [currentRoute, handleUnauthorized, syncApplications]);
 
   // Modals state
   const [isNewLinkModalOpen, setIsNewLinkModalOpen] = useState(false);
@@ -372,15 +374,11 @@ function AppContent() {
 
       {/* 4. MODULAR DASHBOARD APPLICATION (with isolated routes) */}
       {currentRoute === 'dashboard' && (
-        isDashboardLoading ? (
-          <main role="status" aria-live="polite" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
-            Vérification de la session…
-          </main>
-        ) : dashboardLoadError ? (
+        dashboardLoadError ? (
           <main role="alert" style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '2rem', textAlign: 'center' }}>
             <div>
               <p>{dashboardLoadError}</p>
-              <button type="button" onClick={() => { lastSessionVerifiedAt.current = 0; setDashboardLoadError(''); setIsDashboardLoading(true); setSessionRetryCount((count) => count + 1); }}>
+              <button type="button" onClick={() => { lastSessionVerifiedAt.current = 0; setDashboardLoadError(''); }}>
                 Réessayer
               </button>
             </div>

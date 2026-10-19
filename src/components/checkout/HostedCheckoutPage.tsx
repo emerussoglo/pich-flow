@@ -22,9 +22,9 @@ interface HostedCheckoutPageProps {
   paymentLinkSlug?: string;
 }
 
-type CheckoutStatus = 'idle' | 'loading' | 'pending' | 'success' | 'failed';
+type CheckoutStatus = 'idle' | 'loading' | 'pending' | 'success' | 'failed' | 'cancelled';
 
-const PAYDUNYA_COUNTRIES = SUPPORTED_COUNTRIES
+const VERIFIED_COUNTRIES = SUPPORTED_COUNTRIES
   .filter((country) => country.code === 'BJ')
   .map(({ code, name, flag, dialCode, currency }) => ({ code, name, flag, dialCode, currency }));
 
@@ -39,8 +39,9 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   const [lastName, setLastName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [selectedCountryCode, setSelectedCountryCode] = useState('BJ');
+  const [selectedCountryCode, setSelectedCountryCode] = useState('');
   const [countrySearch, setCountrySearch] = useState('');
+  const [requirePhone, setRequirePhone] = useState(false);
   const [isFixedAmount, setIsFixedAmount] = useState(true);
   const [amount, setAmount] = useState(initialAmount);
   const [title, setTitle] = useState(initialTitle);
@@ -56,7 +57,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const submitLock = useRef(false);
-  const selectedCountry = PAYDUNYA_COUNTRIES.find((country) => country.code === selectedCountryCode);
+  const selectedCountry = VERIFIED_COUNTRIES.find((country) => country.code === selectedCountryCode);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
@@ -82,10 +83,11 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
         setMerchantName(String(link.merchantName || 'Marchand'));
         setCurrency(String(link.currency || 'XOF'));
         setIsFixedAmount(link.isFixedAmount !== false);
+        setRequirePhone(Boolean(link.requirePhone));
         if (link.amount !== undefined && link.amount !== null) setAmount(Number(link.amount));
-        const configuredCountry = PAYDUNYA_COUNTRIES.find((country) => country.code === link.country);
+        const configuredCountry = VERIFIED_COUNTRIES.find((country) => country.code === link.country);
         if (configuredCountry) setSelectedCountryCode(configuredCountry.code);
-        else setLinkError('Ce lien utilise un pays qui n’est pas disponible dans la configuration PayDunya vérifiée.');
+        else if (link.country) setLinkError('Ce lien utilise un pays qui n’est pas disponible dans la configuration de paiement vérifiée.');
       })
       .catch(() => {
         if (active) setLinkError('Impossible de charger ce lien de paiement. Réessayez plus tard.');
@@ -109,10 +111,12 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
         setStatus('success');
         setErrorMessage('');
       } else if (result.status === 'failed' || result.status === 'cancelled' || result.status === 'canceled') {
-        setStatus('failed');
-        setErrorMessage('PayDunya a confirmé que le paiement a été annulé ou refusé.');
+        setStatus(result.status === 'failed' ? 'failed' : 'cancelled');
+        setErrorMessage(result.status === 'failed'
+          ? 'Le paiement a été refusé.'
+          : 'Le paiement a été annulé.');
       } else if (manual) {
-        setErrorMessage('Paiement en cours de confirmation auprès de PayDunya.');
+        setErrorMessage('Paiement en cours de confirmation.');
       }
     } catch (error) {
       if (manual) {
@@ -149,7 +153,11 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
       setErrorMessage('Veuillez saisir une adresse e-mail valide.');
       return false;
     }
-    if (phone.replace(/\D/g, '').length < 7) {
+    if (requirePhone && !phone.trim()) {
+      setErrorMessage('Veuillez saisir un numéro de téléphone de contact.');
+      return false;
+    }
+    if (phone.trim() && phone.replace(/\D/g, '').length < 7) {
       setErrorMessage('Veuillez saisir un numéro de téléphone valide.');
       return false;
     }
@@ -179,6 +187,11 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
       setStep(1);
       return;
     }
+    if (!selectedCountryCode) {
+      setStep(2);
+      setErrorMessage('Sélectionnez un pays pris en charge.');
+      return;
+    }
     if (!Number.isSafeInteger(amount) || amount < PAYDUNYA_MINIMUM_AMOUNT_XOF) {
       setErrorMessage(`Saisissez un montant XOF entier d’au moins ${PAYDUNYA_MINIMUM_AMOUNT_XOF}.`);
       return;
@@ -198,7 +211,8 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
         lastName: lastName.trim(),
         customerName: `${firstName.trim()} ${lastName.trim()}`,
         customerEmail: customerEmail.trim(),
-        customerPhone: `${selectedCountry?.dialCode || ''}${phone.replace(/\s/g, '')}`,
+        customerPhone: phone.trim(),
+        country: selectedCountryCode,
       }, window.crypto.randomUUID());
       setTransactionRef(result.reference);
       setPaydunyaInvoiceUrl(result.invoiceUrl);
@@ -206,7 +220,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
       if (result.invoiceUrl) window.location.assign(result.invoiceUrl);
     } catch (error) {
       setStatus('failed');
-      setErrorMessage(error instanceof Error ? error.message : 'Échec de la création de la facture PayDunya.');
+      setErrorMessage(error instanceof Error ? error.message : 'Impossible de préparer le paiement sécurisé.');
     } finally {
       submitLock.current = false;
     }
@@ -221,7 +235,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   };
 
   const formatAmount = (value: number) => new Intl.NumberFormat('fr-FR').format(value);
-  const visibleCountries = PAYDUNYA_COUNTRIES.filter((country) =>
+  const visibleCountries = VERIFIED_COUNTRIES.filter((country) =>
     `${country.name} ${country.code}`.toLowerCase().includes(countrySearch.trim().toLowerCase()),
   );
 
@@ -285,13 +299,19 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                       <span className="pf-saspay-label">Adresse e-mail *</span>
                       <input className="pf-saspay-input" type="email" autoComplete="email" required value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} />
                     </label>
-                    <label className="pf-saspay-form-group">
-                      <span className="pf-saspay-label">Numéro de téléphone *</span>
-                      <div className="pf-saspay-phone-row">
-                        <span className="pf-saspay-phone-code">{selectedCountry?.dialCode || '+229'}</span>
-                        <input className="pf-saspay-phone-input" type="tel" autoComplete="tel-national" required value={phone} onChange={(event) => setPhone(event.target.value)} />
-                      </div>
-                    </label>
+                    {requirePhone && (
+                      <label className="pf-saspay-form-group">
+                        <span className="pf-saspay-label">Numéro de téléphone de contact *</span>
+                        <div className="pf-saspay-phone-row">
+                          <input className="pf-saspay-phone-input" type="tel" autoComplete="tel" required value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+229 01 23 45 67" />
+                        </div>
+                      </label>
+                    )}
+                    {!requirePhone && (
+                      <p className="pf-saspay-pending-sub">
+                        Le marchand n’a pas demandé de numéro de contact. Les informations nécessaires au moyen de paiement seront saisies séparément sur la page sécurisée.
+                      </p>
+                    )}
                   </section>
                 )}
 
@@ -317,10 +337,10 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                           <span>{country.currency}</span>
                         </button>
                       ))}
-                      {visibleCountries.length === 0 && <p>Aucun pays vérifié ne correspond à votre recherche.</p>}
+                      {visibleCountries.length === 0 && <p>Aucun pays de paiement actuellement configuré ne correspond à votre recherche.</p>}
                     </div>
                     <div className="pf-saspay-notice-chip" style={{ marginTop: 16 }}>
-                      <FontAwesomeIcon icon={faShieldHalved} /> Les moyens réellement activés pour votre compte sont affichés et collectés sur la page sécurisée PayDunya. PichFlow ne propose aucun mode non vérifié.
+                      <FontAwesomeIcon icon={faShieldHalved} /> Choisissez le moyen de paiement disponible pour ce pays sur la page de paiement sécurisée. PichFlow ne collecte pas les données de carte ou de portefeuille mobile.
                     </div>
                   </section>
                 )}
@@ -345,8 +365,10 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                     <div className="pf-saspay-summary-box">
                       <div className="pf-saspay-summary-row"><span>Produit</span><strong>{title}</strong></div>
                       <div className="pf-saspay-summary-row"><span>Pays</span><strong>{selectedCountry?.flag} {selectedCountry?.name}</strong></div>
+                      <div className="pf-saspay-summary-row"><span>Moyen de paiement</span><strong>À choisir sur la page sécurisée</strong></div>
                       <div className="pf-saspay-summary-row"><span>Client</span><strong>{firstName} {lastName}</strong></div>
                       <div className="pf-saspay-summary-row"><span>E-mail</span><strong>{customerEmail}</strong></div>
+                      {phone && <div className="pf-saspay-summary-row"><span>Téléphone de contact</span><strong>{phone}</strong></div>}
                       <div className="pf-saspay-summary-divider" />
                       <div className="pf-saspay-summary-total">
                         <span>Montant à payer</span><span>{formatAmount(amount)} {currency}</span>
@@ -381,7 +403,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
         {status === 'loading' && (
           <div role="status" aria-live="polite" className="pf-saspay-pending-view">
             <FontAwesomeIcon icon={faSpinner} spin />
-            <h1>Préparation de la facture PayDunya…</h1>
+            <h1>Préparation du paiement sécurisé…</h1>
             <p>Ne fermez pas cette page. Vous allez être redirigé vers le paiement sécurisé.</p>
           </div>
         )}
@@ -390,11 +412,11 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
           <div className="pf-saspay-pending-view">
             <FontAwesomeIcon icon={faSpinner} spin />
             <h1>Paiement en cours de confirmation</h1>
-            <p>PayDunya vérifie la transaction auprès du moyen de paiement.</p>
+            <p>Nous vérifions la transaction auprès du moyen de paiement.</p>
             {errorMessage && <p role="alert">{errorMessage}</p>}
             {paydunyaInvoiceUrl && (
               <a href={paydunyaInvoiceUrl} className="pf-saspay-submit-btn">
-                Continuer sur PayDunya <FontAwesomeIcon icon={faArrowRight} />
+                Continuer vers le paiement sécurisé <FontAwesomeIcon icon={faArrowRight} />
               </a>
             )}
             <button type="button" className="pf-saspay-retry-btn" disabled={isCheckingStatus} onClick={() => void checkStatus(transactionRef, true)}>
@@ -407,7 +429,16 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
           <div className="pf-saspay-failed-view">
             <FontAwesomeIcon icon={faCircleXmark} />
             <h1>Paiement non confirmé</h1>
-            <p>{errorMessage || 'La transaction a été annulée ou refusée par PayDunya.'}</p>
+            <p>{errorMessage || 'La transaction n’a pas été confirmée.'}</p>
+            <button type="button" className="pf-saspay-retry-btn" onClick={resetAfterFailure}>Recommencer</button>
+          </div>
+        )}
+
+        {status === 'cancelled' && (
+          <div className="pf-saspay-failed-view">
+            <FontAwesomeIcon icon={faCircleXmark} />
+            <h1>Paiement annulé</h1>
+            <p>{errorMessage || 'Le paiement a été annulé avant sa confirmation.'}</p>
             <button type="button" className="pf-saspay-retry-btn" onClick={resetAfterFailure}>Recommencer</button>
           </div>
         )}
@@ -416,9 +447,9 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
           <div className="pf-saspay-success-view">
             <FontAwesomeIcon icon={faCircleCheck} />
             <h1>Paiement confirmé</h1>
-            <p>PayDunya a confirmé le paiement de {formatAmount(amount)} {currency} pour {title}.</p>
+            <p>Le paiement de {formatAmount(amount)} {currency} pour {title} a été confirmé.</p>
             <p>Référence : <strong>{transactionRef}</strong></p>
-            <p>Les frais et le montant net ne sont pas confirmés par les données actuellement renvoyées par PayDunya.</p>
+            <p>Les frais et le montant net ne sont pas confirmés par les informations disponibles.</p>
             <button type="button" onClick={onBack} className="pf-saspay-submit-btn">
               Terminer <FontAwesomeIcon icon={faCheck} />
             </button>

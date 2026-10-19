@@ -77,6 +77,8 @@ export interface PaymentLink {
   usageLimit: number | null;
   requirePhone: boolean;
   createdAt: string;
+  expiresAt?: string | null;
+  paymentUrl?: string;
   redirectUrl?: string;
   applicationId?: string;
 }

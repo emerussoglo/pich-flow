@@ -21,6 +21,7 @@ const { POST: resetPassword } = await import('../src/app/api/auth/reset-password
 const { GET: listApps, POST: createApp } = await import('../src/app/api/apps/route');
 const { POST: selectApp } = await import('../src/app/api/apps/active/route');
 const { GET: listPaymentLinks, POST: createPaymentLink } = await import('../src/app/api/payment-links/route');
+const { GET: getPublicPaymentLink } = await import('../src/app/api/payment-links/slug/[slug]/route');
 const { GET: listApiKeys, POST: createApiKey } = await import('../src/app/api/developer/keys/route');
 const { DELETE: revokeApiKey } = await import('../src/app/api/developer/keys/[id]/route');
 const { GET: listTransactions } = await import('../src/app/api/transactions/route');
@@ -235,17 +236,107 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   );
   assert.equal(linkAResponse.status, 200);
   const linkA = (await linkAResponse.json()).paymentLink;
+  assert.equal(linkA.country, 'BJ');
+  assert.match(linkA.paymentUrl, /^http:\/\/localhost:\d+\/pay\//);
   const freeAmountLinkResponse = await createPaymentLink(
     makeRequest('/api/payment-links', 'POST', {
       title: 'Application A flexible payment',
       isFixedAmount: false,
       currency: 'XOF',
-      country: 'BJ',
       applicationId: applicationA.id,
     }, undefined, sessionCookie),
   );
   assert.equal(freeAmountLinkResponse.status, 200);
   const freeAmountLink = (await freeAmountLinkResponse.json()).paymentLink;
+  assert.equal(freeAmountLink.amount, null);
+  assert.equal(freeAmountLink.country, '');
+
+  const invalidFixedAmount = await createPaymentLink(
+    makeRequest('/api/payment-links', 'POST', {
+      title: 'Invalid fixed amount',
+      amount: 0,
+      applicationId: applicationA.id,
+    }, undefined, sessionCookie),
+  );
+  assert.equal(invalidFixedAmount.status, 400);
+  const invalidFreeAmount = await createPaymentLink(
+    makeRequest('/api/payment-links', 'POST', {
+      title: 'Invalid free amount',
+      amount: 200,
+      isFixedAmount: false,
+      applicationId: applicationA.id,
+    }, undefined, sessionCookie),
+  );
+  assert.equal(invalidFreeAmount.status, 400);
+
+  const expiringLinkResponse = await createPaymentLink(
+    makeRequest('/api/payment-links', 'POST', {
+      title: 'Contact required payment',
+      amount: 1500,
+      country: 'BJ',
+      requirePhone: true,
+      expiresAt: new Date(Date.now() + 86_400_000).toISOString().slice(0, 10),
+      applicationId: applicationA.id,
+    }, undefined, sessionCookie),
+  );
+  assert.equal(expiringLinkResponse.status, 200);
+  const expiringLink = (await expiringLinkResponse.json()).paymentLink;
+  assert.equal(expiringLink.requirePhone, true);
+  assert.ok(expiringLink.expiresAt);
+  const publicLinkResponse = await getPublicPaymentLink(
+    makeRequest(`/api/payment-links/slug/${expiringLink.slug}`, 'GET'),
+    { params: Promise.resolve({ slug: expiringLink.slug }) },
+  );
+  assert.equal(publicLinkResponse.status, 200);
+  assert.equal((await publicLinkResponse.json()).paymentLink.requirePhone, true);
+
+  const missingRequiredContact = await handleApiRequest(
+    new Request('http://localhost/api/checkout/initiate', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': `required-phone-${randomUUID()}`,
+      },
+      body: JSON.stringify({
+        paymentLinkId: expiringLink.id,
+        amount: 1500,
+        firstName: 'Checkout',
+        lastName: 'Test',
+        customerEmail: 'checkout-test@example.test',
+        country: 'BJ',
+      }),
+    }),
+  );
+  assert.equal(missingRequiredContact.status, 400);
+
+  await getDb().execute({
+    sql: 'UPDATE payment_links SET expires_at = ? WHERE id = ?',
+    args: [new Date(Date.now() - 86_400_000).toISOString(), expiringLink.id],
+  });
+  const expiredPublicLink = await getPublicPaymentLink(
+    makeRequest(`/api/payment-links/slug/${expiringLink.slug}`, 'GET'),
+    { params: Promise.resolve({ slug: expiringLink.slug }) },
+  );
+  assert.equal(expiredPublicLink.status, 404);
+  const expiredCheckout = await handleApiRequest(
+    new Request('http://localhost/api/checkout/initiate', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'idempotency-key': `expired-link-${randomUUID()}`,
+      },
+      body: JSON.stringify({
+        paymentLinkId: expiringLink.id,
+        amount: 1500,
+        firstName: 'Checkout',
+        lastName: 'Test',
+        customerEmail: 'checkout-test@example.test',
+        country: 'BJ',
+      }),
+    }),
+  );
+  assert.equal(expiredCheckout.status, 404);
+
   const belowMinimumCheckout = await handleApiRequest(
     new Request('http://localhost/api/checkout/initiate', {
       method: 'POST',
@@ -363,6 +454,44 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   );
   assert.equal(linkBResponse.status, 200);
   const linkB = (await linkBResponse.json()).paymentLink;
+  const publicLinkB = await getPublicPaymentLink(
+    makeRequest(`/api/payment-links/slug/${linkB.slug}`, 'GET'),
+    { params: Promise.resolve({ slug: linkB.slug }) },
+  );
+  assert.equal(publicLinkB.status, 200);
+  assert.equal((await publicLinkB.json()).paymentLink.merchantName, applicationB.name);
+  const publicLinkA = await getPublicPaymentLink(
+    makeRequest(`/api/payment-links/slug/${linkA.slug}`, 'GET'),
+    { params: Promise.resolve({ slug: linkA.slug }) },
+  );
+  assert.equal(publicLinkA.status, 200);
+  assert.equal((await publicLinkA.json()).paymentLink.merchantName, applicationA.name);
+
+  const invalidPayDunyaCallback = await handleApiRequest(
+    new Request('http://localhost/api/webhooks/paydunya', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: `data=${encodeURIComponent(JSON.stringify({ hash: 'invalid' }))}`,
+    }),
+  );
+  assert.equal(invalidPayDunyaCallback.status, 401);
+
+  const configuredMasterKey = process.env.PAYDUNYA_MASTER_KEY?.trim();
+  if (configuredMasterKey) {
+    const validCallbackHash = createHash('sha512').update(configuredMasterKey).digest('hex');
+    const unattachedPayDunyaCallback = await handleApiRequest(
+      new Request('http://localhost/api/webhooks/paydunya', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: `data=${encodeURIComponent(JSON.stringify({
+          hash: validCallbackHash,
+          invoice: { token: 'sandbox-callback-test-token' },
+          custom_data: { reference: 'PF-UNKNOWN-CALLBACK-REFERENCE' },
+        }))}`,
+      }),
+    );
+    assert.equal(unattachedPayDunyaCallback.status, 404);
+  }
   const linksForB = await listPaymentLinks(
     makeRequest(`/api/payment-links?applicationId=${applicationB.id}`, 'GET', undefined, undefined, sessionCookie),
   );

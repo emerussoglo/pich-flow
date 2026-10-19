@@ -1,65 +1,61 @@
 ---
 title: "Liens de paiement"
-description: "Créez, partagez et gérez des liens de paiement à montant fixe ou libre sans rédiger de code supplémentaire."
+description: "Création, partage et règlement sécurisé des liens de paiement PichFlow."
 ---
 
-# Liens de Paiement
+# Liens de paiement
 
-Les **Liens de Paiement** PichFlow permettent de générer une URL publique partageable (par WhatsApp, email, SMS ou sur les réseaux sociaux) permettant à vos clients de régler une prestation ou un produit en toute simplicité.
+Les liens de paiement sont rattachés à une application PichFlow. Leur adresse publique est construite à partir de `APP_URL`, par exemple `http://localhost:3000/pay/<slug>` en local ou `https://votre-domaine/pay/<slug>` en production.
 
----
+## Routes
 
-## Types de Liens de Paiement
+| Méthode | Route | Accès |
+|---|---|---|
+| `GET` | `/api/payment-links?applicationId=<id>` | Session authentifiée, application sélectionnée |
+| `POST` | `/api/payment-links` | Session authentifiée, application propriétaire |
+| `GET` | `/api/payment-links/slug/:slug` | Public, uniquement si le lien est actif, non expiré et sous son plafond |
+| `GET`, `PUT`, `DELETE` | `/api/payment-links/:id` | Session authentifiée, application sélectionnée |
 
-PichFlow gère deux types de liens :
-1. **Montant Fixe (`isFixedAmount: true`)** : Idéal pour un produit, un forfait d'abonnement ou un événement précis (ex: 15 000 XOF).
-2. **Montant Libre (`isFixedAmount: false`)** : Idéal pour les dons, cagnottes ou facturations personnalisées où le client saisit le montant qu'il souhaite vous verser.
+Ces routes utilisent la session du tableau de bord, pas une clé d'API marchande `/api/v1`.
 
----
+## Création
 
-## Création via l'API
-
-```bash
-curl -X POST https://api.pichflow.com/v1/payment-links \
-  -H "Authorization: Bearer sk_test_votre_cle" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Abonnement Annuel PichFlow Pro",
-    "description": "Accès complet aux modules et à l API",
-    "amount": 25000,
-    "currency": "XOF",
-    "isFixedAmount": true,
-    "country": "BJ",
-    "redirectUrl": "https://maboutique.com/succes"
-  }'
-```
-
-### Réponse (201 Created)
+Exemple de corps de requête authentifiée :
 
 ```json
 {
-  "success": true,
-  "paymentLink": {
-    "id": "pl_1728954000123",
-    "slug": "pl-abo-pro-2026",
-    "title": "Abonnement Annuel PichFlow Pro",
-    "amount": 25000,
-    "currency": "XOF",
-    "isFixedAmount": true,
-    "url": "https://checkout.pichflow.com/pay/pl-abo-pro-2026",
-    "paymentCount": 0,
-    "totalCollected": 0,
-    "isActive": true,
-    "createdAt": "2026-10-15T00:00:00Z"
-  }
+  "applicationId": "app_...",
+  "title": "Licence professionnelle",
+  "description": "Accès aux modules",
+  "isFixedAmount": true,
+  "amount": 15000,
+  "currency": "XOF",
+  "country": "BJ",
+  "requirePhone": false,
+  "expiresAt": "2027-10-19",
+  "usageLimit": 20
 }
 ```
 
----
+- Un montant fixe doit être un entier d'au moins 200 XOF. La devise est actuellement limitée à XOF.
+- Pour un montant libre, envoyez `"isFixedAmount": false` sans `amount`. Le client choisit son montant sur la page publique; le serveur le revalide avant la création de facture.
+- `country` est facultatif. La configuration vérifiée dans ce dépôt ne propose actuellement que le Bénin (`BJ`); le client doit le choisir si aucun pays par défaut n'est défini.
+- `requirePhone` est facultatif et vaut `false` par défaut. Quand il est activé, le numéro de contact est validé avant de continuer. Il reste distinct du numéro nécessaire au moyen de paiement.
+- `expiresAt` est une date ISO `YYYY-MM-DD` facultative; le lien cesse d'être utilisable après la fin de cette journée UTC.
+- Le serveur génère le slug public aléatoire et renvoie `paymentUrl`.
 
-## Cycle de Vie & Suivi des Liens
+## Parcours public et moyens de paiement
 
-- **Consultation des transactions par lien** : Chaque règlement effectué sur un lien incrémente automatiquement son compteur `paymentCount` et son volume total encaissé `totalCollected`.
-- **Désactivation instantanée** : Vous pouvez suspendre un lien à tout moment depuis le Dashboard ou via un appel `PUT /v1/payment-links/:id`.
-- **Plafond d'utilisation** : Vous pouvez restreindre le nombre maximum de règlements autorisés (ex: stock limité à 50 exemplaires).
+Le client n'a pas besoin de compte PichFlow. Le checkout collecte les coordonnées nécessaires, demande le pays configuré, puis crée une facture et redirige vers le checkout hébergé. La sélection de carte ou d'un portefeuille mobile est laissée à la page sécurisée du fournisseur : PichFlow n'accepte ni numéro de carte ni cryptogramme, et n'envoie pas de `channels` au fournisseur. La page hébergée n'affiche que les moyens activés dans la configuration du compte marchand.
 
+Le dépôt ne valide pas individuellement les moyens listés dans la documentation PayDunya ni leur activation sur le compte sandbox. Ils ne sont donc pas présentés comme disponibles dans PichFlow. La configuration locale actuelle limite le pays au Bénin et la devise à XOF.
+
+## URLs et callbacks
+
+Définissez `APP_URL` sur l'origine publique du site en production. En local, les URL de retour du navigateur peuvent pointer vers localhost; un callback serveur localhost n'est pas joignable depuis PayDunya. Pour tester l'IPN en local, définissez `PAYDUNYA_CALLBACK_URL` sur l'URL HTTPS publique d'un tunnel vers `/api/webhooks/paydunya`. La variable n'est pas requise pour la vérification serveur déclenchée au retour du navigateur.
+
+La création de facture ne confirme pas le paiement. PichFlow vérifie ensuite le token côté serveur; l'IPN est décodée à partir du champ documenté `data`, et son hash SHA-512 est comparé au hash de la Master Key avant la vérification du statut. Seul le statut confirmé met à jour la transaction.
+
+## Frais
+
+PichFlow ne majore pas le montant et ne déduit pas de frais supposés. Le flux standard documenté ne fournit pas de montant de frais vérifié dans la réponse utilisée ici; les frais et le montant net restent donc non confirmés plutôt que présentés comme des montants reçus.

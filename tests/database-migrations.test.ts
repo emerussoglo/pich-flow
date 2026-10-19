@@ -60,7 +60,7 @@ test('additive migrations are repeatable and preserve existing resource data', a
   await applyDatabaseMigrations(db);
 
   const migrations = await db.execute('SELECT version FROM schema_migrations ORDER BY version');
-  assert.deepEqual(migrations.rows.map((row) => Number(row.version)), [1, 2, 3, 4, 5, 6, 7, 8]);
+  assert.deepEqual(migrations.rows.map((row) => Number(row.version)), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
   const link = await db.execute({
     sql: 'SELECT id, title, usage_count, usage_limit FROM payment_links WHERE id = ?',
@@ -103,6 +103,8 @@ test('additive migrations are repeatable and preserve existing resource data', a
 
   const columns = await db.execute('PRAGMA table_info(api_credentials)');
   assert.ok(columns.rows.some((row) => row.name === 'secret_hash'));
+  const paymentLinkColumns = await db.execute('PRAGMA table_info(payment_links)');
+  assert.ok(paymentLinkColumns.rows.some((row) => row.name === 'expires_at'));
 
   const legacyCheckout = await db.execute({
     sql: 'SELECT user_id, application_id, reference FROM checkout_sessions WHERE id = ?',

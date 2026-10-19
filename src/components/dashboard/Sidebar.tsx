@@ -94,21 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <aside className={`pf-saspay-sidebar ${isOpenMobile ? 'open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
         {/* Desktop Header with Collapse Button */}
-        <div className="pf-sidebar-desktop-head">
-          {!isCollapsed && <span className="pf-sidebar-menu-title">MENU</span>}
-          {onToggleCollapse && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="pf-sidebar-collapse-btn"
-              title={isCollapsed ? 'Déplier le menu (Agrandir)' : 'Replier le menu (Réduire)'}
-              aria-label={isCollapsed ? 'Déplier la barre latérale' : 'Replier la barre latérale'}
-            >
-              <FontAwesomeIcon icon={isCollapsed ? faAnglesRight : faAnglesLeft} />
-            </button>
-          )}
-        </div>
-
+        
         {/* Mobile Header: MENU + Close X button */}
         <div className="pf-sidebar-mobile-head">
           <span className="pf-sidebar-menu-title">MENU</span>

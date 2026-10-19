@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '@/src/config/payments';
 import { getDb } from '@/src/server/db';
 import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
+import { getPaymentLinkUrl } from '@/src/server/urls';
 
 export const runtime = 'nodejs';
 
@@ -40,14 +41,16 @@ export async function GET(request: NextRequest) {
       amount: row.amount !== null ? Number(row.amount) : undefined,
       currency: String(row.currency || 'XOF'),
       isFixedAmount: Boolean(row.is_fixed_amount),
-      country: String(row.country || 'BJ'),
+      country: String(row.country || ''),
       redirectUrl: String(row.redirect_url || ''),
-      paymentCount: Number(row.usage_count || 0),
-      maxPayments: row.usage_limit !== null ? Number(row.usage_limit) : null,
+      status: String(row.status),
+      usageCount: Number(row.usage_count || 0),
+      usageLimit: row.usage_limit !== null ? Number(row.usage_limit) : null,
+      requirePhone: Boolean(row.require_phone),
       totalCollected: Number(row.total_collected || 0),
-      isActive: row.status === 'active',
       createdAt: String(row.created_at),
-      paymentUrl: `${process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin}/pay/${row.slug}`,
+      expiresAt: row.expires_at ? String(row.expires_at) : null,
+      paymentUrl: getPaymentLinkUrl(String(row.slug), request.nextUrl.origin),
     }));
 
     return NextResponse.json({ success: true, paymentLinks });
@@ -79,7 +82,9 @@ export async function POST(request: NextRequest) {
       ? null
       : Number(body.amount);
     const currency = typeof body.currency === 'string' ? body.currency.toUpperCase() : 'XOF';
-    const country = typeof body.country === 'string' ? body.country.toUpperCase() : 'BJ';
+    const country = typeof body.country === 'string' ? body.country.trim().toUpperCase() : '';
+    const expiresAtInput = typeof body.expiresAt === 'string' ? body.expiresAt.trim() : '';
+    const expiresAt = expiresAtInput ? new Date(`${expiresAtInput}T23:59:59.999Z`) : null;
     const usageLimitValue = body.maxPayments ?? body.usageLimit;
     const usageLimit = usageLimitValue === null || usageLimitValue === undefined || usageLimitValue === ''
       ? null
@@ -103,8 +108,11 @@ export async function POST(request: NextRequest) {
     if (!isFixedAmount && amount !== null) {
       return NextResponse.json({ success: false, error: 'Un lien à montant libre ne peut pas définir de montant fixe.' }, { status: 400 });
     }
-    if (currency !== 'XOF' || country !== 'BJ') {
+    if (currency !== 'XOF' || (country && country !== 'BJ')) {
       return NextResponse.json({ success: false, error: 'La configuration PayDunya vérifiée ici prend en charge les paiements en XOF au Bénin.' }, { status: 400 });
+    }
+    if (expiresAtInput && (!expiresAt || Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now())) {
+      return NextResponse.json({ success: false, error: 'La date d’expiration doit être une date future valide.' }, { status: 400 });
     }
     if (usageLimit !== null && (!Number.isInteger(usageLimit) || usageLimit < 1)) {
       return NextResponse.json({ success: false, error: 'La limite de paiements doit être un entier positif.' }, { status: 400 });
@@ -126,16 +134,15 @@ export async function POST(request: NextRequest) {
       sql: `INSERT INTO payment_links (
               id, user_id, application_id, slug, title, description, amount,
               is_fixed_amount, currency, country, status, usage_count, usage_limit,
-              require_phone, redirect_url, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, ?, ?, ?, ?, ?)`,
+              require_phone, expires_at, redirect_url, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, ?, ?, ?, ?, ?, ?)`,
       args: [
         id, user.id, applicationId, slug, title, description, amount,
         isFixedAmount ? 1 : 0, currency, country, usageLimit,
-        body.requirePhone === false ? 0 : 1, redirectUrl, now, now,
+        body.requirePhone === true ? 1 : 0, expiresAt?.toISOString() || null, redirectUrl, now, now,
       ],
     });
 
-    const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
     const paymentLink = {
       id,
       slug,
@@ -145,13 +152,16 @@ export async function POST(request: NextRequest) {
       currency,
       isFixedAmount,
       country,
+      expiresAt: expiresAt?.toISOString() || null,
       redirectUrl: redirectUrl || '',
-      paymentCount: 0,
-      maxPayments: usageLimit,
+      status: 'active',
+      usageCount: 0,
+      usageLimit,
+      requirePhone: body.requirePhone === true,
       totalCollected: 0,
       isActive: true,
       createdAt: now,
-      paymentUrl: `${baseUrl.replace(/\/$/, '')}/pay/${slug}`,
+      paymentUrl: getPaymentLinkUrl(slug, request.nextUrl.origin),
     };
 
     return NextResponse.json({ success: true, paymentLink });

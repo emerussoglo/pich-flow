@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { SUPPORTED_COUNTRIES } from '../src/config/countries';
 import { PRICING_CONFIG } from '../src/config/pricing';
 import { PayDunyaService } from '../src/server/paydunya';
+import { getAppBaseUrl, getPayDunyaCallbackUrl, getPaymentLinkUrl } from '../src/server/urls';
 import { hashPassword, verifyPassword } from '../src/server/auth';
 
 console.log('Running PichFlow offline regression checks...');
@@ -35,5 +36,44 @@ assert.equal(invalidInvoice.isSimulated, false);
 assert.equal(invalidInvoice.token, '');
 assert.equal(invalidInvoice.invoiceUrl, '');
 assert.match(invalidInvoice.error || '', /200 XOF/);
+
+const originalUrlEnv = {
+  appUrl: process.env.APP_URL,
+  publicAppUrl: process.env.NEXT_PUBLIC_APP_URL,
+  callbackUrl: process.env.PAYDUNYA_CALLBACK_URL,
+  vercelUrl: process.env.VERCEL_URL,
+  nodeEnv: process.env.NODE_ENV,
+};
+try {
+  Reflect.set(process.env, 'NODE_ENV', 'development');
+  process.env.APP_URL = 'http://localhost:3000/';
+  process.env.NEXT_PUBLIC_APP_URL = '';
+  delete process.env.VERCEL_URL;
+  delete process.env.PAYDUNYA_CALLBACK_URL;
+  assert.equal(getAppBaseUrl(), 'http://localhost:3000');
+  assert.equal(getPaymentLinkUrl('licence-1'), 'http://localhost:3000/pay/licence-1');
+
+  Reflect.set(process.env, 'NODE_ENV', 'production');
+  process.env.APP_URL = 'http://localhost:3000';
+  assert.throws(() => getAppBaseUrl(), /public HTTPS URL/);
+  process.env.APP_URL = '';
+  process.env.NEXT_PUBLIC_APP_URL = '';
+  process.env.VERCEL_URL = 'pichflow.vercel.app';
+  assert.equal(getPaymentLinkUrl('licence-1'), 'https://pichflow.vercel.app/pay/licence-1');
+
+  process.env.PAYDUNYA_CALLBACK_URL = 'https://example-tunnel.test/api/webhooks/paydunya';
+  assert.equal(getPayDunyaCallbackUrl(), 'https://example-tunnel.test/api/webhooks/paydunya');
+} finally {
+  if (originalUrlEnv.appUrl === undefined) delete process.env.APP_URL;
+  else process.env.APP_URL = originalUrlEnv.appUrl;
+  if (originalUrlEnv.publicAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+  else process.env.NEXT_PUBLIC_APP_URL = originalUrlEnv.publicAppUrl;
+  if (originalUrlEnv.callbackUrl === undefined) delete process.env.PAYDUNYA_CALLBACK_URL;
+  else process.env.PAYDUNYA_CALLBACK_URL = originalUrlEnv.callbackUrl;
+  if (originalUrlEnv.vercelUrl === undefined) delete process.env.VERCEL_URL;
+  else process.env.VERCEL_URL = originalUrlEnv.vercelUrl;
+  if (originalUrlEnv.nodeEnv === undefined) Reflect.deleteProperty(process.env, 'NODE_ENV');
+  else Reflect.set(process.env, 'NODE_ENV', originalUrlEnv.nodeEnv);
+}
 
 console.log('PichFlow offline regression checks passed.');

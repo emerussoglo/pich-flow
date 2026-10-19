@@ -212,6 +212,7 @@ export async function initDatabase(database: Client = getDb()): Promise<void> {
       usage_count INTEGER DEFAULT 0,
       usage_limit INTEGER,
       require_phone INTEGER DEFAULT 1,
+      expires_at TEXT,
       redirect_url TEXT,
       metadata TEXT,
       created_at TEXT NOT NULL,
@@ -470,6 +471,13 @@ const DATABASE_MIGRATIONS = [
     name: 'scope-payout-requests-to-applications',
     columns: [
       ['payout_requests', 'application_id', 'TEXT'],
+    ] as const,
+  },
+  {
+    version: 9,
+    name: 'add-payment-link-expiration',
+    columns: [
+      ['payment_links', 'expires_at', 'TEXT'],
     ] as const,
   },
 ] as const;
