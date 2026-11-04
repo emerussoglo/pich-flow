@@ -525,22 +525,44 @@ export const apiClient = {
   // Checkout
   checkout: {
     async initiate(data: Record<string, unknown>, idempotencyKey: string) {
-      return apiClient.request<{ success: boolean; reference: string; token: string; invoiceUrl: string; status: string }>('/checkout/initiate', {
+      return apiClient.request<{
+        success: boolean;
+        reference: string;
+        amount: number;
+        currency: string;
+        redirectUrl?: string;
+        message?: string;
+        requiresAuthorizationCode?: boolean;
+        status: string;
+      }>('/checkout/initiate', {
         method: 'POST',
         headers: { 'Idempotency-Key': idempotencyKey },
         body: JSON.stringify(data),
       });
     },
 
-    async confirm(data: { reference: string; phone?: string; operator?: string; otp?: string }) {
-      return apiClient.request<{ success: boolean; reference: string; status: string; message: string }>('/checkout/confirm', {
+    async confirm(data: { reference: string; authorizationCode?: string }) {
+      return apiClient.request<{
+        success: boolean;
+        reference: string;
+        status: string;
+        message: string;
+        requiresAuthorizationCode?: boolean;
+      }>('/checkout/confirm', {
         method: 'POST',
         body: JSON.stringify(data),
       });
     },
 
     async getStatus(reference: string) {
-      return apiClient.request<{ success: boolean; reference: string; status: string; amount: number; currency: string }>(`/checkout/status/${reference}`);
+      return apiClient.request<{
+        success: boolean;
+        reference: string;
+        status: string;
+        amount: number;
+        currency: string;
+        requiresAuthorizationCode?: boolean;
+      }>(`/checkout/status/${encodeURIComponent(reference)}`);
     },
   },
 };

@@ -1,5 +1,5 @@
-import { createClient, type Client } from '@libsql/client';
-import dotenv from 'dotenv';
+import 'server-only';
+import { createClient, type Client } from '@libsql/client';import dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config();
@@ -587,6 +587,24 @@ const DATABASE_MIGRATIONS = [
     version: 11,
     name: 'reconcile-confirmed-payments-to-wallet-ledger',
     columns: [] as const,
+  },
+  {
+    version: 12,
+    name: 'support-payment-link-amount-ranges-and-softpay-details',
+    columns: [
+      ['payment_links', 'amount_min', 'INTEGER'],
+      ['payment_links', 'amount_max', 'INTEGER'],
+      ['checkout_sessions', 'country', 'TEXT'],
+      ['checkout_sessions', 'payment_phone', 'TEXT'],
+      ['checkout_sessions', 'softpay_transaction_id', 'TEXT'],
+    ] as const,
+  },
+  {
+    version: 13,
+    name: 'track-softpay-secondary-authorization',
+    columns: [
+      ['checkout_sessions', 'softpay_authorized', 'INTEGER NOT NULL DEFAULT 0'],
+    ] as const,
   },
 ] as const;
 

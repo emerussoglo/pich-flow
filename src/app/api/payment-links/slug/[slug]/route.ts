@@ -33,6 +33,8 @@ export async function GET(
       title: String(row.title),
       description: String(row.description || ''),
       amount: row.amount !== null ? Number(row.amount) : undefined,
+      minAmount: row.amount_min !== null ? Number(row.amount_min) : null,
+      maxAmount: row.amount_max !== null ? Number(row.amount_max) : null,
       currency: String(row.currency || 'XOF'),
       isFixedAmount: Boolean(row.is_fixed_amount),
       country: String(row.country || ''),

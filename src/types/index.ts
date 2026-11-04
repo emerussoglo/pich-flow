@@ -69,6 +69,8 @@ export interface PaymentLink {
   title: string;
   description: string;
   amount: number | null; // null if open amount
+  minAmount?: number | null;
+  maxAmount?: number | null;
   isFixedAmount: boolean;
   currency: string;
   country: string;

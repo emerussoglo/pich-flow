@@ -16,6 +16,8 @@ import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../../config/payments';
 import {
   CHECKOUT_COUNTRIES,
   filterCountriesBySearch,
+  getPaymentMethodsForCountryAndCurrency,
+  normalizePaymentPhone,
   SUPPORTED_PAYMENT_CURRENCIES,
 } from '../../config/countries';
 
@@ -39,11 +41,16 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   const [lastName, setLastName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [paymentPhone, setPaymentPhone] = useState('');
+  const [paymentOtp, setPaymentOtp] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
   const [selectedCountryCode, setSelectedCountryCode] = useState('');
+  const [selectedMethodId, setSelectedMethodId] = useState('');
   const [countrySearch, setCountrySearch] = useState('');
-  const [requirePhone, setRequirePhone] = useState(false);
   const [isFixedAmount, setIsFixedAmount] = useState(true);
   const [amount, setAmount] = useState(initialAmount);
+  const [minimumAmount, setMinimumAmount] = useState<number | null>(null);
+  const [maximumAmount, setMaximumAmount] = useState<number | null>(null);
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState('');
   const [merchantName, setMerchantName] = useState('Marchand');
@@ -54,12 +61,22 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   const [status, setStatus] = useState<CheckoutStatus>('idle');
   const [transactionRef, setTransactionRef] = useState('');
   const [paydunyaInvoiceUrl, setPaydunyaInvoiceUrl] = useState('');
+  const [pendingMessage, setPendingMessage] = useState('');
+  const [requiresAuthorizationCode, setRequiresAuthorizationCode] = useState(false);
+  const [authorizationCode, setAuthorizationCode] = useState('');
+  const [isConfirmingAuthorization, setIsConfirmingAuthorization] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const submitLock = useRef(false);
-  const availableCountries = CHECKOUT_COUNTRIES.filter((country) => country.currency === currency);
+  const availableCountries = CHECKOUT_COUNTRIES.filter(
+    (country) => country.currency === currency || country.code === 'INT',
+  );
   const selectedCountry = availableCountries.find((country) => country.code === selectedCountryCode);
-  const minimumAmount = SUPPORTED_PAYMENT_CURRENCIES.find((supported) => supported.code === currency)?.minimumAmount
+  const selectedMethods = selectedCountry
+    ? getPaymentMethodsForCountryAndCurrency(selectedCountry.code, currency)
+    : [];
+  const selectedMethod = selectedMethods.find((method) => method.id === selectedMethodId);
+  const providerMinimumAmount = SUPPORTED_PAYMENT_CURRENCIES.find((supported) => supported.code === currency)?.minimumAmount
     ?? PAYDUNYA_MINIMUM_AMOUNT_XOF;
 
   useEffect(() => {
@@ -86,10 +103,18 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
         setMerchantName(String(link.merchantName || 'Marchand'));
         setCurrency(String(link.currency || 'XOF'));
         setIsFixedAmount(link.isFixedAmount !== false);
-        setRequirePhone(Boolean(link.requirePhone));
+        setMinimumAmount(link.minAmount === undefined || link.minAmount === null ? null : Number(link.minAmount));
+        setMaximumAmount(link.maxAmount === undefined || link.maxAmount === null ? null : Number(link.maxAmount));
         if (link.amount !== undefined && link.amount !== null) setAmount(Number(link.amount));
+        if (
+          link.isFixedAmount === false &&
+          (!Number.isSafeInteger(Number(link.minAmount)) || !Number.isSafeInteger(Number(link.maxAmount)))
+        ) {
+          setLinkError('Les limites de montant de ce lien doivent être configurées par le marchand avant le paiement.');
+        }
         const configuredCountry = CHECKOUT_COUNTRIES.find(
-          (country) => country.code === link.country && country.currency === link.currency,
+          (country) => country.code === link.country &&
+            (country.currency === link.currency || country.code === 'INT'),
         );
         if (configuredCountry) setSelectedCountryCode(configuredCountry.code);
         else if (link.country) setLinkError('Ce lien utilise un pays qui n’est pas disponible dans la configuration de paiement vérifiée.');
@@ -114,14 +139,17 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
         : await apiClient.checkout.getStatus(reference);
       if (result.status === 'success' || result.status === 'completed') {
         setStatus('success');
+        setRequiresAuthorizationCode(false);
         setErrorMessage('');
       } else if (result.status === 'failed' || result.status === 'cancelled' || result.status === 'canceled') {
         setStatus(result.status === 'failed' ? 'failed' : 'cancelled');
+        setRequiresAuthorizationCode(false);
         setErrorMessage(result.status === 'failed'
           ? 'Le paiement a été refusé.'
           : 'Le paiement a été annulé.');
-      } else if (manual) {
-        setErrorMessage('Paiement en cours de confirmation.');
+      } else {
+        setRequiresAuthorizationCode(Boolean(result.requiresAuthorizationCode));
+        if (manual) setErrorMessage('Paiement en cours de confirmation.');
       }
     } catch (error) {
       if (manual) {
@@ -158,11 +186,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
       setErrorMessage('Veuillez saisir une adresse e-mail valide.');
       return false;
     }
-    if (requirePhone && !phone.trim()) {
-      setErrorMessage('Veuillez saisir un numéro de téléphone de contact.');
-      return false;
-    }
-    if (phone.trim() && phone.replace(/\D/g, '').length < 7) {
+    if (!phone.trim() || phone.replace(/\D/g, '').length < 7) {
       setErrorMessage('Veuillez saisir un numéro de téléphone valide.');
       return false;
     }
@@ -171,10 +195,45 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
   };
 
   const validateAmount = (): boolean => {
-    if (!Number.isSafeInteger(amount) || amount < minimumAmount) {
-      setErrorMessage(`Saisissez un montant ${currency} entier d’au moins ${minimumAmount}.`);
+    if (!Number.isSafeInteger(amount) || amount < providerMinimumAmount) {
+      setErrorMessage(`Saisissez un montant ${currency} entier d’au moins ${providerMinimumAmount}.`);
       return false;
     }
+    if (
+      !isFixedAmount &&
+      (minimumAmount === null || maximumAmount === null ||
+        amount < minimumAmount || amount > maximumAmount)
+    ) {
+      setErrorMessage(`Le montant doit être compris entre ${minimumAmount} et ${maximumAmount} ${currency}.`);
+      return false;
+    }
+    return true;
+  };
+
+  const validatePaymentDetails = (): boolean => {
+    if (!selectedCountry || !selectedMethod) {
+      setErrorMessage('Sélectionnez un pays et un moyen de paiement.');
+      return false;
+    }
+    if (selectedMethod.phoneLength) {
+      const normalizedPhone = normalizePaymentPhone(paymentPhone, selectedCountry.code);
+      if (!new RegExp(`^\\d{${selectedMethod.phoneLength}}$`).test(normalizedPhone)) {
+        setErrorMessage(`Saisissez un numéro de ${selectedMethod.phoneLength} chiffres pour ${selectedMethod.name}.`);
+        return false;
+      }
+    }
+    if (
+      (selectedMethod.input === 'orange-ci-otp' || selectedMethod.input === 'orange-bf-otp') &&
+      !/^\d{4,8}$/.test(paymentOtp.replace(/\D/g, ''))
+    ) {
+      setErrorMessage('Saisissez le code de paiement reçu pour cet opérateur.');
+      return false;
+    }
+    if (selectedMethod.input === 'customer-address' && customerAddress.trim().length < 2) {
+      setErrorMessage('Saisissez votre adresse pour ce moyen de paiement.');
+      return false;
+    }
+    setErrorMessage('');
     return true;
   };
 
@@ -184,8 +243,8 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
       return;
     }
     if (step === 2) {
-      if (!selectedCountry) {
-        setErrorMessage('Sélectionnez un pays pris en charge.');
+      if (!selectedCountry || !selectedMethod) {
+        setErrorMessage('Sélectionnez un pays et un moyen de paiement.');
         return;
       }
       setErrorMessage('');
@@ -200,11 +259,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
       setStep(1);
       return;
     }
-    if (!selectedCountryCode) {
-      setStep(2);
-      setErrorMessage('Sélectionnez un pays pris en charge.');
-      return;
-    }
+    if (!validatePaymentDetails()) return;
     if (!validateAmount()) {
       setStep(1);
       return;
@@ -225,12 +280,18 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
         customerName: `${firstName.trim()} ${lastName.trim()}`,
         customerEmail: customerEmail.trim(),
         customerPhone: phone.trim(),
+        paymentMethod: selectedMethodId,
+        paymentPhone: selectedMethod?.phoneLength ? normalizePaymentPhone(paymentPhone, selectedCountryCode) : '',
+        paymentOtp: paymentOtp.trim(),
+        customerAddress: customerAddress.trim(),
         country: selectedCountryCode,
       }, window.crypto.randomUUID());
       setTransactionRef(result.reference);
-      setPaydunyaInvoiceUrl(result.invoiceUrl);
+      setPaydunyaInvoiceUrl(result.redirectUrl || '');
+      setPendingMessage(result.message || 'Paiement en attente de confirmation.');
+      setRequiresAuthorizationCode(Boolean(result.requiresAuthorizationCode));
       setStatus('pending');
-      if (result.invoiceUrl) window.location.assign(result.invoiceUrl);
+      if (result.redirectUrl) window.location.assign(result.redirectUrl);
     } catch (error) {
       setStatus('failed');
       setErrorMessage(error instanceof Error ? error.message : 'Impossible de préparer le paiement sécurisé.');
@@ -244,7 +305,33 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
     setErrorMessage('');
     setPaydunyaInvoiceUrl('');
     setTransactionRef('');
+    setAuthorizationCode('');
+    setRequiresAuthorizationCode(false);
     setStep(3);
+  };
+
+  const submitWizallAuthorization = async () => {
+    if (!transactionRef || !/^\d{4,8}$/.test(authorizationCode.trim())) {
+      setErrorMessage('Saisissez le code de confirmation reçu de Wizall.');
+      return;
+    }
+    setIsConfirmingAuthorization(true);
+    setErrorMessage('');
+    try {
+      const result = await apiClient.checkout.confirm({
+        reference: transactionRef,
+        authorizationCode: authorizationCode.trim(),
+      });
+      setPendingMessage(result.message || 'Code transmis. Vérification du paiement en cours.');
+      setRequiresAuthorizationCode(Boolean(result.requiresAuthorizationCode));
+      if (result.status === 'success' || result.status === 'completed') {
+        setStatus('success');
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Impossible de confirmer le code Wizall.');
+    } finally {
+      setIsConfirmingAuthorization(false);
+    }
   };
 
   const formatAmount = (value: number) => new Intl.NumberFormat('fr-FR').format(value);
@@ -281,7 +368,7 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                 {description && <p className="pf-saspay-pending-sub">{description}</p>}
 
                 <nav aria-label="Étapes du paiement" style={{ display: 'flex', gap: 8, margin: '1.25rem 0' }}>
-                  {['Vos informations', 'Pays et paiement', 'Confirmation'].map((label, index) => (
+                  {['Vos informations', 'Pays et paiement', 'Numéro et confirmation'].map((label, index) => (
                     <div key={label} aria-current={step === index + 1 ? 'step' : undefined} style={{
                       flex: 1, padding: '0.65rem 0.4rem', borderRadius: 10, textAlign: 'center',
                       color: step === index + 1 ? '#5E30E8' : '#64748B',
@@ -302,7 +389,8 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                         <input
                           className="pf-saspay-input"
                           type="number"
-                          min={minimumAmount}
+                          min={minimumAmount ?? providerMinimumAmount}
+                          max={maximumAmount ?? undefined}
                           step="1"
                           required
                           value={amount || ''}
@@ -311,7 +399,9 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                             setErrorMessage('');
                           }}
                         />
-                        <small>Minimum {formatAmount(minimumAmount)} {currency}</small>
+                        <small>
+                          Montant autorisé : {formatAmount(minimumAmount ?? providerMinimumAmount)} à {formatAmount(maximumAmount ?? 0)} {currency}
+                        </small>
                       </label>
                     ) : (
                       <div className="pf-saspay-summary-box" aria-label="Montant fixe du paiement">
@@ -335,19 +425,13 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                       <span className="pf-saspay-label">Adresse e-mail *</span>
                       <input className="pf-saspay-input" type="email" autoComplete="email" required value={customerEmail} onChange={(event) => setCustomerEmail(event.target.value)} />
                     </label>
-                    {requirePhone && (
-                      <label className="pf-saspay-form-group">
-                        <span className="pf-saspay-label">Numéro de téléphone de contact *</span>
-                        <div className="pf-saspay-phone-row">
-                          <input className="pf-saspay-phone-input" type="tel" autoComplete="tel" required value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+229 01 23 45 67" />
-                        </div>
-                      </label>
-                    )}
-                    {!requirePhone && (
-                      <p className="pf-saspay-pending-sub">
-                        Le marchand n’a pas demandé de numéro de contact. Les informations nécessaires au moyen de paiement seront saisies séparément sur la page sécurisée.
-                      </p>
-                    )}
+                    <label className="pf-saspay-form-group">
+                      <span className="pf-saspay-label">Numéro de téléphone de contact *</span>
+                      <div className="pf-saspay-phone-row">
+                        <input className="pf-saspay-phone-input" type="tel" autoComplete="tel" required value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+229 01 23 45 67" />
+                      </div>
+                      <small>Le numéro du portefeuille de paiement sera demandé séparément à l’étape suivante.</small>
+                    </label>
                   </section>
                 )}
 
@@ -366,13 +450,17 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                         disabled={visibleCountries.length === 0}
                         onChange={(event) => {
                           setSelectedCountryCode(event.target.value);
+                          setSelectedMethodId('');
+                          setPaymentPhone('');
+                          setPaymentOtp('');
+                          setCustomerAddress('');
                           setErrorMessage('');
                         }}
                       >
                         <option value="" disabled>Choisir un pays</option>
                         {visibleCountries.map((country) => (
                           <option key={country.code} value={country.code}>
-                            {country.flag} {country.name} ({country.dialCode}) · {country.currency}
+                            {country.flag} {country.name}{country.dialCode ? ` (${country.dialCode})` : ''} · {country.code === 'INT' ? currency : country.currency}
                           </option>
                         ))}
                       </select>
@@ -381,34 +469,92 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                       )}
                     </label>
                     {selectedCountry && (
-                      <div className="pf-saspay-method-card" aria-label="Moyen de paiement">
-                        <FontAwesomeIcon icon={faLock} />
-                        <span>
-                          Paiement sécurisé
-                          <small style={{ display: 'block', color: '#64748B', fontWeight: 400 }}>
-                            Les moyens disponibles et, si nécessaire, le numéro de paiement seront demandés sur la page sécurisée.
-                          </small>
-                        </span>
-                      </div>
+                      <fieldset className="pf-saspay-form-group" style={{ border: 0, padding: 0, margin: '1rem 0' }}>
+                        <legend className="pf-saspay-label">Moyen de paiement</legend>
+                        {selectedMethods.map((method) => (
+                          <label
+                            key={method.id}
+                            className="pf-saspay-method-card"
+                            style={{ cursor: 'pointer', borderColor: selectedMethodId === method.id ? '#5E30E8' : undefined }}
+                          >
+                            <input
+                              type="radio"
+                              name="payment-method"
+                              value={method.id}
+                              checked={selectedMethodId === method.id}
+                              onChange={() => {
+                                setSelectedMethodId(method.id);
+                                setPaymentPhone('');
+                                setPaymentOtp('');
+                                setCustomerAddress('');
+                                setErrorMessage('');
+                              }}
+                            />
+                            <span>{method.name}</span>
+                            {method.type === 'card' && <small>Checkout sécurisé hébergé par PayDunya</small>}
+                          </label>
+                        ))}
+                      </fieldset>
                     )}
                     <div className="pf-saspay-notice-chip" style={{ marginTop: 16 }}>
-                      <FontAwesomeIcon icon={faShieldHalved} /> PichFlow ne collecte ni numéro de carte, ni code PIN, ni mot de passe Mobile Money. Aucun canal SoftPay par opérateur n’est déclaré actif sans validation du compte.
+                      <FontAwesomeIcon icon={faShieldHalved} /> Les canaux affichés suivent la documentation PayDunya. Leur activation sur le compte marchand doit être confirmée auprès de PayDunya. PichFlow ne collecte jamais de code PIN ni de numéro de carte.
                     </div>
                   </section>
                 )}
 
                 {step === 3 && (
                   <section aria-labelledby="checkout-confirm-title">
-                    <h1 id="checkout-confirm-title">Confirmer et payer</h1>
+                    <h1 id="checkout-confirm-title">Coordonnées de paiement</h1>
+                    {selectedMethod?.phoneLength && selectedCountry && (
+                      <label className="pf-saspay-form-group">
+                        <span className="pf-saspay-label">Numéro {selectedMethod.name} *</span>
+                        <input
+                          className="pf-saspay-input"
+                          type="tel"
+                          autoComplete="tel-national"
+                          required
+                          value={paymentPhone}
+                          onChange={(event) => setPaymentPhone(event.target.value)}
+                          placeholder={`${selectedCountry.dialCode} …`}
+                        />
+                        <small>Entrez le numéro local de {selectedMethod.phoneLength} chiffres, ou son équivalent international.</small>
+                      </label>
+                    )}
+                    {selectedMethod?.input === 'orange-ci-otp' && (
+                      <label className="pf-saspay-form-group">
+                        <span className="pf-saspay-label">Code de paiement Orange Money *</span>
+                        <input className="pf-saspay-input" inputMode="numeric" autoComplete="one-time-code" required value={paymentOtp} onChange={(event) => setPaymentOtp(event.target.value)} />
+                        <small>{selectedMethod.instructions}</small>
+                      </label>
+                    )}
+                    {selectedMethod?.input === 'orange-bf-otp' && (
+                      <label className="pf-saspay-form-group">
+                        <span className="pf-saspay-label">Code de paiement Orange Money *</span>
+                        <input className="pf-saspay-input" inputMode="numeric" autoComplete="one-time-code" required value={paymentOtp} onChange={(event) => setPaymentOtp(event.target.value)} />
+                        <small>Obtenez le code de paiement Orange Money avant de lancer la transaction.</small>
+                      </label>
+                    )}
+                    {selectedMethod?.input === 'customer-address' && (
+                      <label className="pf-saspay-form-group">
+                        <span className="pf-saspay-label">Adresse *</span>
+                        <input className="pf-saspay-input" autoComplete="street-address" required value={customerAddress} onChange={(event) => setCustomerAddress(event.target.value)} />
+                      </label>
+                    )}
+                    {selectedMethod?.type === 'card' && (
+                      <p className="pf-saspay-pending-sub">
+                        La saisie de la carte et toute étape 3-D Secure se feront sur la page hébergée par PayDunya. PichFlow ne reçoit pas les données de carte.
+                      </p>
+                    )}
                     <div className="pf-saspay-summary-box">
                       <div className="pf-saspay-summary-row"><span>Produit</span><strong>{title}</strong></div>
                       {description && <div className="pf-saspay-summary-row"><span>Description</span><strong>{description}</strong></div>}
                       <div className="pf-saspay-summary-row"><span>Montant du produit</span><strong>{formatAmount(amount)} {currency}</strong></div>
                       <div className="pf-saspay-summary-row"><span>Pays</span><strong>{selectedCountry?.flag} {selectedCountry?.name}</strong></div>
-                      <div className="pf-saspay-summary-row"><span>Moyen de paiement</span><strong>Choix sur la page sécurisée</strong></div>
+                      <div className="pf-saspay-summary-row"><span>Moyen de paiement</span><strong>{selectedMethod?.name}</strong></div>
                       <div className="pf-saspay-summary-row"><span>Client</span><strong>{firstName} {lastName}</strong></div>
                       <div className="pf-saspay-summary-row"><span>E-mail</span><strong>{customerEmail}</strong></div>
-                      {phone && <div className="pf-saspay-summary-row"><span>Téléphone de contact</span><strong>{phone}</strong></div>}
+                      <div className="pf-saspay-summary-row"><span>Téléphone de contact</span><strong>{phone}</strong></div>
+                      {paymentPhone && <div className="pf-saspay-summary-row"><span>Téléphone de paiement</span><strong>{paymentPhone}</strong></div>}
                       <div className="pf-saspay-summary-row"><span>Frais fournisseur</span><strong>Non connus avant le paiement</strong></div>
                       <div className="pf-saspay-summary-divider" />
                       <div className="pf-saspay-summary-total">
@@ -431,8 +577,8 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
                       Continuer <FontAwesomeIcon icon={faArrowRight} />
                     </button>
                   ) : (
-                    <button type="submit" className="pf-saspay-submit-btn" disabled={isLinkLoading || !paymentLinkId}>
-                      <FontAwesomeIcon icon={faLock} /> Payer {formatAmount(amount)} {currency}
+                    <button type="submit" className="pf-saspay-submit-btn" disabled={isLinkLoading || !paymentLinkId || !selectedMethod}>
+                      <FontAwesomeIcon icon={faLock} /> Lancer le paiement · {formatAmount(amount)} {currency}
                     </button>
                   )}
                 </div>
@@ -453,7 +599,24 @@ export const HostedCheckoutPage: React.FC<HostedCheckoutPageProps> = ({
           <div className="pf-saspay-pending-view">
             <FontAwesomeIcon icon={faSpinner} spin />
             <h1>Paiement en cours de confirmation</h1>
-            <p>Nous vérifions la transaction auprès du moyen de paiement.</p>
+            <p>{pendingMessage || 'Nous vérifions la transaction auprès du moyen de paiement.'}</p>
+            {requiresAuthorizationCode && (
+              <form onSubmit={(event) => { event.preventDefault(); void submitWizallAuthorization(); }}>
+                <label className="pf-saspay-form-group">
+                  <span className="pf-saspay-label">Code de confirmation Wizall</span>
+                  <input
+                    className="pf-saspay-input"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={authorizationCode}
+                    onChange={(event) => setAuthorizationCode(event.target.value)}
+                  />
+                </label>
+                <button type="submit" className="pf-saspay-submit-btn" disabled={isConfirmingAuthorization}>
+                  {isConfirmingAuthorization ? 'Confirmation…' : 'Confirmer le code'}
+                </button>
+              </form>
+            )}
             {errorMessage && <p role="alert">{errorMessage}</p>}
             {paydunyaInvoiceUrl && (
               <a href={paydunyaInvoiceUrl} className="pf-saspay-submit-btn">

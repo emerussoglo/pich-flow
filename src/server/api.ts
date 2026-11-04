@@ -13,8 +13,7 @@ import {
   userOwnsApplication,
 } from './auth';
 import { paydunyaService, dispatchMerchantWebhook } from './paydunya';
-import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '../config/payments';
-import { CHECKOUT_COUNTRIES, isSupportedPaymentCurrency } from '../config/countries';
+import { countrySupportsCurrency, getPaymentMethodsForCountryAndCurrency, isSupportedPaymentCurrency, SUPPORTED_PAYMENT_CURRENCIES, normalizePaymentPhone } from '../config/countries';
 import { getAppBaseUrl, getPayDunyaCallbackUrl } from './urls';
 import { sasPayService, formatDecimalAmount } from './saspay';
 import {
@@ -1076,6 +1075,8 @@ apiRouter.get('/payment-links', requireAuth, async (req: AuthenticatedRequest, r
       title: String(row.title),
       description: String(row.description || ''),
       amount: row.amount !== null ? Number(row.amount) : null,
+      minAmount: row.amount_min !== null ? Number(row.amount_min) : null,
+      maxAmount: row.amount_max !== null ? Number(row.amount_max) : null,
       isFixedAmount: Boolean(row.is_fixed_amount),
       currency: String(row.currency || 'XOF'),
       country: String(row.country || ''),
@@ -1096,11 +1097,13 @@ apiRouter.get('/payment-links', requireAuth, async (req: AuthenticatedRequest, r
 
 apiRouter.post('/payment-links', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { title, description, amount, isFixedAmount, currency, country, usageLimit, requirePhone, redirectUrl, applicationId } = req.body;
+    const { title, description, amount, minAmount, maxAmount, isFixedAmount, currency, country, usageLimit, requirePhone, redirectUrl, applicationId } = req.body;
     const cleanTitle = typeof title === 'string' ? title.trim() : '';
     const fixedAmount = isFixedAmount !== false;
     const numericAmount = amount === undefined || amount === null || amount === '' ? null : Number(amount);
     const cleanCurrency = typeof currency === 'string' ? currency.toUpperCase() : 'XOF';
+    const numericMinAmount = minAmount === undefined || minAmount === null || minAmount === '' ? null : Number(minAmount);
+    const numericMaxAmount = maxAmount === undefined || maxAmount === null || maxAmount === '' ? null : Number(maxAmount);
     const cleanCountry = typeof country === 'string' ? country.trim().toUpperCase() : '';
     const expiresAtValue = typeof req.body?.expiresAt === 'string' ? req.body.expiresAt.trim() : '';
     const expiresAt = expiresAtValue ? new Date(`${expiresAtValue}T23:59:59.999Z`) : null;
@@ -1113,19 +1116,32 @@ apiRouter.post('/payment-links', requireAuth, async (req: AuthenticatedRequest, 
       res.status(400).json({ success: false, error: 'Le nom du produit est requis (140 caractères maximum).' });
       return;
     }
-    if (fixedAmount && (numericAmount === null || !Number.isSafeInteger(numericAmount) || numericAmount < PAYDUNYA_MINIMUM_AMOUNT_XOF)) {
-      res.status(400).json({ success: false, error: `Saisissez un montant fixe entier d’au moins ${PAYDUNYA_MINIMUM_AMOUNT_XOF} XOF.` });
+    const minimumAmount = SUPPORTED_PAYMENT_CURRENCIES.find((supported) => supported.code === cleanCurrency)?.minimumAmount;
+    if (fixedAmount && (numericAmount === null || !Number.isSafeInteger(numericAmount) || numericAmount < (minimumAmount || 1))) {
+      res.status(400).json({ success: false, error: `Saisissez un montant fixe entier d’au moins ${minimumAmount || 1} ${cleanCurrency}.` });
       return;
     }
-    if (!fixedAmount && numericAmount !== null) {
-      res.status(400).json({ success: false, error: 'Un lien à montant libre ne peut pas définir de montant fixe.' });
+    if (fixedAmount && (numericMinAmount !== null || numericMaxAmount !== null)) {
+      res.status(400).json({ success: false, error: 'Un lien à montant fixe ne peut pas définir de limites de montant.' });
+      return;
+    }
+    if (!fixedAmount && (
+      numericAmount !== null ||
+      numericMinAmount === null ||
+      numericMaxAmount === null ||
+      !Number.isSafeInteger(numericMinAmount) ||
+      !Number.isSafeInteger(numericMaxAmount) ||
+      numericMinAmount < (minimumAmount || 1) ||
+      numericMaxAmount < numericMinAmount
+    )) {
+      res.status(400).json({ success: false, error: `Pour un montant libre, définissez des limites entières comprises entre ${minimumAmount || 1} et un maximum supérieur ou égal, en ${cleanCurrency}.` });
       return;
     }
     if (!isSupportedPaymentCurrency(cleanCurrency)) {
       res.status(400).json({ success: false, error: 'Cette devise n’est pas prise en charge par le flux PayDunya actuellement configuré.' });
       return;
     }
-    if (cleanCountry && !CHECKOUT_COUNTRIES.some((supportedCountry) => supportedCountry.code === cleanCountry && supportedCountry.currency === cleanCurrency)) {
+    if (cleanCountry && !countrySupportsCurrency(cleanCountry, cleanCurrency)) {
       res.status(400).json({ success: false, error: 'Ce pays n’est pas disponible pour la devise sélectionnée dans le flux PayDunya actuellement configuré.' });
       return;
     }
@@ -1151,8 +1167,8 @@ apiRouter.post('/payment-links', requireAuth, async (req: AuthenticatedRequest, 
 
     const db = getDb();
     await db.execute({
-      sql: `INSERT INTO payment_links (id, user_id, application_id, slug, title, description, amount, is_fixed_amount, currency, country, status, usage_count, usage_limit, require_phone, expires_at, redirect_url, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO payment_links (id, user_id, application_id, slug, title, description, amount, amount_min, amount_max, is_fixed_amount, currency, country, status, usage_count, usage_limit, require_phone, expires_at, redirect_url, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         id,
         req.user!.id,
@@ -1161,6 +1177,8 @@ apiRouter.post('/payment-links', requireAuth, async (req: AuthenticatedRequest, 
         cleanTitle,
         typeof description === 'string' ? description.trim() : '',
         numericAmount,
+        numericMinAmount,
+        numericMaxAmount,
         fixedAmount ? 1 : 0,
         cleanCurrency,
         cleanCountry,
@@ -1181,6 +1199,8 @@ apiRouter.post('/payment-links', requireAuth, async (req: AuthenticatedRequest, 
       title: cleanTitle,
       description: typeof description === 'string' ? description.trim() : '',
       amount: numericAmount,
+      minAmount: numericMinAmount,
+      maxAmount: numericMaxAmount,
       isFixedAmount: fixedAmount,
       currency: cleanCurrency,
       country: cleanCountry,
@@ -1281,6 +1301,8 @@ apiRouter.get('/payment-links/:id', requireAuth, async (req: AuthenticatedReques
         title: String(pl.title),
         description: String(pl.description || ''),
         amount: pl.amount !== null ? Number(pl.amount) : null,
+        minAmount: pl.amount_min !== null ? Number(pl.amount_min) : null,
+        maxAmount: pl.amount_max !== null ? Number(pl.amount_max) : null,
         isFixedAmount: Boolean(pl.is_fixed_amount),
         currency: String(pl.currency || 'XOF'),
         country: String(pl.country || 'BJ'),
@@ -1313,14 +1335,43 @@ apiRouter.get('/payment-links/:id', requireAuth, async (req: AuthenticatedReques
 // Update Payment Link
 apiRouter.put('/payment-links/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { title, description, amount, isFixedAmount, status } = req.body;
+    const { title, description, amount, minAmount, maxAmount, isFixedAmount, status } = req.body;
     const db = getDb();
+    const existing = await db.execute({
+      sql: 'SELECT is_fixed_amount, currency, amount_min, amount_max FROM payment_links WHERE id = ? AND user_id = ?',
+      args: [req.params.id, req.user!.id],
+    });
+    if (existing.rows.length === 0) {
+      res.status(404).json({ success: false, error: 'Lien de paiement introuvable.' });
+      return;
+    }
+    const currentLink = existing.rows[0];
+    const currency = String(currentLink.currency || 'XOF');
+    const minimumAmount = SUPPORTED_PAYMENT_CURRENCIES.find((supported) => supported.code === currency)?.minimumAmount || 1;
+    const fixedAmount = isFixedAmount === undefined ? Boolean(currentLink.is_fixed_amount) : isFixedAmount === true;
+    if (fixedAmount && amount !== undefined && (!Number.isSafeInteger(Number(amount)) || Number(amount) < minimumAmount)) {
+      res.status(400).json({ success: false, error: `Le montant du lien doit être un entier d’au moins ${minimumAmount} ${currency}.` });
+      return;
+    }
+    const nextMinimum = minAmount === undefined ? Number(currentLink.amount_min) : Number(minAmount);
+    const nextMaximum = maxAmount === undefined ? Number(currentLink.amount_max) : Number(maxAmount);
+    if (!fixedAmount && (
+      !Number.isSafeInteger(nextMinimum) ||
+      !Number.isSafeInteger(nextMaximum) ||
+      nextMinimum < minimumAmount ||
+      nextMaximum < nextMinimum
+    )) {
+      res.status(400).json({ success: false, error: `Définissez une fourchette entière valide en ${currency}.` });
+      return;
+    }
     await db.execute({
       sql: `UPDATE payment_links SET 
             title = COALESCE(?, title),
             description = COALESCE(?, description),
             amount = COALESCE(?, amount),
             is_fixed_amount = COALESCE(?, is_fixed_amount),
+            amount_min = ?,
+            amount_max = ?,
             status = COALESCE(?, status),
             updated_at = ?
             WHERE id = ? AND user_id = ?`,
@@ -1329,6 +1380,8 @@ apiRouter.put('/payment-links/:id', requireAuth, async (req: AuthenticatedReques
         description,
         amount !== undefined ? amount : null,
         isFixedAmount !== undefined ? (isFixedAmount ? 1 : 0) : null,
+        fixedAmount ? null : nextMinimum,
+        fixedAmount ? null : nextMaximum,
         status,
         new Date().toISOString(),
         req.params.id,
@@ -2546,7 +2599,7 @@ async function settleSuccessfulPayment(params: {
       providerFeesConfirmed: false,
       netAmount: null,
       status: 'success',
-      paymentMethod: 'PayDunya checkout',
+      paymentMethod: params.paymentMethod || 'PayDunya',
       customerName: custName,
       customerEmail: custEmail,
       customerPhone: custPhone,
@@ -2570,6 +2623,10 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
       customerName,
       customerEmail,
       customerPhone,
+      paymentMethod: requestedPaymentMethod,
+      paymentPhone: requestedPaymentPhone,
+      paymentOtp,
+      customerAddress,
       country: requestedCountry,
     } = req.body || {};
     const db = getDb();
@@ -2603,34 +2660,74 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
     const cleanCustomerName = `${cleanFirstName} ${cleanLastName}`.trim() || String(customerName || '').trim();
     const cleanEmail = String(customerEmail || '').trim().toLowerCase();
     const cleanPhone = String(customerPhone || '').trim();
-    const requirePhone = Boolean(link.require_phone);
     if (
       !cleanFirstName ||
       !cleanLastName ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) ||
-      (requirePhone && cleanPhone.replace(/\D/g, '').length < 7) ||
-      (cleanPhone && cleanPhone.replace(/\D/g, '').length < 7)
+      cleanPhone.replace(/\D/g, '').length < 7
     ) {
-      res.status(400).json({ success: false, error: 'Prénom, nom et adresse e-mail valides sont requis; le numéro de contact est requis uniquement si le marchand l’a demandé.' });
+      res.status(400).json({ success: false, error: 'Prénom, nom, numéro de téléphone et adresse e-mail valides sont requis.' });
       return;
     }
 
     const isFixedAmount = Boolean(link.is_fixed_amount);
+    const currency = String(link.currency || 'XOF').toUpperCase();
+    const minimumAmount = SUPPORTED_PAYMENT_CURRENCIES.find((supported) => supported.code === currency)?.minimumAmount;
     const amount = isFixedAmount ? Number(link.amount) : Number(requestedAmount);
-    if (!Number.isSafeInteger(amount) || amount < PAYDUNYA_MINIMUM_AMOUNT_XOF) {
+    if (!Number.isSafeInteger(amount) || amount < (minimumAmount || 1)) {
       res.status(400).json({
         success: false,
-        error: `Le montant doit être un montant XOF entier d’au moins ${PAYDUNYA_MINIMUM_AMOUNT_XOF}.`,
+        error: `Le montant doit être un montant ${currency} entier d’au moins ${minimumAmount || 1}.`,
       });
       return;
     }
-    const currency = String(link.currency || 'XOF').toUpperCase();
+    if (!isFixedAmount && (
+      !Number.isSafeInteger(Number(link.amount_min)) ||
+      !Number.isSafeInteger(Number(link.amount_max)) ||
+      Number(link.amount_min) < (minimumAmount || 1) ||
+      Number(link.amount_max) < Number(link.amount_min)
+    )) {
+      res.status(409).json({ success: false, error: 'Les limites de montant de ce lien doivent être configurées par le marchand.' });
+      return;
+    }
+    if (!isFixedAmount && (amount < Number(link.amount_min) || amount > Number(link.amount_max))) {
+      res.status(400).json({
+        success: false,
+        error: `Le montant doit être compris entre ${Number(link.amount_min)} et ${Number(link.amount_max)} ${currency}.`,
+      });
+      return;
+    }
     const country = String(requestedCountry || link.country || '').trim().toUpperCase();
     if (
       !isSupportedPaymentCurrency(currency) ||
-      !CHECKOUT_COUNTRIES.some((supportedCountry) => supportedCountry.code === country && supportedCountry.currency === currency)
+      !countrySupportsCurrency(country, currency)
     ) {
       res.status(400).json({ success: false, error: 'Le pays ou la devise ne sont pas disponibles dans le flux PayDunya actuellement configuré.' });
+      return;
+    }
+    const methodId = String(requestedPaymentMethod || '').trim();
+    const method = getPaymentMethodsForCountryAndCurrency(country, currency)
+      .find((supportedMethod) => supportedMethod.id === methodId);
+    if (!method) {
+      res.status(400).json({ success: false, error: 'Ce moyen de paiement n’est pas disponible dans le pays sélectionné.' });
+      return;
+    }
+
+    const paymentPhone = method.type === 'mobile_money'
+      ? normalizePaymentPhone(String(requestedPaymentPhone || ''), country)
+      : '';
+    if (method.phoneLength && !new RegExp(`^\\d{${method.phoneLength}}$`).test(paymentPhone)) {
+      res.status(400).json({ success: false, error: `Le numéro doit contenir ${method.phoneLength} chiffres pour ${method.name}.` });
+      return;
+    }
+    const otp = typeof paymentOtp === 'string' ? paymentOtp.replace(/\D/g, '') : '';
+    if ((method.input === 'orange-ci-otp' || method.input === 'orange-bf-otp') && !/^\d{4,8}$/.test(otp)) {
+      res.status(400).json({ success: false, error: 'Saisissez le code de paiement reçu pour cet opérateur.' });
+      return;
+    }
+    const address = typeof customerAddress === 'string' ? customerAddress.trim().slice(0, 160) : '';
+    if (method.input === 'customer-address' && address.length < 2) {
+      res.status(400).json({ success: false, error: 'Saisissez votre adresse pour ce moyen de paiement.' });
       return;
     }
 
@@ -2640,8 +2737,7 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
     let callbackUrl: string;
     try {
       appUrl = getAppBaseUrl();
-      returnUrl = new URL('/checkout-demo', `${appUrl}/`);
-      returnUrl.searchParams.set('slug', String(link.slug));
+      returnUrl = new URL(`/pay/${encodeURIComponent(String(link.slug))}`, `${appUrl}/`);
       callbackUrl = getPayDunyaCallbackUrl();
     } catch (error) {
       console.error('[PayDunya] Checkout URL configuration is invalid:', error instanceof Error ? error.message : 'unknown');
@@ -2662,7 +2758,7 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
     });
     if (existingRequest.rows.length > 0) {
       const existingSession = await db.execute({
-        sql: 'SELECT reference, status, amount, currency, paydunya_url FROM checkout_sessions WHERE reference = ?',
+        sql: 'SELECT reference, status, amount, currency, paydunya_url, payment_method, softpay_transaction_id, softpay_authorized FROM checkout_sessions WHERE reference = ?',
         args: [String(existingRequest.rows[0].reference)],
       });
       if (existingSession.rows.length > 0) {
@@ -2670,7 +2766,9 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
         if (session.paydunya_url) {
           res.json({
             success: true, reference: session.reference, amount: session.amount,
-            currency: session.currency, invoiceUrl: session.paydunya_url, status: session.status,
+            currency: session.currency, redirectUrl: session.paydunya_url, status: session.status,
+            requiresAuthorizationCode: session.payment_method === 'wizall-senegal' &&
+              Boolean(session.softpay_transaction_id) && !Boolean(session.softpay_authorized),
           });
           return;
         }
@@ -2696,8 +2794,8 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
       sql: `INSERT INTO checkout_sessions (
               id, payment_link_id, application_id, user_id, reference,
               amount, currency, customer_name, customer_email, customer_phone, 
-              status, idempotency_key, provider, payment_method, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'paydunya', 'PayDunya checkout', ?, ?)`,
+              country, payment_phone, status, idempotency_key, provider, payment_method, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'paydunya', ?, ?, ?)`,
       args: [
         sessionId,
         String(link.id),
@@ -2709,7 +2807,10 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
         cleanCustomerName,
         cleanEmail,
         cleanPhone,
+        country,
+        paymentPhone,
         idempotencyKey,
+        method.id,
         now,
         now,
       ],
@@ -2720,10 +2821,10 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
               customer_phone, country, provider, amount, provider_fee, platform_fee,
               customer_fee, net_amount, currency, status, description, payment_method,
               metadata, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PayDunya', ?, 0, 0, 0, 0, ?, 'pending', ?, 'PayDunya checkout', ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PayDunya', ?, 0, 0, 0, 0, ?, 'pending', ?, ?, ?, ?, ?)` ,
       args: [
         `tx_${crypto.randomUUID()}`, userId, applicationId, reference, cleanCustomerName,
-        cleanEmail, cleanPhone, country, amount, currency, String(link.title),
+        cleanEmail, cleanPhone, country, amount, currency, String(link.title), method.name,
         JSON.stringify({ providerFeesConfirmed: false, netAmountAvailable: false }), now, now,
       ],
     });
@@ -2733,11 +2834,12 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
     cancelUrl.searchParams.set('cancelled', '1');
     const invoice = await paydunyaService.createInvoice({
       amount,
+      currency,
       description: String(link.title),
       storeName: String(link.app_name),
       customerName: cleanCustomerName,
       customerEmail: cleanEmail,
-      customerPhone: cleanPhone,
+      customerPhone: paymentPhone || cleanPhone,
       reference,
       returnUrl: returnUrl.toString(),
       cancelUrl: cancelUrl.toString(),
@@ -2757,10 +2859,42 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
       return;
     }
 
+    let redirectUrl: string | undefined;
+    let pendingMessage = 'Paiement en attente de confirmation sur votre téléphone.';
+    let softPayTransactionId = '';
+    if (method.type === 'card') {
+      redirectUrl = invoice.invoiceUrl;
+      pendingMessage = 'Vous allez être redirigé vers le checkout sécurisé PayDunya pour saisir votre carte.';
+    } else {
+      const softPay = await paydunyaService.initiateSoftPay(invoice.token, method.id, {
+        fullName: cleanCustomerName,
+        email: cleanEmail,
+        phone: paymentPhone,
+        address,
+        otp,
+      });
+      if (!softPay.success) {
+        const failedAt = new Date().toISOString();
+        await db.execute({
+          sql: `UPDATE checkout_sessions SET status = 'failed', updated_at = ? WHERE reference = ? AND status = 'pending'`,
+          args: [failedAt, reference],
+        });
+        await db.execute({
+          sql: `UPDATE transactions SET status = 'failed', updated_at = ? WHERE reference = ? AND status = 'pending'`,
+          args: [failedAt, reference],
+        });
+        res.status(502).json({ success: false, error: softPay.message || 'PayDunya n’a pas pu lancer le paiement.' });
+        return;
+      }
+      redirectUrl = softPay.redirectUrl;
+      pendingMessage = softPay.message || pendingMessage;
+      softPayTransactionId = softPay.transactionId || '';
+    }
+
     await db.execute({
-      sql: `UPDATE checkout_sessions SET paydunya_token = ?, paydunya_url = ?, updated_at = ?
+      sql: `UPDATE checkout_sessions SET paydunya_token = ?, paydunya_url = ?, softpay_transaction_id = ?, updated_at = ?
             WHERE reference = ? AND status = 'pending'`,
-      args: [invoice.token, invoice.invoiceUrl, new Date().toISOString(), reference],
+      args: [invoice.token, redirectUrl || null, softPayTransactionId || null, new Date().toISOString(), reference],
     });
 
     res.json({
@@ -2768,8 +2902,9 @@ apiRouter.post('/checkout/initiate', async (req: Request, res: Response) => {
       reference,
       amount,
       currency,
-      token: invoice.token,
-      invoiceUrl: invoice.invoiceUrl,
+      redirectUrl,
+      message: pendingMessage,
+      requiresAuthorizationCode: method.id === 'wizall-senegal' && Boolean(softPayTransactionId),
       status: 'pending',
     });
   } catch (error) {
@@ -2795,9 +2930,9 @@ async function verifyPayDunyaCheckout(reference: string) {
     const invoice = verification.data?.invoice;
     const confirmedReference = String(verification.data?.custom_data?.reference || '');
     if (
-      String(session.currency || '') !== 'XOF' ||
       Number(invoice?.total_amount) !== Number(session.amount) ||
       String(invoice?.token || '') !== token ||
+      (invoice?.currency && String(invoice.currency).toUpperCase() !== String(session.currency || '').toUpperCase()) ||
       confirmedReference !== reference
     ) {
       console.error('[PayDunya] Invoice verification mismatch.');
@@ -2811,6 +2946,11 @@ async function verifyPayDunyaCheckout(reference: string) {
       customerName: String(session.customer_name || ''),
       customerEmail: String(session.customer_email || ''),
       customerPhone: String(session.customer_phone || ''),
+      country: String(session.country || 'BJ'),
+      paymentMethod: getPaymentMethodsForCountryAndCurrency(
+        String(session.country || 'BJ'),
+        String(session.currency || 'XOF'),
+      ).find((method) => method.id === String(session.payment_method || ''))?.name || 'PayDunya',
       applicationId: String(session.application_id || ''),
       userId: String(session.user_id || ''),
       paymentLinkId: String(session.payment_link_id || ''),
@@ -2845,9 +2985,43 @@ async function verifyPayDunyaCheckout(reference: string) {
 apiRouter.post('/checkout/confirm', async (req: Request, res: Response) => {
   try {
     const reference = typeof req.body?.reference === 'string' ? req.body.reference.trim() : '';
+    const authorizationCode = typeof req.body?.authorizationCode === 'string'
+      ? req.body.authorizationCode.replace(/\D/g, '')
+      : '';
     if (!reference) {
       res.status(400).json({ success: false, error: 'Référence de paiement requise.' });
       return;
+    }
+    let authorizationMessage = '';
+    if (authorizationCode) {
+      const sessionResult = await getDb().execute({
+        sql: 'SELECT payment_method, payment_phone, softpay_transaction_id FROM checkout_sessions WHERE reference = ?',
+        args: [reference],
+      });
+      if (sessionResult.rows.length === 0) {
+        res.status(404).json({ success: false, error: 'Session de paiement introuvable.' });
+        return;
+      }
+      const wizallSession = sessionResult.rows[0];
+      if (String(wizallSession.payment_method) !== 'wizall-senegal' || !wizallSession.softpay_transaction_id) {
+        res.status(400).json({ success: false, error: 'Cette session n’attend pas de code Wizall.' });
+        return;
+      }
+      const authorization = await paydunyaService.confirmWizallPayment(
+        authorizationCode,
+        String(wizallSession.payment_phone || ''),
+        String(wizallSession.softpay_transaction_id),
+      );
+      authorizationMessage = authorization.message;
+      if (!authorization.success) {
+        res.status(400).json({ success: false, error: authorization.message });
+        return;
+      }
+      await getDb().execute({
+        sql: `UPDATE checkout_sessions SET softpay_authorized = 1, updated_at = ?
+              WHERE reference = ? AND payment_method = 'wizall-senegal' AND status = 'pending'`,
+        args: [new Date().toISOString(), reference],
+      });
     }
     const session = await verifyPayDunyaCheckout(reference);
     if (!session) {
@@ -2860,10 +3034,12 @@ apiRouter.post('/checkout/confirm', async (req: Request, res: Response) => {
       status: String(session.status),
       amount: Number(session.amount),
       currency: String(session.currency),
+      requiresAuthorizationCode: session.payment_method === 'wizall-senegal' &&
+        Boolean(session.softpay_transaction_id) && !Boolean(session.softpay_authorized),
       message: session.status === 'success'
         ? 'Paiement confirmé par PayDunya.'
         : session.status === 'pending'
-          ? 'Paiement en cours de confirmation auprès de PayDunya.'
+          ? authorizationMessage || 'Paiement en cours de confirmation auprès de PayDunya.'
           : 'Le paiement a été annulé ou refusé.',
     });
   } catch (error) {
@@ -2886,6 +3062,8 @@ apiRouter.get('/checkout/status/:reference', async (req: Request, res: Response)
       status: String(session.status),
       amount: Number(session.amount),
       currency: String(session.currency),
+      requiresAuthorizationCode: session.payment_method === 'wizall-senegal' &&
+        Boolean(session.softpay_transaction_id) && !Boolean(session.softpay_authorized),
       feesConfirmed: false,
       netAmount: null,
     });

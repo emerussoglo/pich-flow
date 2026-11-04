@@ -54,9 +54,13 @@ La liste des pays et codes techniques documentés est conservée dans `src/confi
 
 ## URLs et callbacks
 
-Définissez `APP_URL` sur l'origine publique du site en production. En local, les URL de retour du navigateur peuvent pointer vers localhost; un callback serveur localhost n'est pas joignable depuis PayDunya. Pour tester l'IPN en local, définissez `PAYDUNYA_CALLBACK_URL` sur l'URL HTTPS publique d'un tunnel vers `/api/webhooks/paydunya`. La variable n'est pas requise pour la vérification serveur déclenchée au retour du navigateur.
+Le mode est choisi explicitement par `PAYDUNYA_MODE`: `sandbox` utilise `https://app.paydunya.com/sandbox-api/v1`, et `live` utilise `https://app.paydunya.com/api/v1` pour la création et la confirmation des factures. Pour la production, configurez `PAYDUNYA_MODE=live`, `PAYDUNYA_MASTER_KEY`, `PAYDUNYA_PRIVATE_KEY` et `PAYDUNYA_TOKEN` avec les trois clés Live de la même application PayDunya. Les noms des variables restent identiques; ne mélangez jamais les clés Sandbox et Live. Les identifiants sont lus côté serveur uniquement.
+
+Définissez `APP_URL` sur l'origine HTTPS publique du site en production. Une facture Live est refusée si cette URL est locale ou non HTTPS. Le callback par défaut est `${APP_URL}/api/webhooks/paydunya`; `PAYDUNYA_CALLBACK_URL` peut le remplacer par une URL HTTPS publique. En local, un callback serveur localhost n'est pas joignable depuis PayDunya; pour les essais Sandbox avec IPN, utilisez une URL HTTPS de tunnel. La variable n'est pas requise pour la vérification serveur déclenchée au retour du navigateur.
 
 La création de facture ne confirme pas le paiement. PichFlow vérifie ensuite le token côté serveur; l'IPN est décodée à partir du champ documenté `data`, et son hash SHA-512 est comparé au hash de la Master Key avant la vérification du statut. Seul le statut confirmé met à jour la transaction.
+
+Le passage en Live n'active pas à lui seul les moyens de paiement du compte PayDunya. PichFlow utilise le checkout hébergé; vérifiez l'activation de l'application et des moyens depuis le tableau de bord PayDunya. Aucun paiement Live ne doit être utilisé pour un test automatisé.
 
 Le test d'intégration réel, opt-in et sandbox uniquement, s'exécute dans PowerShell avec `$env:PAYDUNYA_SANDBOX_INTEGRATION='1'; npx tsx --test tests/paydunya-sandbox.integration.test.ts`. Il crée une facture et interroge son statut; il ne simule pas un paiement réussi et ne déclenche pas de débit.
 

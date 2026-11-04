@@ -21,15 +21,18 @@ assert.equal(verifyPassword(password, passwordHash), true);
 assert.equal(verifyPassword('incorrect password', passwordHash), false);
 assert.equal(PRICING_CONFIG.feeScheduleConfirmed, false);
 assert.equal(PRICING_CONFIG.customerSurchargeEnabled, false);
-assert.deepEqual(SUPPORTED_COUNTRIES.map((country) => country.code), ['BJ', 'SN', 'CI', 'TG', 'ML', 'BF', 'CM']);
-assert.deepEqual(CHECKOUT_COUNTRIES.map((country) => country.code), ['BJ']);
-assert.deepEqual(SUPPORTED_COUNTRIES[0].methods, []);
-assert.equal(SUPPORTED_COUNTRIES.find((country) => country.code === 'CM')?.currency, 'XAF');
-assert.equal(SUPPORTED_COUNTRIES.find((country) => country.code === 'CM')?.methods.find((method) => method.id === 'mtn-cameroun')?.isAvailable, false);
-assert.deepEqual(SUPPORTED_PAYMENT_CURRENCIES.map((currency) => currency.code), ['XOF']);
+assert.deepEqual(SUPPORTED_COUNTRIES.map((country) => country.code), ['BJ', 'SN', 'CI', 'BF', 'TG', 'ML', 'CM', 'INT']);
+assert.deepEqual(CHECKOUT_COUNTRIES.map((country) => country.code), ['BJ', 'SN', 'CI', 'BF', 'TG', 'ML', 'CM', 'INT']);
+assert.deepEqual(SUPPORTED_COUNTRIES.find((country) => country.code === 'BJ')?.methods.map((method) => method.id), [
+  'mtn-benin', 'moov-benin', 'celtiis-cash',
+]);
+assert.deepEqual(SUPPORTED_COUNTRIES.find((country) => country.code === 'CM')?.methods.map((method) => method.id), [
+  'mtn-cameroun',
+]);
+assert.deepEqual(SUPPORTED_PAYMENT_CURRENCIES.map((currency) => currency.code), ['XOF', 'XAF']);
 assert.deepEqual(filterCountriesBySearch(CHECKOUT_COUNTRIES, 'benin').map((country) => country.code), ['BJ']);
 assert.deepEqual(filterCountriesBySearch(SUPPORTED_COUNTRIES, 'cote d ivoire').map((country) => country.code), ['CI']);
-assert.deepEqual(filterCountriesBySearch(CHECKOUT_COUNTRIES, 'cameroun'), []);
+assert.deepEqual(filterCountriesBySearch(CHECKOUT_COUNTRIES, 'cameroun').map((country) => country.code), ['CM']);
 assert.deepEqual(
   DOCUMENTED_PAYMENT_CHANNELS.map((method) => method.id).sort(),
   [
@@ -66,15 +69,25 @@ const originalUrlEnv = {
   callbackUrl: process.env.PAYDUNYA_CALLBACK_URL,
   vercelUrl: process.env.VERCEL_URL,
   nodeEnv: process.env.NODE_ENV,
+  paydunyaMode: process.env.PAYDUNYA_MODE,
 };
 try {
   Reflect.set(process.env, 'NODE_ENV', 'development');
+  process.env.PAYDUNYA_MODE = 'sandbox';
   process.env.APP_URL = 'http://localhost:3000/';
   process.env.NEXT_PUBLIC_APP_URL = '';
   delete process.env.VERCEL_URL;
   delete process.env.PAYDUNYA_CALLBACK_URL;
   assert.equal(getAppBaseUrl(), 'http://localhost:3000');
   assert.equal(getPaymentLinkUrl('licence-1'), 'http://localhost:3000/pay/licence-1');
+  assert.equal(getPayDunyaCallbackUrl(), 'http://localhost:3000/api/webhooks/paydunya');
+
+  process.env.PAYDUNYA_CALLBACK_URL = 'https://example-tunnel.test/api/webhooks/paydunya';
+  assert.equal(getPayDunyaCallbackUrl(), 'https://example-tunnel.test/api/webhooks/paydunya');
+  delete process.env.PAYDUNYA_CALLBACK_URL;
+
+  process.env.PAYDUNYA_MODE = 'live';
+  assert.throws(() => getPayDunyaCallbackUrl(), /public HTTPS URL/);
 
   Reflect.set(process.env, 'NODE_ENV', 'production');
   process.env.APP_URL = 'http://localhost:3000';
@@ -97,6 +110,8 @@ try {
   else process.env.VERCEL_URL = originalUrlEnv.vercelUrl;
   if (originalUrlEnv.nodeEnv === undefined) Reflect.deleteProperty(process.env, 'NODE_ENV');
   else Reflect.set(process.env, 'NODE_ENV', originalUrlEnv.nodeEnv);
+  if (originalUrlEnv.paydunyaMode === undefined) delete process.env.PAYDUNYA_MODE;
+  else process.env.PAYDUNYA_MODE = originalUrlEnv.paydunyaMode;
 }
 
 console.log('PichFlow offline regression checks passed.');

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '@/src/config/payments';
-import { CHECKOUT_COUNTRIES, isSupportedPaymentCurrency } from '@/src/config/countries';
+import { countrySupportsCurrency, isSupportedPaymentCurrency, SUPPORTED_PAYMENT_CURRENCIES } from '@/src/config/countries';
 import { getDb } from '@/src/server/db';
 import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 import { getPaymentLinkUrl } from '@/src/server/urls';
@@ -40,6 +39,8 @@ export async function GET(request: NextRequest) {
       title: String(row.title),
       description: String(row.description || ''),
       amount: row.amount !== null ? Number(row.amount) : undefined,
+      minAmount: row.amount_min !== null ? Number(row.amount_min) : null,
+      maxAmount: row.amount_max !== null ? Number(row.amount_max) : null,
       currency: String(row.currency || 'XOF'),
       isFixedAmount: Boolean(row.is_fixed_amount),
       country: String(row.country || ''),
@@ -83,6 +84,12 @@ export async function POST(request: NextRequest) {
       ? null
       : Number(body.amount);
     const currency = typeof body.currency === 'string' ? body.currency.toUpperCase() : 'XOF';
+    const minAmount = body.minAmount === null || body.minAmount === undefined || body.minAmount === ''
+      ? null
+      : Number(body.minAmount);
+    const maxAmount = body.maxAmount === null || body.maxAmount === undefined || body.maxAmount === ''
+      ? null
+      : Number(body.maxAmount);
     const country = typeof body.country === 'string' ? body.country.trim().toUpperCase() : '';
     const expiresAtInput = typeof body.expiresAt === 'string' ? body.expiresAt.trim() : '';
     const expiresAt = expiresAtInput ? new Date(`${expiresAtInput}T23:59:59.999Z`) : null;
@@ -100,19 +107,34 @@ export async function POST(request: NextRequest) {
     if (!title || title.length > 140) {
       return NextResponse.json({ success: false, error: 'Le nom du produit est requis (140 caractères maximum).' }, { status: 400 });
     }
-    if (isFixedAmount && (amount === null || !Number.isSafeInteger(amount) || amount < PAYDUNYA_MINIMUM_AMOUNT_XOF)) {
+    const minimumAmount = SUPPORTED_PAYMENT_CURRENCIES.find((supported) => supported.code === currency)?.minimumAmount;
+    if (isFixedAmount && (amount === null || !Number.isSafeInteger(amount) || amount < (minimumAmount || 1))) {
       return NextResponse.json({
         success: false,
-        error: `Saisissez un montant fixe entier d’au moins ${PAYDUNYA_MINIMUM_AMOUNT_XOF} XOF.`,
+        error: `Saisissez un montant fixe entier d’au moins ${minimumAmount || 1} ${currency}.`,
       }, { status: 400 });
     }
-    if (!isFixedAmount && amount !== null) {
-      return NextResponse.json({ success: false, error: 'Un lien à montant libre ne peut pas définir de montant fixe.' }, { status: 400 });
+    if (isFixedAmount && (minAmount !== null || maxAmount !== null)) {
+      return NextResponse.json({ success: false, error: 'Un lien à montant fixe ne peut pas définir de limites de montant.' }, { status: 400 });
+    }
+    if (!isFixedAmount && (
+      amount !== null ||
+      minAmount === null ||
+      maxAmount === null ||
+      !Number.isSafeInteger(minAmount) ||
+      !Number.isSafeInteger(maxAmount) ||
+      minAmount < (minimumAmount || 1) ||
+      maxAmount < minAmount
+    )) {
+      return NextResponse.json({
+        success: false,
+        error: `Pour un montant libre, définissez des limites entières comprises entre ${minimumAmount || 1} et un maximum supérieur ou égal, en ${currency}.`,
+      }, { status: 400 });
     }
     if (!isSupportedPaymentCurrency(currency)) {
       return NextResponse.json({ success: false, error: 'Cette devise n’est pas prise en charge par le flux PayDunya actuellement configuré.' }, { status: 400 });
     }
-    if (country && !CHECKOUT_COUNTRIES.some((supportedCountry) => supportedCountry.code === country && supportedCountry.currency === currency)) {
+    if (country && !countrySupportsCurrency(country, currency)) {
       return NextResponse.json({ success: false, error: 'Ce pays n’est pas disponible pour la devise sélectionnée dans le flux PayDunya actuellement configuré.' }, { status: 400 });
     }
     if (expiresAtInput && (!expiresAt || Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() <= Date.now())) {
@@ -137,12 +159,12 @@ export async function POST(request: NextRequest) {
     await getDb().execute({
       sql: `INSERT INTO payment_links (
               id, user_id, application_id, slug, title, description, amount,
-              is_fixed_amount, currency, country, status, usage_count, usage_limit,
+              amount_min, amount_max, is_fixed_amount, currency, country, status, usage_count, usage_limit,
               require_phone, expires_at, redirect_url, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, ?, ?, ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 0, ?, ?, ?, ?, ?, ?)` ,
       args: [
         id, user.id, applicationId, slug, title, description, amount,
-        isFixedAmount ? 1 : 0, currency, country, usageLimit,
+        minAmount, maxAmount, isFixedAmount ? 1 : 0, currency, country, usageLimit,
         body.requirePhone === true ? 1 : 0, expiresAt?.toISOString() || null, redirectUrl, now, now,
       ],
     });
@@ -153,6 +175,8 @@ export async function POST(request: NextRequest) {
       title,
       description,
       amount,
+      minAmount,
+      maxAmount,
       currency,
       isFixedAmount,
       country,

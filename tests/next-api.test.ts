@@ -293,6 +293,8 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
       title: 'Application A flexible payment',
       isFixedAmount: false,
       currency: 'XOF',
+      minAmount: 200,
+      maxAmount: 5000,
       applicationId: applicationA.id,
     }, undefined, sessionCookie),
   );
@@ -303,9 +305,11 @@ test('Next route handlers preserve authentication and legacy API behavior', asyn
   assert.equal(freeAmountLink.currency, 'XOF');
   const unsupportedCurrencyLink = await createPaymentLink(
     makeRequest('/api/payment-links', 'POST', {
-      title: 'Unsupported XAF link',
+      title: 'Unsupported USD link',
       isFixedAmount: false,
-      currency: 'XAF',
+      currency: 'USD',
+      minAmount: 200,
+      maxAmount: 5000,
       applicationId: applicationA.id,
     }, undefined, sessionCookie),
   );

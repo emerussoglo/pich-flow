@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PAYDUNYA_MINIMUM_AMOUNT_XOF } from '@/src/config/payments';
+import { SUPPORTED_PAYMENT_CURRENCIES } from '@/src/config/countries';
 import { getDb } from '@/src/server/db';
 import { getAuthUserFromRequest, userHasSelectedApplication } from '@/src/server/auth';
 
@@ -55,6 +55,8 @@ export async function GET(
         title: String(pl.title),
         description: String(pl.description || ''),
         amount: pl.amount !== null ? Number(pl.amount) : null,
+        minAmount: pl.amount_min !== null ? Number(pl.amount_min) : null,
+        maxAmount: pl.amount_max !== null ? Number(pl.amount_max) : null,
         isFixedAmount: Boolean(pl.is_fixed_amount),
         currency: String(pl.currency || 'XOF'),
         country: String(pl.country || 'BJ'),
@@ -96,25 +98,51 @@ export async function PUT(
 
     const { id } = await context.params;
     const body = await request.json().catch(() => ({}));
-    const { title, description, amount, isFixedAmount, status } = body;
+    const { title, description, amount, minAmount, maxAmount, isFixedAmount, status } = body;
     const applicationId = typeof body.applicationId === 'string' ? body.applicationId.trim() : '';
     if (!await userHasSelectedApplication(user, applicationId)) {
       return NextResponse.json({ success: false, error: 'Application introuvable.' }, { status: 404 });
     }
-    if (amount !== undefined && (!Number.isSafeInteger(Number(amount)) || Number(amount) < PAYDUNYA_MINIMUM_AMOUNT_XOF)) {
+    const db = getDb();
+    const existing = await db.execute({
+      sql: 'SELECT is_fixed_amount, currency, amount_min, amount_max FROM payment_links WHERE id = ? AND user_id = ? AND application_id = ?',
+      args: [id, user.id, applicationId],
+    });
+    if (existing.rows.length === 0) {
+      return NextResponse.json({ success: false, error: 'Lien de paiement introuvable.' }, { status: 404 });
+    }
+    const currentLink = existing.rows[0];
+    const currency = String(currentLink.currency || 'XOF');
+    const minimumAmount = SUPPORTED_PAYMENT_CURRENCIES.find((supported) => supported.code === currency)?.minimumAmount || 1;
+    const fixedAmount = isFixedAmount === undefined ? Boolean(currentLink.is_fixed_amount) : isFixedAmount === true;
+    if (fixedAmount && amount !== undefined && (!Number.isSafeInteger(Number(amount)) || Number(amount) < minimumAmount)) {
       return NextResponse.json({
         success: false,
-        error: `Le montant du lien doit être un entier d’au moins ${PAYDUNYA_MINIMUM_AMOUNT_XOF} XOF.`,
+        error: `Le montant du lien doit être un entier d’au moins ${minimumAmount} ${currency}.`,
+      }, { status: 400 });
+    }
+    const nextMinimum = minAmount === undefined ? Number(currentLink.amount_min) : Number(minAmount);
+    const nextMaximum = maxAmount === undefined ? Number(currentLink.amount_max) : Number(maxAmount);
+    if (!fixedAmount && (
+      !Number.isSafeInteger(nextMinimum) ||
+      !Number.isSafeInteger(nextMaximum) ||
+      nextMinimum < minimumAmount ||
+      nextMaximum < nextMinimum
+    )) {
+      return NextResponse.json({
+        success: false,
+        error: `Définissez une fourchette entière comprise entre ${minimumAmount} et un maximum supérieur ou égal, en ${currency}.`,
       }, { status: 400 });
     }
 
-    const db = getDb();
     await db.execute({
       sql: `UPDATE payment_links SET 
             title = COALESCE(?, title),
             description = COALESCE(?, description),
             amount = COALESCE(?, amount),
             is_fixed_amount = COALESCE(?, is_fixed_amount),
+            amount_min = ?,
+            amount_max = ?,
             status = COALESCE(?, status),
             updated_at = ?
             WHERE id = ? AND user_id = ? AND application_id = ?`,
@@ -123,6 +151,8 @@ export async function PUT(
         description,
         amount !== undefined ? amount : null,
         isFixedAmount !== undefined ? (isFixedAmount ? 1 : 0) : null,
+        fixedAmount ? null : nextMinimum,
+        fixedAmount ? null : nextMaximum,
         status,
         new Date().toISOString(),
         id,

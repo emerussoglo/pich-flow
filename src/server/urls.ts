@@ -48,6 +48,14 @@ export function getPaymentLinkUrl(slug: string, requestOrigin?: string): string 
 }
 
 export function getPayDunyaCallbackUrl(): string {
+  const mode = (process.env.PAYDUNYA_MODE || '').trim().toLowerCase();
+  if (mode === 'live' || mode === 'production') {
+    const appUrl = new URL(getAppBaseUrl());
+    if (appUrl.protocol !== 'https:' || isLocalHost(appUrl.hostname)) {
+      throw new Error('Live PayDunya requires APP_URL to be a public HTTPS URL.');
+    }
+  }
+
   const configured = process.env.PAYDUNYA_CALLBACK_URL;
   if (configured) {
     const callbackUrl = new URL(configured);

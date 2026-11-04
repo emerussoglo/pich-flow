@@ -57,6 +57,8 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [editTitle, setEditTitle] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [editAmount, setEditAmount] = useState<number | undefined>(undefined);
+  const [editMinAmount, setEditMinAmount] = useState("");
+  const [editMaxAmount, setEditMaxAmount] = useState("");
   const [editRequirePhone, setEditRequirePhone] = useState(false);
 
   // Form states for creation
@@ -64,6 +66,8 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [desc, setDesc] = useState("Accès complet aux modules et intégrations");
   const [amountType, setAmountType] = useState<"fixed" | "libre">("fixed");
   const [amountVal, setAmountVal] = useState("15000");
+  const [minAmountVal, setMinAmountVal] = useState(String(PAYDUNYA_MINIMUM_AMOUNT_XOF));
+  const [maxAmountVal, setMaxAmountVal] = useState("");
   const [currency, setCurrency] = useState("XOF");
   const [maxUsage, setMaxUsage] = useState("");
   const [defaultCountry, setDefaultCountry] = useState("");
@@ -72,6 +76,11 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recentlyCreatedLink, setRecentlyCreatedLink] =
     useState<PaymentLink | null>(null);
+  const minimumAmount = SUPPORTED_PAYMENT_CURRENCIES.find((supported) => supported.code === currency)?.minimumAmount
+    ?? PAYDUNYA_MINIMUM_AMOUNT_XOF;
+  const editCurrencyMinimum = SUPPORTED_PAYMENT_CURRENCIES.find(
+    (supported) => supported.code === editLink?.currency,
+  )?.minimumAmount ?? 1;
 
   const loadLinks = useCallback(async () => {
     const loadId = ++linkLoadId.current;
@@ -198,17 +207,38 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
     setEditTitle(link.title);
     setEditDesc(link.description || "");
     setEditAmount(link.amount === null ? undefined : link.amount);
+    setEditMinAmount(String(link.minAmount ?? PAYDUNYA_MINIMUM_AMOUNT_XOF));
+    setEditMaxAmount(link.maxAmount === null || link.maxAmount === undefined ? "" : String(link.maxAmount));
     setEditRequirePhone(Boolean(link.requirePhone));
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editLink) return;
+    if (
+      editLink.isFixedAmount &&
+      (!Number.isSafeInteger(editAmount) || Number(editAmount) < editCurrencyMinimum)
+    ) {
+      showToast(`Le montant minimum accepté par PayDunya est de ${editCurrencyMinimum} ${editLink.currency}.`, "error");
+      return;
+    }
+    if (
+      !editLink.isFixedAmount &&
+      (!Number.isSafeInteger(Number(editMinAmount)) ||
+        !Number.isSafeInteger(Number(editMaxAmount)) ||
+        Number(editMinAmount) < editCurrencyMinimum ||
+        Number(editMaxAmount) < Number(editMinAmount))
+    ) {
+      showToast(`Définissez une fourchette valide en ${editLink.currency}.`, "error");
+      return;
+    }
     try {
       await apiClient.paymentLinks.update(editLink.id, {
         title: editTitle.trim(),
         description: editDesc.trim(),
-        amount: editAmount,
+        amount: editLink.isFixedAmount ? editAmount : undefined,
+        minAmount: editLink.isFixedAmount ? undefined : Number(editMinAmount),
+        maxAmount: editLink.isFixedAmount ? undefined : Number(editMaxAmount),
         requirePhone: editRequirePhone,
         applicationId: activeApp?.id || "",
       });
@@ -221,6 +251,8 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                 title: editTitle.trim(),
                 description: editDesc.trim(),
                 amount: editAmount === undefined ? null : editAmount,
+                minAmount: editLink.isFixedAmount ? null : Number(editMinAmount),
+                maxAmount: editLink.isFixedAmount ? null : Number(editMaxAmount),
                 requirePhone: editRequirePhone,
               }
             : l,
@@ -239,13 +271,29 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
     if (
       amountType === "fixed" &&
       (!Number.isSafeInteger(Number(amountVal)) ||
-        Number(amountVal) < PAYDUNYA_MINIMUM_AMOUNT_XOF)
+        Number(amountVal) < minimumAmount)
     ) {
       showToast(
-        `Le montant minimum accepté par PayDunya est de ${PAYDUNYA_MINIMUM_AMOUNT_XOF} XOF.`,
+        `Le montant minimum accepté par PayDunya est de ${minimumAmount} ${currency}.`,
         "error",
       );
       return;
+    }
+    if (amountType === "libre") {
+      const minimum = Number(minAmountVal);
+      const maximum = Number(maxAmountVal);
+      if (
+        !Number.isSafeInteger(minimum) ||
+        !Number.isSafeInteger(maximum) ||
+        minimum < minimumAmount ||
+        maximum < minimum
+      ) {
+        showToast(
+          `Définissez une fourchette entière comprise entre ${minimumAmount} et un maximum supérieur ou égal, en ${currency}.`,
+          "error",
+        );
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -254,6 +302,8 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
         title: name.trim(),
         description: desc.trim() || "Paiement en ligne sécurisé",
         amount: amountType === "fixed" ? Number(amountVal) : undefined,
+        minAmount: amountType === "libre" ? Number(minAmountVal) : undefined,
+        maxAmount: amountType === "libre" ? Number(maxAmountVal) : undefined,
         isFixedAmount: amountType === "fixed",
         currency,
         country: defaultCountry,
@@ -439,7 +489,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                     gap: "0.75rem",
                   }}
                 >
-                  {amountType === "fixed" && (
+                  {amountType === "fixed" ? (
                     <div className="pf-form-group">
                       <label className="pf-label">
                         Montant <span style={{ color: "#EF4444" }}>*</span>
@@ -449,11 +499,38 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                         className="pf-input"
                         value={amountVal}
                         onChange={(e) => setAmountVal(e.target.value)}
-                        min={PAYDUNYA_MINIMUM_AMOUNT_XOF}
+                        min={minimumAmount}
                         step="1"
                         required
                       />
                     </div>
+                  ) : (
+                    <>
+                      <div className="pf-form-group">
+                        <label className="pf-label">Montant minimum ({currency})</label>
+                        <input
+                          type="number"
+                          className="pf-input"
+                          value={minAmountVal}
+                          onChange={(event) => setMinAmountVal(event.target.value)}
+                          min={minimumAmount}
+                          step="1"
+                          required
+                        />
+                      </div>
+                      <div className="pf-form-group">
+                        <label className="pf-label">Montant maximum ({currency})</label>
+                        <input
+                          type="number"
+                          className="pf-input"
+                          value={maxAmountVal}
+                          onChange={(event) => setMaxAmountVal(event.target.value)}
+                          min={minAmountVal || minimumAmount}
+                          step="1"
+                          required
+                        />
+                      </div>
+                    </>
                   )}
 
                   <div className="pf-form-group">
@@ -518,7 +595,7 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                     )}
                   </select>
                   <small className="pf-form-hint">
-                    Les pays sans canal activé et vérifié sur cette intégration ne sont pas proposés.
+                    Les moyens proposés au payeur dépendront du pays choisi. La disponibilité du compte PayDunya doit être vérifiée pour chaque canal.
                   </small>
                 </div>
 
@@ -1252,6 +1329,32 @@ export const PaymentLinksView: React.FC<PaymentLinksViewProps> = ({
                     min={PAYDUNYA_MINIMUM_AMOUNT_XOF}
                     required
                   />
+                </div>
+              )}
+              {!editLink.isFixedAmount && (
+                <div className="pf-saspay-form-row">
+                  <div className="pf-form-group">
+                    <label className="pf-label">Montant minimum ({editLink.currency})</label>
+                    <input
+                      type="number"
+                      className="pf-input"
+                      value={editMinAmount}
+                      onChange={(event) => setEditMinAmount(event.target.value)}
+                      min={editCurrencyMinimum}
+                      required
+                    />
+                  </div>
+                  <div className="pf-form-group">
+                    <label className="pf-label">Montant maximum ({editLink.currency})</label>
+                    <input
+                      type="number"
+                      className="pf-input"
+                      value={editMaxAmount}
+                      onChange={(event) => setEditMaxAmount(event.target.value)}
+                      min={editMinAmount || editCurrencyMinimum}
+                      required
+                    />
+                  </div>
                 </div>
               )}
 
